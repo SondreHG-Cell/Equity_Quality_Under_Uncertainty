@@ -6,31 +6,35 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Total revenues",
-          "why": "Primary label for top-line revenue; duplicated by 'Total Revenue' with identical values. Choosing one consistent label.",
-          "confidence": 0.9
+          "why": "Explicit top-line revenue; duplicated with same values as 'Total Revenue'. Used as secondary option.",
+          "confidence": 0.93
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Total Revenue",
-          "why": "Duplicate of 'Total revenues'; same figures. Either would work but one is sufficient.",
-          "confidence": 0.9
+          "why": "Explicit total revenue line, identical numbers to 'Total revenues'. Chosen as primary REVT label per rule allowing multiple priority rows.",
+          "confidence": 0.95
         }
       ],
       "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
         {
           "sheet_name": "Income Statement",
           "row_label": "Total revenues"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Chose the first, more descriptive occurrence of the duplicate revenue total."
+      "notes": "Both lines represent the same revenue figure; ordered by preference for later first-non-missing selection."
     },
     {
       "variable": "COGS",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "Direct cost of sales/COGS is not explicitly listed among candidates, so it is treated as missing for PROF mapping."
+      "notes": "No COGS/cost of sales-like row among candidates; treated as missing/zero per rules."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -38,20 +42,20 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Administrative Expenses",
-          "why": "Clear SG&A-type overhead bucket; fits administrative expenses category.",
-          "confidence": 0.95
+          "why": "Clear SG&A-type overhead bucket; not a total and not COGS/D&A.",
+          "confidence": 0.96
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Labor & Related Expenses in Selling, General & Administrative Expenses",
-          "why": "Explicit labor-related SG&A component; should be included as part of SG&A components.",
-          "confidence": 0.98
+          "why": "Component of SG&A personnel costs; valid SG&A component.",
+          "confidence": 0.96
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Selling, General & Administrative Expenses - Other",
-          "why": "Explicit SG&A other component; belongs fully in SG&A.",
-          "confidence": 0.98
+          "why": "Explicit SG&A other overhead component; valid SG&A component.",
+          "confidence": 0.97
         }
       ],
       "final_choice": [
@@ -69,14 +73,14 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Multiple SG&A component rows exist and none are totals/subtotals, so all three are included."
+      "notes": "Multiple SG&A components are available and none are totals; all three are selected as SG&A components per instructions."
     },
     {
       "variable": "XRD",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No R&D-related row is present in the candidate list; treat as zero for PROF."
+      "notes": "No R&D-related line item present in candidate list; assume no separately reported R&D expense."
     },
     {
       "variable": "XINT",
@@ -84,60 +88,80 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest expenses",
-          "why": "Primary P&L interest expense line; best match for interest expense.",
+          "why": "Primary aggregate interest expense line; best match for XINT.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest mortgage debt",
-          "why": "Component of interest expense, but less comprehensive than the main interest expense line.",
-          "confidence": 0.8
+          "why": "Component of interest expense related to mortgage debt; useful if primary line missing for some years.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Capitalised interest on newbuildings",
-          "why": "Capitalised interest, not the main interest expense; not ideal as primary XINT.",
+          "why": "Interest being capitalised; not pure expense but included as a low-priority fallback given limited candidates.",
           "confidence": 0.6
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest on lease liabilities",
-          "why": "Interest on leases; a component of total interest expense but not the aggregate.",
-          "confidence": 0.8
+          "why": "Interest expense component on lease liabilities; relevant interest cost if main line unavailable.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other interest expenses",
-          "why": "Minor component of interest cost; not the main aggregate.",
-          "confidence": 0.75
+          "why": "Other interest expense component; use if primary line missing.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
-          "why": "Supplemental disclosure of lease interest; not the main total.",
-          "confidence": 0.7
+          "why": "Supplemental detail of interest on lease liabilities; valid but lower priority than main interest lines.",
+          "confidence": 0.85
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Non-current interest bearing debt",
-          "why": "Balance sheet debt, not interest expense; unsuitable for XINT.",
-          "confidence": 0.4
+          "why": "Balance sheet liability, not an expense; should NOT be used for XINT.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Current interest bearing debt",
-          "why": "Short-term debt balance, not period interest expense.",
-          "confidence": 0.4
+          "why": "Balance sheet liability, not an expense; should NOT be used for XINT.",
+          "confidence": 0.2
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on lease liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest mortgage debt"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Capitalised interest on newbuildings"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Chose the aggregate income statement interest expense line rather than components or balance sheet debt amounts."
+      "notes": "Only income-statement interest lines are selected, ordered by aggregation and typicality; balance-sheet debt items are excluded."
     },
     {
       "variable": "BE",
@@ -145,61 +169,65 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Changes in fair value of equity investments",
-          "why": "Income statement remeasurement item, not a stock of equity; not suitable for book equity.",
-          "confidence": 0.2
+          "why": "Income statement fair value change, not total equity; not suitable for BE.",
+          "confidence": 0.1
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Other paid-in equity",
-          "why": "Component of equity, but not total equity.",
-          "confidence": 0.7
-        },
-        {
-          "sheet_name": "Balance Sheet",
-          "row_label": "Shareholders' Equity - Total",
-          "why": "Represents total shareholders’ equity; valid book equity measure.",
-          "confidence": 0.95
-        },
-        {
-          "sheet_name": "Balance Sheet",
-          "row_label": "Total Equity",
-          "why": "Also represents total equity and matches the balance sheet total; best single book equity figure.",
-          "confidence": 0.97
-        },
-        {
-          "sheet_name": "Balance Sheet",
-          "row_label": "Balancing Item - Total Equity",
-          "why": "Technical balancing row; should be excluded.",
+          "why": "Component of equity, not total equity; BE should use total equity.",
           "confidence": 0.6
         },
         {
           "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total",
+          "why": "Explicit total shareholders’ equity; valid book equity measure.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Another explicit total equity line matching shareholders’ equity; preferred primary BE line.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Equity",
+          "why": "Technical balancing row, not substantive equity; avoid for BE.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Liability and Equity",
-          "why": "Balancing row for the equation; not pure equity.",
-          "confidence": 0.5
+          "why": "Balancing plug; not actual equity amount.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total equity and liabilities",
-          "why": "Sum of equity and liabilities; not equity alone.",
-          "confidence": 0.3
+          "why": "Total assets/liabilities, not equity alone; unsuitable for BE.",
+          "confidence": 0.2
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total Equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Selected the explicit total equity balance-sheet line as book equity (BE)."
+      "notes": "Uses the primary total equity line with the shareholders’ equity total as backup in case of missing values."
     },
     {
       "variable": "MIB",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No minority interest / non-controlling interest line is present among candidates."
+      "notes": "No minority interest / non-controlling interest line among candidates; treated as absent (zero)."
     }
   ]
 }

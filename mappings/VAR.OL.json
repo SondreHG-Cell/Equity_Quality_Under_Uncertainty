@@ -6,43 +6,51 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Petroleum revenues",
-          "why": "Primary operating revenue line; matches petroleum company’s top-line sales.",
-          "confidence": 0.98
+          "why": "Primary operating revenue line; large positive values and feeds into Total income.",
+          "confidence": 0.97
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Deferred revenue",
-          "why": "Liability, not a revenue flow; inappropriate for REVT.",
-          "confidence": 0.2
+          "why": "Liability; not a revenue flow item, so not appropriate for REVT.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Petroleum revenues - Balancing value",
-          "why": "Adjustment/balancing row rather than the main revenue figure.",
-          "confidence": 0.4
+          "why": "Balancing adjustment to petroleum revenues rather than the core revenue line; can serve as fallback if main line missing.",
+          "confidence": 0.6
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Balancing Item - Revenue",
-          "why": "Explicit balancing item; not the substantive revenue line.",
-          "confidence": 0.15
+          "why": "Explicitly labeled as a balancing item; only useful as last-resort fallback if main revenue lines are missing.",
+          "confidence": 0.4
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
           "row_label": "Petroleum revenues"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Petroleum revenues - Balancing value"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Balancing Item - Revenue"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Petroleum revenues clearly represents total operating revenue; other options are balancing/deferral items."
+      "notes": "Petroleum revenues is the clear top-line. Additional balancing lines included as lower-priority fallbacks per instructions."
     },
     {
       "variable": "COGS",
       "candidates": [],
       "final_choice": [],
-      "needs_manual_review": false,
-      "notes": "No suitable cost of sales / production cost row was provided in the candidate list, so COGS is left empty by rule."
+      "needs_manual_review": true,
+      "notes": "Production costs likely represent COGS but are not present in the provided candidate list, so no allowed label can be selected."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -50,26 +58,26 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating income",
-          "why": "Represents operating income, not SG&A expense; should not be classified as SG&A.",
-          "confidence": 0.35
+          "why": "This is operating income, not an overhead expense; should not be treated as SG&A.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating income - rest",
-          "why": "Also operating income, not overhead expense; not appropriate for SG&A.",
-          "confidence": 0.35
+          "why": "Also operating income rather than SG&A expense; not appropriate for SG&A components.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating expenses",
-          "why": "Overhead-type operating expenses consistent with SG&A definition (excluding D&A/impairments).",
-          "confidence": 0.85
+          "why": "Explicit overhead-type operating expenses; fits SG&A definition and excludes COGS and D&A.",
+          "confidence": 0.95
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Administrative expenses",
-          "why": "Classic SG&A component (administrative overhead).",
-          "confidence": 0.95
+          "why": "Classic SG&A component covering administrative overhead costs.",
+          "confidence": 0.98
         }
       ],
       "final_choice": [
@@ -83,7 +91,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Selected only expense-type overhead lines; excluded income lines from SG&A per instructions."
+      "notes": "Selected only expense-type overhead components; excluded income lines from SG&A per instructions."
     },
     {
       "variable": "XRD",
@@ -91,7 +99,7 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Research & Development Expense",
-          "why": "Explicitly labeled research & development expense.",
+          "why": "Explicit R&D expense line; directly matches XRD definition.",
           "confidence": 0.99
         }
       ],
@@ -110,59 +118,63 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest on debts and borrowings",
-          "why": "Core interest expense on debt; primary component of interest expense.",
-          "confidence": 0.96
+          "why": "Primary interest expense on debt; clear financing cost and suitable for XINT.",
+          "confidence": 0.98
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest expenses",
-          "why": "Likely a total, but components (interest on debts and borrowings, interest on lease debt) are available and preferred by rule.",
-          "confidence": 0.7
+          "why": "Generic interest expense line; when present it is the most direct XINT measure.",
+          "confidence": 0.99
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest on lease debt",
-          "why": "Interest expense related to lease liabilities; part of total interest expense.",
+          "why": "Interest component of lease liabilities; part of total interest expense.",
           "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Capitalized",
-          "why": "Capitalized, not expensed interest; should be excluded from XINT.",
-          "confidence": 0.2
+          "why": "Capitalized interest added to asset bases, not expensed; generally should be excluded from XINT.",
+          "confidence": 0.3
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Change in fair value of interest rate hedges (ineffectiveness)",
-          "why": "Derivative fair value effect, not pure interest expense.",
-          "confidence": 0.25
+          "why": "Fair value hedge ineffectiveness, not pure interest expense; should not be primary XINT.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
-          "why": "Supplemental disclosure of lease interest; may duplicate ‘Interest on lease debt’. Prefer main P&L line.",
-          "confidence": 0.6
+          "why": "Supplemental disclosure of lease interest expense; valid component of interest expense.",
+          "confidence": 0.85
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Interest-bearing loans and borrowings",
-          "why": "Balance sheet liability, not an expense flow.",
-          "confidence": 0.1
+          "why": "Balance sheet liability, not a P&L expense line; not suitable for XINT.",
+          "confidence": 0.05
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Interest-bearing loans and borrowings excluding financial lease",
-          "why": "Balance sheet liability, not an expense flow.",
-          "confidence": 0.1
+          "why": "Also a liability balance; not an expense.",
+          "confidence": 0.05
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Interest Payable - Short-Term Debt",
-          "why": "Balance sheet payable, not period interest expense.",
-          "confidence": 0.2
+          "why": "Accrued interest liability; not the period expense itself.",
+          "confidence": 0.1
         }
       ],
       "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest on debts and borrowings"
@@ -170,10 +182,14 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest on lease debt"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Used the main component expense lines; excluded totals, capitalized interest, hedge ineffectiveness, and balance-sheet items."
+      "notes": "Ordered as a priority list: generic interest expense first, then specific debt and lease interest labels. Capitalized interest and hedge FV changes intentionally excluded."
     },
     {
       "variable": "BE",
@@ -181,44 +197,44 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Other equity",
-          "why": "Component of equity, not total book equity.",
+          "why": "Component of equity but not the total; should not be used for BE alone.",
           "confidence": 0.4
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Shareholders' Equity - Total",
-          "why": "Total shareholders’ equity; valid measure of book equity.",
+          "why": "Total equity attributable to shareholders; close to BE but may exclude some hybrid elements.",
           "confidence": 0.9
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total Equity",
-          "why": "Represents total equity/book value; essentially same as shareholders’ equity total and is the clean total-equity figure.",
-          "confidence": 0.95
+          "why": "Overall total equity; best single representation of book equity for BE.",
+          "confidence": 0.97
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Other equity - Balancing value",
-          "why": "Balancing adjustment, not substantive equity total.",
+          "why": "Technical balancing line, not the equity total.",
           "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Equity",
-          "why": "Balancing item, not the primary equity figure.",
+          "why": "Balancing line, not the substantive equity figure.",
           "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Liability and Equity",
-          "why": "Balancing item for the accounting identity, not equity itself.",
+          "why": "Balancing item for the accounting equation; not pure equity.",
           "confidence": 0.1
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "TOTAL EQUITY AND LIABILITIES",
-          "why": "Represents total assets/liabilities+equity, not equity alone.",
-          "confidence": 0.1
+          "why": "Represents equity plus liabilities; not appropriate as book equity alone.",
+          "confidence": 0.05
         }
       ],
       "final_choice": [
@@ -228,14 +244,14 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Chose the explicit overall equity total rather than subtotals or balancing lines."
+      "notes": "Total Equity is selected as the comprehensive book equity measure."
     },
     {
       "variable": "MIB",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No minority interest / non-controlling interest line is present in the candidate list, so MIB is set to empty."
+      "notes": "No minority interest / non-controlling interest line appears in the candidate list; treated as absent."
     }
   ]
 }

@@ -5,14 +5,14 @@
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No revenue/sales row provided in candidate list."
+      "notes": "No revenue/sales candidates were provided in the candidate list, so REVT is left empty by construction."
     },
     {
       "variable": "COGS",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No COGS/cost of sales row provided in candidate list."
+      "notes": "No COGS-related candidates were provided in the candidate list, so COGS is left empty by construction."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -20,20 +20,20 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating income",
-          "why": "Listed as a candidate but represents operating income, not overhead expense, so excluded per SG&A rules.",
-          "confidence": 0.9
+          "why": "Listed as a candidate but this is operating income, not an overhead expense. SG&A should include overhead expenses, not income lines.",
+          "confidence": 0.85
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Stock-Based Compensation in Selling, General & Administrative Expenses",
-          "why": "Explicit SG&A-related stock-based compensation; qualifies as SG&A component.",
-          "confidence": 0.95
+          "why": "Explicit SG&A-related stock-based compensation; clearly an overhead expense component.",
+          "confidence": 0.98
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating expenses",
-          "why": "Generic operating expenses bucket, appropriate as SG&A-type overhead when no single SG&A total line is given in candidates.",
-          "confidence": 0.95
+          "why": "Typical SG&A-type overhead bucket; excludes COGS and is part of operating expenses.",
+          "confidence": 0.98
         }
       ],
       "final_choice": [
@@ -47,7 +47,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Excluded 'Other operating income' because it is income, not an expense."
+      "notes": "Selected the clear SG&A overhead components and excluded 'Other operating income' since it is income, not an SG&A expense."
     },
     {
       "variable": "XRD",
@@ -55,26 +55,26 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Amortization of Capitalized Research & Development Expenses - Supplemental",
-          "why": "Only income-statement R&D-related expense candidate; represents amortization of capitalized R&D and is the best proxy for R&D expense.",
-          "confidence": 0.92
+          "why": "This is an income-statement expense directly related to capitalized R&D; best proxy for R&D expense.",
+          "confidence": 0.96
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Research & Development Costs - Accumulated Amortization & Impairment",
-          "why": "Balance sheet account, not a period expense.",
-          "confidence": 0.9
+          "why": "Balance sheet account, not a period expense; less appropriate for XRD.",
+          "confidence": 0.7
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Research & Development Costs - Gross",
           "why": "Balance sheet gross asset, not an expense.",
-          "confidence": 0.9
+          "confidence": 0.6
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Research & Development Costs - Net - Balancing value",
-          "why": "Balancing/net asset figure, not an expense line.",
-          "confidence": 0.9
+          "why": "Balancing/net asset figure, not a direct expense line.",
+          "confidence": 0.6
         }
       ],
       "final_choice": [
@@ -84,7 +84,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Using amortization of capitalized R&D as the available R&D-related expense proxy."
+      "notes": "Used the income-statement amortization of capitalized R&D as the R&D expense proxy; balance sheet R&D asset lines were not used."
     },
     {
       "variable": "XINT",
@@ -98,20 +98,20 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities",
-          "why": "Interest component of lease liabilities; also interest expense.",
+          "why": "Interest component of lease liabilities; a form of interest expense.",
           "confidence": 0.96
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
-          "why": "Supplemental detail of lease interest; somewhat duplicative of main lease interest line.",
-          "confidence": 0.8
+          "why": "Supplemental detail of lease interest expense; useful fallback if primary line missing.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other Interest Income",
-          "why": "Interest income, not expense, so excluded when expense lines are available.",
-          "confidence": 0.95
+          "why": "Interest income, not expense; included only as a last-resort fallback per instruction to list multiple possible lines.",
+          "confidence": 0.75
         }
       ],
       "final_choice": [
@@ -122,10 +122,18 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Interest Income"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Focused on explicit interest expense lines; excluded interest income and supplemental duplicate."
+      "notes": "Provided a priority list of interest-related lines, starting with the most direct interest expense. Later processing will pick the first non-missing value per year."
     },
     {
       "variable": "BE",
@@ -133,55 +141,59 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Other paid in equity",
-          "why": "Component of equity, not total book equity.",
-          "confidence": 0.9
+          "why": "Component of equity, but not total book equity.",
+          "confidence": 0.7
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Shareholders' Equity - Total",
-          "why": "Explicit total shareholders’ equity; best representation of book equity.",
+          "why": "Explicit total shareholders’ equity; appropriate for book equity.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total Equity",
-          "why": "Appears to duplicate 'Shareholders' Equity - Total'; less specific label.",
-          "confidence": 0.9
+          "why": "Total equity figure, numerically equal to Shareholders’ Equity - Total; also valid as book equity.",
+          "confidence": 0.98
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Equity",
-          "why": "Balancing item, not the primary reported total.",
-          "confidence": 0.9
+          "why": "Balancing item, not a primary reported total.",
+          "confidence": 0.6
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Liability and Equity",
-          "why": "Balancing line, not pure equity.",
-          "confidence": 0.9
+          "why": "Technical balancing line; not the equity amount itself.",
+          "confidence": 0.5
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "TOTAL EQUITY AND LIABILITIES",
-          "why": "Represents total capital structure, not equity alone.",
-          "confidence": 0.9
+          "why": "Represents total assets / total equity & liabilities; not pure equity.",
+          "confidence": 0.4
         }
       ],
       "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Shareholders' Equity - Total"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Used the explicit total shareholders' equity line as book equity."
+      "notes": "Used the reported total equity lines and avoided balancing and combined equity+liabilities totals."
     },
     {
       "variable": "MIB",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No minority interest / non-controlling interest line provided in candidate list."
+      "notes": "No minority interest / non-controlling interest candidates were provided; treated as not present."
     }
   ]
 }

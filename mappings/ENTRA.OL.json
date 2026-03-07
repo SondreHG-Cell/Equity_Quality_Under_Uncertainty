@@ -6,26 +6,26 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Total Revenue",
-          "why": "Clearly labeled top-line revenue and has consistent large positive values; best representation of total revenue/sales.",
+          "why": "Explicit top-line revenue figure; matches definition of total revenue/sales and is the primary revenue line.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Contract Assets - Short-Term - Unbilled Revenue in Excess of Advance Consideration & Progress Billings",
-          "why": "Represents unbilled revenue on balance sheet, not the income statement revenue flow; not appropriate for REVT.",
-          "confidence": 0.6
+          "why": "Balance sheet contract asset, not a P&L revenue line; does not match REVT definition.",
+          "confidence": 0.1
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other revenues",
-          "why": "Represents ancillary revenues, not total revenue; smaller and not the primary top line.",
-          "confidence": 0.7
+          "why": "Represents other income, not core total revenue; should not be used as primary REVT when a clear total revenue line exists.",
+          "confidence": 0.4
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other revenue",
-          "why": "Appears to be an alternative or placeholder line, likely not the main reported total revenue.",
-          "confidence": 0.5
+          "why": "Appears to be another other-income label and is nan in preview; not the main revenue line.",
+          "confidence": 0.3
         }
       ],
       "final_choice": [
@@ -35,14 +35,14 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Total Revenue is clearly the primary top-line figure."
+      "notes": "Use 'Total Revenue' as the single prioritized revenue line; others are supplemental/other income."
     },
     {
       "variable": "COGS",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No suitable cost of goods sold or cost of sales candidate lines were provided."
+      "notes": "No suitable COGS/cost of sales line among candidates; direct property/operating costs are not provided as candidates, so COGS is set to 0 by rule."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -50,79 +50,91 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Letting and property administration",
-          "why": "Operating overhead related to administration of properties; would normally be part of SG&A but an explicit SG&A line exists.",
-          "confidence": 0.8
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Property Operating Expenses",
-          "why": "Appears closer to property-level operating costs; may include items akin to COGS for real estate, less ideal than explicit SG&A.",
-          "confidence": 0.6
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Labor & Related Expenses in SGA",
-          "why": "Explicit labor-related SG&A component; however, hierarchy rule prefers a single explicit SG&A aggregate when present and populated.",
+          "why": "Overhead-type property administration costs; part of SG&A/operating overhead, not a total or COGS.",
           "confidence": 0.85
         },
         {
           "sheet_name": "Income Statement",
+          "row_label": "Property Operating Expenses",
+          "why": "Appears to be direct property operating costs (more COGS-like) rather than overhead SG&A; less appropriate for SG&A per instructions.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in SGA",
+          "why": "Explicit SG&A labor costs; clear SG&A component line.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
           "row_label": "Administrative costs",
-          "why": "General administrative overhead; a component of SG&A but an explicit aggregate SG&A line is available.",
-          "confidence": 0.9
+          "why": "Administrative overhead expenses; classic SG&A component.",
+          "confidence": 0.95
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other Operating Income/Expense",
-          "why": "Mixed income/expense line; not a clean SG&A expense bucket.",
-          "confidence": 0.5
+          "why": "Mixed income/expense line; not a clean SG&A component and may be non-operating; include only if no better SG&A lines exist.",
+          "confidence": 0.4
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Property Operating Expenses - Real Estate Rental",
-          "why": "Property-level operating expense; more like direct operating cost than corporate SG&A.",
-          "confidence": 0.6
+          "why": "Direct operating expenses tied to rental properties; more like COGS for real estate than SG&A overhead.",
+          "confidence": 0.4
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Selling/General/Admin. Expense",
-          "why": "Explicit SG&A line with populated values; per instructions, when such a row exists and is populated, it alone should be selected for XSGA_COMPONENTS.",
+          "why": "Explicit SG&A line; should be included as a primary SG&A component per hierarchy, even if some cells are sparse.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Other operating assets",
-          "why": "Balance sheet asset, not an expense; not appropriate for SG&A expense mapping.",
-          "confidence": 0.2
+          "why": "Balance sheet asset, not an expense; not SG&A.",
+          "confidence": 0.1
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Other operating assets, Gross",
-          "why": "Balance sheet gross asset; not an expense line.",
-          "confidence": 0.2
+          "why": "Balance sheet asset; not an expense item.",
+          "confidence": 0.1
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Acc Depr/Other operating assets",
-          "why": "Accumulated depreciation on assets; excluded from SG&A per instructions to exclude D&A.",
-          "confidence": 0.2
+          "why": "Accumulated depreciation on assets; excluded from SG&A by rule (D&A not to be included).",
+          "confidence": 0.1
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
           "row_label": "Selling/General/Admin. Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in SGA"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Letting and property administration"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Explicit SG&A line exists and is populated, so only that row is chosen per hierarchy rule."
+      "notes": "Selected explicit SG&A and clearly overhead-type components; excluded property operating expenses (more like COGS) and balance sheet/DA items."
     },
     {
       "variable": "XRD",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No research and development expense line is available among the candidates."
+      "notes": "No R&D-related lines are present in the candidate list; treat XRD as missing/zero per instructions."
     },
     {
       "variable": "XINT",
@@ -130,78 +142,90 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest and other finance expenses",
-          "why": "Represents finance expenses but is less specific and may overlap with more detailed interest lines provided below.",
-          "confidence": 0.75
+          "why": "P&L interest and finance expense line; good candidate for interest expense, but slightly less granular than gross interest expenses.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest and other finance income",
-          "why": "Interest income, not expense; not appropriate for XINT which targets interest expense.",
-          "confidence": 0.8
+          "why": "Represents interest income, opposite sign of interest expense; should not be used for XINT which captures expense.",
+          "confidence": 0.1
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Capitalized",
-          "why": "Capitalized interest added to asset basis, not period interest expense in P&L; usually excluded from XINT.",
-          "confidence": 0.7
+          "why": "Interest capitalized to assets rather than expensed; not pure interest expense but related. Use only if no direct expense lines available.",
+          "confidence": 0.5
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expenses,Gross",
-          "why": "Explicit gross interest expense line with large negative values; best representation of total interest expense per guidance.",
+          "why": "Direct gross interest expense line; best representation of interest expense for XINT.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities",
-          "why": "Interest component of lease liabilities; narrower subset of total interest expense and smaller in magnitude than gross interest expense.",
-          "confidence": 0.85
+          "why": "Component of interest expense related to lease liabilities; suitable as a secondary/backup interest expense line.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Non-controlling interest",
-          "why": "Portion of profit attributable to minority shareholders; not an interest expense.",
-          "confidence": 0.99
+          "why": "Represents profit attributable to NCI, not interest expense.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Minority Interests",
-          "why": "Same as non-controlling interest; equity attribution, not interest expense.",
-          "confidence": 0.99
+          "why": "Same as non-controlling interest; equity interest, not interest expense.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
-          "why": "Supplemental disclosure of lease interest; subset of total interest expense and likely overlaps with main lease-interest line.",
-          "confidence": 0.8
+          "why": "Supplemental disclosure of lease interest expense; appropriate as a lower-priority backup.",
+          "confidence": 0.85
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Accrued interest",
-          "why": "Balance sheet liability for interest payable; not the expense flow itself.",
-          "confidence": 0.7
+          "why": "Balance sheet liability, not the P&L expense itself.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Non-controlling interests",
-          "why": "Equity line for minority shareholders; not interest expense.",
-          "confidence": 0.99
+          "why": "Equity line, not interest expense.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Minority Interest",
-          "why": "Same as non-controlling interests; equity attribution, not interest expense.",
-          "confidence": 0.99
+          "why": "Equity line, not interest expense.",
+          "confidence": 0.01
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expenses,Gross"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest and other finance expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Gross interest expense is the clearest, comprehensive interest expense measure."
+      "notes": "Priority list ordered by specificity and coverage of interest expense; capitalized interest and interest income are excluded from XINT."
     },
     {
       "variable": "BE",
@@ -209,54 +233,62 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Equity holders of the Company",
-          "why": "Income statement attribution of profit to equity holders, not a balance sheet equity stock measure.",
-          "confidence": 0.7
+          "why": "Income statement allocation of profit, not a balance sheet equity level; not appropriate for BE.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Shareholders equity",
-          "why": "Represents equity attributable to shareholders but excludes non-controlling interests; less comprehensive than total equity.",
+          "why": "Represents equity attributable to shareholders; good candidate but may exclude non-controlling interests.",
           "confidence": 0.9
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Equity attributable to owners of parent",
-          "why": "Same economic concept as shareholders equity; excludes non-controlling interests.",
+          "why": "Equity of the parent’s shareholders only, excluding NCI; narrower than total equity but still valid if total equity were missing.",
           "confidence": 0.9
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total equity",
-          "why": "Represents total book equity including non-controlling interests; best match for BE definition.",
+          "why": "Comprehensive total equity (including non-controlling interests); best match for book equity definition.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Equity",
-          "why": "Technical balancing row, not the primary reported equity figure.",
-          "confidence": 0.6
+          "why": "Balancing artifact, not an actual reported equity total; should not be used if proper totals exist.",
+          "confidence": 0.2
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Balancing Item - Total Liability and Equity",
-          "why": "Balancing construct for statement equality, not pure equity.",
-          "confidence": 0.4
+          "why": "Balancing artifact for the accounting identity; not a pure equity figure.",
+          "confidence": 0.1
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "TOTAL EQUITY AND LIABILITIES",
-          "why": "Total of equity plus liabilities; not equity alone.",
-          "confidence": 0.4
+          "why": "Represents total assets/liabilities+equity, not equity alone.",
+          "confidence": 0.1
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to owners of parent"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Total equity captures full book equity including minority interest, aligning with BE target."
+      "notes": "Use Total equity as primary BE, with shareholder-only equity lines as backups if needed."
     },
     {
       "variable": "MIB",
@@ -264,42 +296,46 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Non-controlling interest",
-          "why": "Income statement share of profit attributable to non-controlling interests; reflects minority interest in earnings, not equity stock, but valid for MIB when focusing on minority interest identification.",
-          "confidence": 0.9
+          "why": "Income statement allocation of profit to NCI; a flow, not stock, but clearly identifies minority interests.",
+          "confidence": 0.85
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Minority Interests",
-          "why": "Duplicate P&L attribution line; similar values to non-controlling interest; either could indicate MIB in earnings context.",
-          "confidence": 0.9
+          "why": "Income statement minority interests line; also a flow, closely related to NCI.",
+          "confidence": 0.8
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Non-controlling interests",
-          "why": "Balance sheet line for equity attributable to non-controlling interests; best representation of minority interest as an equity account.",
+          "why": "Balance sheet stock of non-controlling interests; best representation of minority interest (MIB).",
           "confidence": 0.98
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Minority Interest",
-          "why": "Label synonymous with non-controlling interests; appears to be the same figure duplicated.",
+          "why": "Alternative label for balance sheet non-controlling interest; good backup line.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Comprehensive Income - Attributable to Minority Interest - Total",
-          "why": "OCI component attributable to minority interest; not the main equity stock figure.",
-          "confidence": 0.85
+          "why": "Comprehensive income flow attributable to NCI, not the balance sheet amount.",
+          "confidence": 0.7
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Balance sheet Non-controlling interests is the clearest minority interest equity item."
+      "notes": "Use balance sheet NCI lines for MIB (stock of minority interests), with both labels prioritized."
     }
   ]
 }

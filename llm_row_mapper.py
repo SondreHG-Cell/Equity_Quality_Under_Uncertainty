@@ -350,6 +350,17 @@ def build_prompt(
         "'Operating expenses', 'Other operating expenses', 'Personnel costs', and similar."
 )
     lines.append("")
+    lines.append("Interest expense rule (XINT):")
+    lines.append("- XINT should be treated as a single reported line item that may change label over time.")
+    lines.append("- Therefore, for XINT you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not try to sum interest expense rows; later code will select the first non-missing value per year.")
+    lines.append("")
+
+    lines.append("Revenue rule (REVT):")
+    lines.append("- REVT should be treated as a single reported revenue line that may change label over time (e.g., 'Revenue' vs 'Total revenue').")
+    lines.append("- Therefore, for REVT you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not sum revenue rows; later code will select the first non-missing value per year.")
+    lines.append("")
 
     lines.append("Missing data rule (IMPORTANT):")
     lines.append("- If a target variable truly does not exist in the statements, set final_choice to [].")
