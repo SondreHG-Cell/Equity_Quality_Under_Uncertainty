@@ -129,7 +129,7 @@ class ShortlistRule:
 
 SHORTLIST_RULES: Dict[str, ShortlistRule] = {
     "REVT": ShortlistRule(
-        include=["revenue", "sales", "turnover", "driftsinntek", "omsetn"],
+        include=["revenue", "income", "sales", "turnover", "driftsinntek", "omsetn"],
         exclude=["balancing", "other", "net", "income tax"],
     ),
     "COGS": ShortlistRule(
@@ -137,7 +137,7 @@ SHORTLIST_RULES: Dict[str, ShortlistRule] = {
             "cost of sales", "cogs", "cost of goods", "cost of services", "cost of revenue",
             "cost of materials", "materials", "raw materials", "consumables", "changes in inventory",
             "subcontract", "subcontractor", "external services",
-            "direct costs", "project costs", "traffic charges",
+            "direct costs", "project costs", "traffic charges", "expense", "expenses",
             "purchases", "varekost", "vareforbruk", "material", "materialkost",
             "underentrepren", "direkte kost", "innkjøp"
         ],
@@ -295,22 +295,22 @@ def build_prompt(
     shortlists: dict[str, list[tuple[str, str]]],
 ) -> str:
     """
-    Builds an instruction prompt for the LLM.
-
-    Inputs:
-      - sheet_labels: {sheet_name: [label1, label2, ...]} from column A (deduped)
-      - sheet_preview: {sheet_name: [[A,B,C,D,E,F], ...]} first 6 columns as strings
-      - shortlists: {variable: [(sheet_name, row_label), ...]} candidates per variable
-
-    Output:
-      - prompt string (LLM should respond with JSON matching your schema)
+    Prompt that is:
+      - candidates-first (preferred)
+      - allows an escape hatch: if candidates are empty/clearly wrong, the model may choose
+        from ANY label shown in the A–F preview, but MUST set needs_manual_review=true.
     """
     lines: list[str] = []
 
     lines.append("You are mapping accounting statement row labels to PROF inputs.")
     lines.append("You MUST choose row labels EXACTLY as written in column A.")
-    lines.append("You MUST choose only from the provided candidate lists for each variable.")
+    lines.append("You should choose from the provided candidate lists for each variable whenever possible.")
+    lines.append(
+        "If a candidate list is empty OR clearly misses the correct label, you may choose a row_label from the full A-column labels "
+        "shown in the A–F preview. In that case you MUST set needs_manual_review=true and explain why in notes."
+    )
     lines.append("Return JSON ONLY that conforms to the given schema.")
+    lines.append("Note: Only the Income Statement and Balance Sheet sheets are provided.")
     lines.append("")
 
     lines.append("Targets:")
@@ -320,21 +320,24 @@ def build_prompt(
 
     lines.append("Critical rules:")
     lines.append("1) Choose row labels EXACTLY as written (case/punctuation must match).")
-    lines.append("2) Do NOT invent labels that are not present.")
+    lines.append("2) Do NOT invent labels that are not present in the A–F preview.")
     lines.append("3) Prefer component rows over subtotal/total rows.")
     lines.append("4) Exclude rows that are clearly balancing/subtotal/total when component rows exist.")
+    lines.append("5) Do NOT repeat the same row_label twice in final_choice.")
+    lines.append(
+        "6) You may choose outside the candidate list ONLY if: (i) the candidate list is empty OR (ii) none of the candidates match the concept. "
+        "If you do this, set needs_manual_review=true and keep final_choice minimal (usually 1 label)."
+    )
     lines.append("")
 
-    # XSGA-specific rules (the main pain point)
+    # XSGA rules
     lines.append("Critical rules for XSGA_COMPONENTS (SG&A):")
     lines.append("- XSGA_COMPONENTS is operating overhead and is often MULTIPLE rows (choose several if needed).")
     lines.append("- NEVER select totals/subtotals such as 'Total operating expenses', 'Total ...', 'Balancing Item ...', or '... Remaining'.")
     lines.append("- NEVER select rows containing these phrases for XSGA_COMPONENTS: Total, Sum, Balancing, Remaining.")
     lines.append("- Prefer overhead components like: Personnel costs, Sales and administration costs, Administrative expenses, Selling expenses, Other operating expenses, Cost of Stock Options / share-based compensation.")
     lines.append("- EXCLUDE: Cost of sales/COGS, depreciation, amortization, impairments, interest, taxes, finance items.")
-    lines.append(
-        "- XSGA selection hierarchy:"
-    )
+    lines.append("- XSGA selection hierarchy:")
     lines.append(
         "  (a) If an explicit SG&A row exists (e.g., 'Selling, General & Admin' / 'Sales and administration costs') "
         "AND it appears populated in the A–F preview (i.e., has non-empty numbers in columns B–F), "
@@ -348,20 +351,32 @@ def build_prompt(
     lines.append(
         "  (c) If no explicit SG&A row exists, select the best overhead bucket(s) such as "
         "'Operating expenses', 'Other operating expenses', 'Personnel costs', and similar."
-)
+    )
     lines.append("")
+
+    # XINT priority
     lines.append("Interest expense rule (XINT):")
     lines.append("- XINT should be treated as a single reported line item that may change label over time.")
     lines.append("- Therefore, for XINT you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
     lines.append("- Do not try to sum interest expense rows; later code will select the first non-missing value per year.")
     lines.append("")
 
+    # REVT priority
     lines.append("Revenue rule (REVT):")
     lines.append("- REVT should be treated as a single reported revenue line that may change label over time (e.g., 'Revenue' vs 'Total revenue').")
     lines.append("- Therefore, for REVT you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
     lines.append("- Do not sum revenue rows; later code will select the first non-missing value per year.")
     lines.append("")
 
+    # Equity BE/MIB rule
+    lines.append("Equity rule (BE and MIB):")
+    lines.append("- The PROF denominator is computed as (BE + MIB). To avoid double counting, BE should EXCLUDE non-controlling interests.")
+    lines.append("- Therefore, prefer BE labels like 'Equity attributable to shareholders of the parent', 'Equity attributable to owners', or similar owner/parent equity lines.")
+    lines.append("- Map MIB to the balance sheet line 'Non-controlling interests' / 'Minority interest'.")
+    lines.append("- Only use 'Total equity' for BE if no owner/parent equity line exists; in that case set MIB final_choice to [] (so MIB becomes 0).")
+    lines.append("")
+
+    # Missing data rule
     lines.append("Missing data rule (IMPORTANT):")
     lines.append("- If a target variable truly does not exist in the statements, set final_choice to [].")
     lines.append("- This will be interpreted as 0 later when computing PROF (e.g., XRD is often missing).")
@@ -369,13 +384,14 @@ def build_prompt(
     lines.append("- If it does not exist, use final_choice=[] and needs_manual_review=false.")
     lines.append("")
 
+    # Data presence rule
     lines.append("IMPORTANT DATA RULE:")
     lines.append("- If a row label is present in the sheet, it means it has a value in at least one year (even if columns B–F are empty in this preview).")
     lines.append("- Therefore, do NOT exclude a row just because its A–F preview values are empty or 'nan'.")
-    lines.append("- Prefer the most semantically correct label (e.g., an explicit 'Selling, General & Admin' row) even if its preview values appear empty.")
+    lines.append("- Prefer the most semantically correct label even if its preview values appear empty.")
     lines.append("")
 
-    # Provide A–F preview (this helps model avoid sums-of-sums / duplicate totals)
+    # Preview
     lines.append("Context: Below is a preview of the first 6 columns (A–F) from each sheet.")
     lines.append("Column A is the row label. Columns B–F are recent values/years when present.")
     lines.append("Use this numeric preview to detect duplicated totals/subtotals (e.g., a 'Total ...' row identical to a component row).")
@@ -383,17 +399,14 @@ def build_prompt(
 
     for sheet, rows in sheet_preview.items():
         lines.append(f"\n=== SHEET: {sheet} (A–F preview) ===")
-        # cap to keep prompt size under control
         for r in rows[:200]:
-            # r is [A, B, C, D, E, F] (some may be empty)
             lines.append(" | ".join(r))
         if len(rows) > 200:
             lines.append(f"... ({len(rows) - 200} more rows omitted)")
     lines.append("")
 
-    # Candidate lists (hard constraint for the model)
-    lines.append("Now choose ONLY from the candidate lists below for each variable.")
-    lines.append("Do not choose any label outside these lists.")
+    # Candidates (preferred)
+    lines.append("Preferred candidate lists (use these whenever possible):")
     for var, cands in shortlists.items():
         lines.append(f"\n--- CANDIDATES FOR {var} ---")
         if not cands:
@@ -439,6 +452,61 @@ def _responses_create_json_schema(model: str, prompt: str, reasoning_effort: str
         )
         return json.loads(resp.output_text)
 
+def validate_mapping_against_labels(mapping: dict, sheet_labels: dict[str, list[str]]) -> dict:
+    """
+    Ensures every (sheet_name, row_label) in final_choice exists in the workbook labels.
+    If a chosen label doesn't exist, it is removed and the variable is flagged for manual review.
+    """
+    labels_set = {s: set(labs) for s, labs in sheet_labels.items()}
+
+    for v in mapping.get("variables", []):
+        cleaned = []
+        for ch in v.get("final_choice", []):
+            s = ch.get("sheet_name", "")
+            lab = ch.get("row_label", "")
+            if s in labels_set and lab in labels_set[s]:
+                cleaned.append(ch)
+            else:
+                v["needs_manual_review"] = True
+                msg = f"Chosen label not found in sheet: [{s}] {lab}"
+                v["notes"] = (v.get("notes", "") + " | " + msg).strip(" |")
+        v["final_choice"] = cleaned
+
+    return mapping
+
+def flag_escape_hatch_choices(mapping: dict, shortlists: dict[str, list[tuple[str, str]]]) -> dict:
+    """
+    Flags needs_manual_review if the model selects any final_choice outside the candidate shortlist
+    for that variable (the "escape hatch").
+
+    shortlists: {variable: [(sheet_name, row_label), ...]}
+    """
+    shortlist_sets = {
+        var: set((s, lab) for (s, lab) in cands)
+        for var, cands in shortlists.items()
+    }
+
+    for v in mapping.get("variables", []):
+        var = v.get("variable", "")
+        allowed = shortlist_sets.get(var, set())
+        finals = v.get("final_choice", [])
+
+        if not finals:
+            continue
+
+        outside = []
+        for ch in finals:
+            key = (ch.get("sheet_name", ""), ch.get("row_label", ""))
+            if allowed and key not in allowed:
+                outside.append(key)
+
+        if outside:
+            v["needs_manual_review"] = True
+            msg = "Escape-hatch used (final_choice outside candidate list): " + ", ".join([f"[{s}] {lab}" for s, lab in outside])
+            v["notes"] = (v.get("notes", "") + " | " + msg).strip(" |")
+
+    return mapping
+
 
 def llm_map_prof_rows(
     xlsx_path: Path,
@@ -454,11 +522,17 @@ def llm_map_prof_rows(
     for var in PROF_TARGETS.keys():
         shortlists[var] = shortlist_candidates(sheet_labels, var)
 
-    # FIX: pass sheet_preview too
     prompt = build_prompt(sheet_labels, sheet_preview, shortlists)
 
-    return _responses_create_json_schema(model=model, prompt=prompt, reasoning_effort=reasoning_effort)
+    mapping = _responses_create_json_schema(model=model, prompt=prompt, reasoning_effort=reasoning_effort)
 
+    # Flag escape-hatch selections (outside candidate list)
+    mapping = flag_escape_hatch_choices(mapping, shortlists)
+
+    # Validate against actual labels and clean invalid picks
+    mapping = validate_mapping_against_labels(mapping, sheet_labels)
+
+    return mapping
 
 def save_mapping(mapping: dict, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
