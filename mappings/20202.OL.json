@@ -1,0 +1,259 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Time charter revenues",
+          "why": "Primary operating revenue line for a shipping company; consistent, material amounts across years and part of operating revenues total.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Voyage charter revenues",
+          "why": "Secondary operating revenue stream; also clearly revenue and part of operating revenues and other income total.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income - Non-Bank",
+          "why": "Interest income is financial income, not operating revenue, so not appropriate for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total comprehensive income",
+          "why": "Includes net income plus OCI items, not top-line revenue.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued revenues",
+          "why": "Balance sheet asset representing revenues earned but not yet billed/received, not the revenue flow itself.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Time charter revenues"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Voyage charter revenues"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using both main operating revenue lines as a priority list; downstream logic should take the first non-missing per period."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Vessel operating expenses",
+          "why": "Direct operating costs of running vessels; best representation of cost of sales for a shipping company.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Voyage expenses and commission",
+          "why": "Also direct voyage-related costs, but secondary to overall vessel operating expenses as a primary COGS proxy.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and administrative expenses",
+          "why": "Overhead SG&A, not direct cost of revenues; should be excluded from COGS.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other net financial income (expense)",
+          "why": "Financial result, not operating production/service cost.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net other (expenses) income",
+          "why": "Other non-core items; not direct cost of sales.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial inome (expense)",
+          "why": "Financial income/expense, not COGS.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Vessel operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the primary direct operating cost line as COGS; voyage expenses and commissions are also direct but treated as secondary to avoid multiple COGS rows."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating income",
+          "why": "This is income, not an expense; does not represent SG&A overhead.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Vessel operating expenses",
+          "why": "Direct operating costs (COGS-equivalent), not overhead SG&A.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and administrative expenses",
+          "why": "Classical SG&A overhead line; clearly fits XSGA definition.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and administrative expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Only the G&A line qualifies as SG&A; other candidates are either income or direct operating costs."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No R&D-related line appears in the Income Statement or Balance Sheet preview; for this shipping business R&D expense is likely not reported separately, so XRD is treated as 0."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense",
+          "why": "Main reported interest expense line; best primary choice for XINT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Capital Financing - Gross",
+          "why": "More specific interest expense label that appears in some periods; appropriate fallback if main interest expense line is missing.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Capitalized",
+          "why": "Capitalized interest is not an expense in the period’s P&L; should not be used as XINT itself.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Continuing Operations",
+          "why": "Represents allocation of profit to minority interest, not interest expense on debt.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Unrealized gain (loss) on interest rate swaps",
+          "why": "Fair value movement on derivatives, not interest expense.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest",
+          "why": "Equity line, not an interest expense.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equity line, not an interest expense.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Capital Financing - Gross"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Provided a priority list of interest expense labels; capitalized interest is excluded because it is not a period expense in the income statement."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity",
+          "why": "Represents equity attributable to shareholders; minority interests are reported separately, so this is the correct BE base.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total liabilities and shareholders equity",
+          "why": "Includes both liabilities and equity; not suitable as pure book equity.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Minority interests are reported on separate lines, so using Total shareholders equity avoids double counting when adding MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Continuing Operations",
+          "why": "Income statement allocation of profit, not the balance sheet minority equity amount needed for MIB.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest",
+          "why": "Balance sheet line for equity attributable to non-controlling interests; best match for MIB.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Appears to duplicate Non-controlling interest with same values; selecting only one avoids double counting.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement flow, not the stock of minority equity; inappropriate for MIB denominator.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Chose the modern label ‘Non-controlling interest’ as the single MIB line to avoid double counting with the duplicate ‘Minority Interest’ row."
+    }
+  ]
+}
