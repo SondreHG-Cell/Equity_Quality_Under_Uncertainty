@@ -1,0 +1,293 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales revenue",
+          "why": "Primary top-line revenue label; classic sales revenue description and matches income row amounts.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "income",
+          "why": "Appears to duplicate Sales revenue values; included as secondary fallback label for revenue per instructions.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales and marketing",
+          "why": "Sales and marketing is an operating expense, not revenue; should not be used for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Finance income, not operating revenue; excluded.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Incometaxexpense",
+          "why": "Tax expense, not revenue.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Income Available to Com Excl ExtraOrd",
+          "why": "Net income measure, not revenue.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total comprehensive income for the year",
+          "why": "Comprehensive income, not revenue.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "ST Accrued Income",
+          "why": "Balance sheet asset, not revenue line.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "income"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Sales revenue is the clearest top-line revenue label. income mirrors the same values and is included as a fallback per the revenue priority rule."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other expenses",
+          "why": "Generic operating expense; likely part of SG&A, not clearly direct cost of sales.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Income/Expense",
+          "why": "Net operating income/expense line, not a pure cost-of-sales line.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses - rest",
+          "why": "Residual operating expenses; likely SG&A components, not explicit COGS.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating (Income)/Expense, net",
+          "why": "Net operating income/expense subtotal, not a direct cost of sales.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Lease Expense",
+          "why": "A specific overhead component, not full COGS.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Inventories - Raw Materials, Net",
+          "why": "Balance sheet inventory, not an income statement cost line.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other Accrued Expenses",
+          "why": "Balance sheet liability, not COGS.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The income statement does not present a distinct cost of goods sold or cost of sales line; operating expenses are grouped into payroll, services, premises, sales & marketing, etc. Therefore COGS is treated as not separately disclosed and set to 0 per instructions."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating revenue",
+          "why": "Operating revenue, not SG&A expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Income/Expense",
+          "why": "Net operating income/expense line including income; not a pure SG&A component and should be excluded.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses - rest",
+          "why": "Explicitly labeled operating expenses; good SG&A residual bucket.",
+          "confidence": 0.75
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-Based Compensation",
+          "why": "Share-based comp is a classic SG&A component (personnel/overhead).",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued Holiday Pay & Accrued Salary",
+          "why": "Balance sheet liability related to payroll, not an income statement expense line.",
+          "confidence": 0.1
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Salaries and other payroll costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Main SG&A-type overhead is broken into several operating expense components: payroll, services, premises/supplies, sales & marketing, and other expenses. These, plus the residual bucket 'Other operating expenses - rest' and 'Share-Based Compensation', best represent SG&A. An explicit single SG&A line does not exist, so multiple component rows are selected from outside the suggested candidate list, triggering manual review as required. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Salaries and other payroll costs, [Income Statement] Services, [Income Statement] Premises, Supplies, [Income Statement] Sales and marketing, [Income Statement] Other expenses"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Costs, Net",
+          "why": "Capitalized development asset, not current-period R&D expense.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Costs, Gross",
+          "why": "Gross capitalized development costs (asset); not an expense line.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Acc Amort/Imp Development Costs",
+          "why": "Accumulated amortization/impairment of development costs (contra-asset), not the period’s R&D expense line.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Costs, Net - Balancing value",
+          "why": "Balancing asset value; not an expense line.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit research & development expense line appears on the income statement. Development cost lines are balance sheet items (capitalized R&D), not current-period expense. XRD is therefore set to 0 per instructions."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Primary interest expense line; best match for XINT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Component of interest expense related to lease liabilities; good secondary label for XINT if main line is missing.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental disclosure of lease interest; tertiary fallback.",
+          "confidence": 0.75
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Interest income, opposite sign of interest expense; not used for XINT.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Balancing value",
+          "why": "Balancing value for interest expense; useful if primary interest expense line is missing in some years.",
+          "confidence": 0.7
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Balancing value"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Ordered priority list: main Interest Expense, then lease-related Interest Expense on Financial Lease Liabilities, then the balancing Interest Expense line as a final fallback. Interest Income is excluded as it is not an expense."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity",
+          "why": "Represents total shareholders’ equity attributable to owners; best proxy for book equity excluding non-controlling interests (which are not separately disclosed).",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Shareholders Equity",
+          "why": "Technical balancing item; not the main equity figure.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Liability and Equity",
+          "why": "Balancing row for the accounting equation, not equity itself.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Total of liabilities plus equity; not pure equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Total shareholders equity is used as book equity; there is no separate non-controlling interest line, so this is assumed to be equity attributable to owners."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No line for non-controlling interests or minority interest appears on the balance sheet; MIB is therefore set to 0 per instructions."
+    }
+  ]
+}
