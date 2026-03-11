@@ -1,0 +1,235 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance income",
+          "why": "Finance income is not operating revenue; no true revenue/sales line is present in the preview, suggesting the firm is pre-revenue or revenue is not reported separately.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income",
+          "why": "Interest income is financial income, not operating revenue; not appropriate for REVT.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance income (cost)",
+          "why": "Net finance result, not operating revenue; unsuitable as top-line sales.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Tax expense (income)",
+          "why": "Tax line, clearly not revenue.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total comprehensive income (loss) for the",
+          "why": "Represents comprehensive income, not revenue.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No line item corresponding to operating revenue or sales appears in the provided Income Statement preview. Available candidates are finance- or tax-related and not suitable as top-line revenue. This issuer likely has no reported revenue; thus REVT is mapped to an empty set (treated as 0)."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other payroll related expenses",
+          "why": "Represents general payroll-related overhead, not clearly direct cost of goods/services.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Broad operating overhead category; not clearly identified as cost of goods sold.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External R&D expenses",
+          "why": "Research and development, not cost of goods sold.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating expense",
+          "why": "Represents total operating expenses (overheads, R&D, etc.), not strictly direct production costs.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expenses",
+          "why": "Financial, not operating production costs.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued Expenses",
+          "why": "Balance sheet accrual, not a P&L COGS line.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "There is no explicit cost of goods sold or cost of sales line. Expenses are primarily R&D and operating overhead, consistent with a pre-revenue R&D company. Using generic operating expenses as COGS would be misleading, so COGS is set to an empty list (treated as 0)."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-based payments",
+          "why": "Share-based compensation is a typical SG&A component (overhead).",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Represents operating overhead; likely includes various SG&A-type costs not captured elsewhere.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued salary (severance pay)",
+          "why": "Balance sheet item, not an income statement expense component, so unsuitable for SG&A components mapping.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Share-based payment liability",
+          "why": "Balance sheet liability, not an expense line.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefits expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Selected multiple operating overhead components as SG&A: share-based payments, payroll-related expenses, facilities (rent, office, IT), professional fees, and other operating expenses. R&D, depreciation/amortisation, impairments, finance costs, and totals were deliberately excluded in line with instructions. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Other payroll related expenses, [Income Statement] Rent, office and IT, [Income Statement] Accounting, audit, legal, consulting"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External R&D expenses",
+          "why": "Explicitly labeled R&D expense, clearly the correct mapping for research and development costs.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External R&D expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "External R&D expenses is an explicit R&D line and is mapped directly to XRD."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Explicit interest expense component related to lease liabilities; clearly part of interest expense.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income",
+          "why": "Interest income is the opposite sign of interest expense; may be useful as a fallback for net interest if no expense is available, but not preferred.",
+          "confidence": 0.4
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. \"Finance costs\" appears to be the primary line aggregating interest and related finance expenses, so it is chosen as the first-priority XINT row even though it was not in the candidate list. \"Interest Expense on Financial Lease Liabilities\" is included as a more specific component and second priority. \"Interest income\" is added last as a fallback in case only net interest is available. Manual review recommended to confirm that \"Finance costs\" predominantly represents interest expense and that sign conventions are handled correctly. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Finance costs"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other equity",
+          "why": "Component of equity but not the full equity of owners; using it alone would understate book equity.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY",
+          "why": "Represents total equity, but there is also a duplicate-formatted \"Total Equity\" line; either would capture book equity.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Total equity of the entity; in absence of a specific \"attributable to owners\" line, this is the best proxy for book equity.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Shareholders Equity",
+          "why": "Balancing item, should not be used as the main equity measure when a proper total equity line exists.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Liability and Equity",
+          "why": "Balancing line, not a pure equity measure.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Represents total assets/liabilities+equity, not equity alone.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate line for equity attributable specifically to owners/parent is shown. \"Total Equity\" is therefore used as book equity. There is no indication of non-controlling interests elsewhere, so this should represent the full equity base."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No balance sheet line for non-controlling interests or minority interests appears in the preview. This suggests the entity has no minority interest; MIB is therefore set to an empty list (treated as 0)."
+    }
+  ]
+}

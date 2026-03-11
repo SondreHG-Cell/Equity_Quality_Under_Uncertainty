@@ -68,7 +68,7 @@ def read_columns_a_to_f(
     preview_by_sheet: Dict[str, List[List[str]]] = {}
 
     # Excel row 19 is 1-indexed => skip first 18 rows
-    SKIPROWS = 18
+    SKIPROWS = 17
     sheet_names = xl.sheet_names[:2]
     for sheet in sheet_names:
         df = pd.read_excel(
@@ -164,7 +164,7 @@ SHORTLIST_RULES: Dict[str, ShortlistRule] = {
         exclude=["total", "balancing", "interest income", "financial income"],
     ),
     "BE": ShortlistRule(
-        include=["total equity", "equity", "egenkap", "shareholders' equity", "owners' equity"],
+        include=["total equity", "equity", "egenkap", "shareholders' equity", "owners' equity", "capital and reserves"],
         exclude=["total assets", "liabilities", "balancing"],
     ),
     "MIB": ShortlistRule(
