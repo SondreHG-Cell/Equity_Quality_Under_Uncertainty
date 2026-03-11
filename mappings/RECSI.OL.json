@@ -1,0 +1,227 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenues",
+          "why": "Primary revenue line; matches top-line and equals Total Revenue values, listed first so used as main REVT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit total revenue line with same amounts as Revenues; included as fallback if Revenues is missing for some years.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenues"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": ""
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of materials",
+          "why": "Direct cost of raw materials; clearly a core component of cost of goods sold.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Own Work Capitalized - Cost of Goods Sold",
+          "why": "Adjustment to production costs (capitalized own work) explicitly tied to cost of goods sold; belongs in COGS.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of materials"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Own Work Capitalized - Cost of Goods Sold"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Excluded Employee benefit expenses and Other Operating Expenses from COGS as they are broader operating/overhead costs rather than direct production costs."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and Administrative Expenses",
+          "why": "Explicit SG&A-type line; clearly overhead and appears populated; per hierarchy, use this single SG&A row when available and populated.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and Administrative Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Did not include 'Other Operating Expenses' or 'Other operating income (expense)' to avoid mixing in non-SG&A operating items; 'Stock-based Compensation in SGA' is a subcomponent but hierarchy favors the main SG&A bucket when present and populated."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "R&D Expenses",
+          "why": "Explicit research & development expense line; matches XRD definition directly.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "R&D Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": ""
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Primary interest expense line covering overall borrowing costs; best first choice for XINT.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on lease liabilities",
+          "why": "Interest component of lease liabilities; a form of interest expense and good secondary source if main line missing.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental disclosure of interest on finance lease liabilities; tertiary fallback for interest cost.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses on EUR Bonds",
+          "why": "Specific bond interest; included as further fallback if general interest lines are not populated in some years.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses on NOK Bomds",
+          "why": "Specific bond interest; similar rationale as EUR Bonds line.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Interest Expenses",
+          "why": "Catch-all interest expense line; included as later fallback for missing years on primary lines.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Calculated interest expenses",
+          "why": "Calculated interest expense line; may capture imputed interest and is a valid fallback for XINT.",
+          "confidence": 0.78
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Capitalized",
+          "why": "Interest capitalized to assets; still represents interest cost and is included as last fallback if other lines are unavailable.",
+          "confidence": 0.7
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on lease liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses on EUR Bonds"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses on NOK Bomds"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Interest Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Calculated interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Capitalized"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Minority Interest/Minority Interests were not used as they represent ownership interests, not interest expense. Balance sheet interest-bearing liability labels were also excluded since XINT should come from income statement expense lines."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity",
+          "why": "Represents total equity attributable to shareholders (owners) and excludes the separate Minority Interest line; best match for book equity (BE) without double-counting non-controlling interests.",
+          "confidence": 0.98
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Did not use 'Rep Total Equity & Minority Interest' because it aggregates both parent equity and minorities, which would conflict with separate MIB treatment."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Balance sheet line for non-controlling interests; directly matches MIB definition for equity attributable to minority shareholders.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": ""
+    }
+  ]
+}

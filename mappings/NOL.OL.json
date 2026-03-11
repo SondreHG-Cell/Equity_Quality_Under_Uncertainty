@@ -1,0 +1,243 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Contract Revenue",
+          "why": "Component of operating revenues but not the primary total; use as secondary priority after the main total revenue line.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reimbursable Revenue",
+          "why": "Additional component of operating revenues; use as tertiary priority after total operating revenues and contract revenue.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating revenues",
+          "why": "Best single representation of total revenue/sales (top-line); aggregates contract and reimbursable revenues.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Finance income, not operating revenue; should not be used for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued income",
+          "why": "Balance sheet asset, not a revenue line; not suitable for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Short-term portion of deferred revenue",
+          "why": "Liability representing unearned revenue, not a revenue recognition line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Long-term deferred revenue",
+          "why": "Long-term unearned revenue liability; not a revenue recognition line for REVT.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating revenues"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Contract Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reimbursable Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Treat REVT as a single revenue measure that may change label; prioritize the aggregate 'Total operating revenues' and fall back to its main components if needed."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rig operating expenses",
+          "why": "Direct operating costs of drilling rigs; best match for cost of goods/services sold.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reimbursable expenses",
+          "why": "Direct reimbursable costs closely tied to reimbursable revenue; also part of cost of sales; included as secondary priority.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses",
+          "why": "Overhead/SG&A rather than direct production costs; should not be mapped to COGS.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expenses",
+          "why": "Financing-related, not production-related; not COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Material and supplies, net",
+          "why": "Asset balance, not an expense line; not appropriate for COGS mapping.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued administrative expenses",
+          "why": "Liability for unpaid admin expenses, not the expense itself; not COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued operating expenses",
+          "why": "Liability, not P&L; not suitable as the COGS expense line.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rig operating expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reimbursable expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Both rig operating expenses and reimbursable expenses are direct operating costs tied to revenues; they are provided as a priority list so later processing can use the first available."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rig operating expenses",
+          "why": "Direct operating costs, more akin to COGS than SG&A; should be excluded from SG&A components.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses",
+          "why": "Classic SG&A-type overhead expense; best fit for SG&A components.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued administrative expenses",
+          "why": "Balance sheet liability related to SG&A but not the expense line itself; lower priority than the income statement line.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued operating expenses",
+          "why": "Liability for various operating expenses; not a clean SG&A P&L component line.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use the explicit income statement 'Administrative Expenses' line as the SG&A component; balance sheet accruals are excluded per instructions."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No research and development-related line items are present in the provided income statement or balance sheet; XRD is treated as zero."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Explicit interest expense line; primary measure of financing cost for XINT.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued interest expense",
+          "why": "Balance sheet liability; not the period expense, so not used for XINT when an income statement interest expense exists.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Represents interest income (the opposite of interest expense); not appropriate for XINT which requires expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "XINT is mapped to the income statement 'Interest Expense' line as the primary and sufficient representation of interest expense."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Represents total shareholders’ equity; no separate parent/owner equity line is provided, so this is the best proxy for book equity.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Duplicate aggregate equity line (different casing); retained as secondary priority if needed.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total liabilities and equity",
+          "why": "Combined total; not an equity-only measure and should not be used for BE when a pure equity total is available.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "There is no separate ‘Equity attributable to owners/parent’ line; therefore total equity is used for BE, and MIB will be set to zero to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No line items for non-controlling interests or minority interest appear on the balance sheet; MIB is treated as zero."
+    }
+  ]
+}
