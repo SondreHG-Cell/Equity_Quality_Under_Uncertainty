@@ -135,18 +135,18 @@ SHORTLIST_RULES = {
     "COGS": ShortlistRule(
         include=[
             "cost of sales", "cost of revenue", "cost of goods", "cost of services",
-            "raw materials and consumables used", "materials and services", "raw materials"
-            "subcontract", "subcontractor", "subcontractors",
-            "traffic charges", "direct costs", "project costs", "purchases", "changes in inventory"
+            "raw materials and consumables", "materials and services", "raw materials", "property costs",
+            "subcontract", "subcontractor", "subcontractors", "production costs", "purchased goods and services",
+            "traffic charges", "direct costs", "project costs", "purchases", "changes in inventory", "goods for resale"
         ],
         exclude=["total", "balancing", "depreciation", "amortization", "impairment", "interest", "tax", "finance"],
     ),
     "XSGA_COMPONENTS": ShortlistRule(
         include=[
             "selling, general", "selling general", "sg&a", "sga", "selling/general/admin",
-            "sales and administration", "general and administrative", "general & administrative",
-            "administrative expenses", "selling expenses", "selling", "general", "admin",
-            "personnel", "salary", "wages", "personnel expenses", "employee benefits","administrative", "administration", "employee",
+            "sales and administration", "general and administrative", "general & administrative", "general and administration",
+            "administrative expenses", "selling expenses", "selling", "general", "admin", "external", 
+            "personnel", "salary", "wages", "personnel expenses", "employee benefits", "administrative", "administration", "employee",
             "other operating expenses", "share-based", "equity compensation", "operating expenses"
         ],
         exclude=["total", "balancing", "cost of sales", "cost of revenue", "cogs", "depreciation", "amortization",
@@ -158,7 +158,7 @@ SHORTLIST_RULES = {
     ),
     "XINT": ShortlistRule(
         include=[
-            "interest expense", "interest expenses", "finance costs", "financial expenses", "net finance costs",
+            "interest expense", "interest expenses", "finance costs", "finance expense", "financial expenses", "net finance costs",
             "interest on borrowings", "interest on debt", "interest on lease liabilities"
         ],
         exclude=["total", "balancing", "interest income", "income", "received", "interest-bearing"],
