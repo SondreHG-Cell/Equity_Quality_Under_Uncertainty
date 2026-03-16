@@ -1,0 +1,164 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit total revenue line; matches top-line revenue concept exactly.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales",
+          "why": "Also a valid revenue line and numerically identical to Total Revenue in the preview; useful as fallback if label changes by year.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using a priority list for revenue labels across years. Prefer the explicit total line first, then Net sales as fallback."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Purchased services"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "No COGS candidates were provided and there is no explicit 'Cost of sales'/'COGS' line. 'Purchased services' is the closest potential direct-cost line, but this company may also have service-delivery labor embedded in 'Personnel expenses'. Selected outside candidates with manual review because the correct COGS mapping is not fully clear."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Overhead-type operating expense component; personnel costs are commonly part of SG&A when no explicit SG&A subtotal exists.",
+          "confidence": 0.91
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead-type operating expense bucket and acceptable SG&A component when no explicit SG&A row exists.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A subtotal exists. Selected the best overhead component rows from the candidate list and excluded depreciation/amortization, impairments, interest, and totals."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No research and development line is identifiable on the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses",
+          "why": "Most specific match to interest expense and preferable to broader finance expense lines.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broader finance-cost line that can serve as fallback if specific interest expense is unavailable in some years.",
+          "confidence": 0.79
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Semantically correct supplemental label, though preview appears empty; can serve as fallback if populated in other years.",
+          "confidence": 0.68
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Interest-related but too narrow versus total interest expense, so not preferred.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental and lease-specific rather than total interest expense.",
+          "confidence": 0.28
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list: specific interest expense first, then broader financial expenses, then alternate label."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available equity line on the balance sheet. No separate parent-equity line is shown.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Not equity; this is the full balance sheet total and should not be used for book equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using Total Equity because no separate owner/parent equity line is provided. To avoid double counting, MIB is set to empty."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest/non-controlling interest line is identifiable on the provided balance sheet. Since BE uses Total Equity, MIB is left empty to avoid double counting."
+    }
+  ]
+}

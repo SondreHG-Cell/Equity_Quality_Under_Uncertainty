@@ -1,0 +1,192 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue line and preferred over duplicate total when both are identical.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Duplicate total revenue line with identical values; useful as fallback if label changes across years.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS",
+          "why": "This is COGS, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Recognized revenue less progress billings",
+          "why": "Balance sheet contract asset, not top-line revenue.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Progress billings in excess of recognized revenue",
+          "why": "Balance sheet contract liability, not top-line revenue.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the two revenue labels as a priority list; later code should take the first non-missing value."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS",
+          "why": "Explicit cost of revenues / cost of goods sold line; matches direct production/service costs.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred explicit COGS label."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and administrative expenses",
+          "why": "Explicit SG&A row and populated; per rules, select only this row when available.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and administrative expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Explicit SG&A line exists and is populated, so selected only this row and excluded audit/tax fee subcomponents and reported operating expense totals."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development properties",
+          "why": "Balance sheet asset line, not R&D expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-current promissory notes, development properties 15 years",
+          "why": "Debt/liability line related to properties, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No R&D expense line appears on the provided Income Statement or Balance Sheet. Candidate rows are not R&D expense."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broad finance cost line; acceptable fallback if no more specific interest expense line is available.",
+          "confidence": 0.7
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses attributable to loans, etc.",
+          "why": "Most specific reported borrowing-interest expense line.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses, leasing",
+          "why": "Specific lease-interest component, but not full interest expense.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Too broad and likely not specifically interest.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest component only.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Best semantic match if used in some years, even though preview values are empty.",
+          "confidence": 0.98
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses attributable to loans, etc."
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list only; do not sum. Preferred exact interest-expense label first, then specific loans interest, then broader financial expenses as fallback."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Not equity; entire balance sheet total, so not appropriate for book equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the correct equity concept. Selected 'Equity' from the full Balance Sheet preview because it is the proper equity line. No separate non-controlling interests line is present, so this likely represents total/common equity, but manual review is warranted because owner-only equity is not separately disclosed. | Escape-hatch used (final_choice outside candidate list): [Balance Sheet] Equity"
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest / non-controlling interests line appears on the provided Balance Sheet."
+    }
+  ]
+}
