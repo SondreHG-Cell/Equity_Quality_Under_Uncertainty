@@ -5,8 +5,8 @@ from openai import RateLimitError, APIStatusError
 from llm_row_mapper import llm_map_prof_rows, save_mapping
 
 BASE_DIR = Path(__file__).resolve().parent
-INPUT_DIR = BASE_DIR / "stx_xlsx"
-MAPPINGS_DIR = BASE_DIR / "mappings_stx"
+INPUT_DIR = BASE_DIR / "st2"
+MAPPINGS_DIR = BASE_DIR / "mappings_stx2"
 
 
 def main():
