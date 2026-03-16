@@ -1,0 +1,209 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue line; preferred over duplicated total row.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Duplicate total revenue row with identical values; less preferred than the base revenue line.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total",
+          "why": "COGS, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Costs of sales of goods",
+          "why": "COGS, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Marketing and sales expenses",
+          "why": "Operating expense, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Valuation",
+          "row_label": "Price to Sales",
+          "why": "Valuation ratio, not an income statement revenue amount.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Valuation",
+          "row_label": "Price to Revenue from Business Activities - Total per Share",
+          "why": "Valuation ratio, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Valuation",
+          "row_label": "Price to Revenue from Business Activities - Total per Share, 5 Year Average",
+          "why": "Valuation ratio, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Valuation",
+          "row_label": "EV to Sales",
+          "why": "Valuation ratio, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Valuation",
+          "row_label": "Enterprise Value to Revenue from Business Activities - Total",
+          "why": "Valuation ratio, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Valuation",
+          "row_label": "Enterprise Value to Revenue from Business Activities - Total, 5 Year Average",
+          "why": "Valuation ratio, not revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use Revenue first; Total Revenue is a duplicate fallback if labels change."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total",
+          "why": "COGS-type row, but it is a total/subtotal and only populated in recent years.",
+          "confidence": 0.72
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Costs of goods"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Costs of sales of goods"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the more semantically direct non-total COGS labels visible in the preview. 'Costs of goods' appears to be the current label, while 'Costs of sales of goods' appears in earlier years. I excluded 'Cost of Revenues - Total' because a more specific non-total row exists. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Costs of goods, [Income Statement] Costs of sales of goods"
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative expenses",
+          "why": "Clear SG&A overhead component.",
+          "confidence": 0.94
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Marketing and sales expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list is incomplete for SG&A. No explicit single SG&A total row is shown, so I selected overhead component rows and excluded COGS, depreciation, amortization, impairments, finance items, and totals such as 'Operating expenses'. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Marketing and sales expenses, [Income Statement] Other operating expense, [Income Statement] Other external costs, [Income Statement] Employee costs"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development expenses",
+          "why": "Direct R&D expense line.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Direct match."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Too narrow; lease-related interest only.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Too narrow and supplemental; not the main interest expense line.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense and similar items - Balancing value",
+          "why": "Contains interest wording but appears to be a balancing line, not a clean reported line item.",
+          "confidence": 0.35
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance expense"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list does not contain a clean main interest expense line. 'Finance expense' is the best available reported line and is preferable to balancing or lease-only interest rows, but it may include non-interest finance items. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Finance expense"
+    },
+    {
+      "variable": "BE",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": true,
+      "notes": "No Balance Sheet / equity rows are available in the provided preview, so book equity cannot be identified from the supplied statements."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": true,
+      "notes": "No Balance Sheet / non-controlling interest rows are available in the provided preview, so minority interest cannot be identified from the supplied statements."
+    }
+  ]
+}

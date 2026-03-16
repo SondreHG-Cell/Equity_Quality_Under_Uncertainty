@@ -1,0 +1,172 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Balancing Item - Revenue",
+          "why": "Only provided candidate, but it is explicitly a balancing row and not an actual revenue line.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating income"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the correct top-line row. For this financial company, 'Operating income' is the actual revenue-like top-line subtotal, while 'Balancing Item - Revenue' must not be used. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Operating income"
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear COGS/cost of sales line is reported. This appears to be a financial institution income statement, where traditional COGS is typically not presented."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General administrative expenses",
+          "why": "Explicit overhead/administrative expense row; best SG&A match.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel costs",
+          "why": "Overhead component, but should not be added when explicit SG&A row already exists and is populated.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Expenses",
+          "why": "Overhead component, but explicit SG&A row exists and is populated.",
+          "confidence": 0.68
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead component, but explicit SG&A row exists and is populated.",
+          "confidence": 0.62
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Personnel-related liabilities",
+          "why": "Balance sheet liability, not an income statement SG&A expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General administrative expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Per rule, when an explicit SG&A row exists and is populated, select only that row."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No research and development expense line is present."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses",
+          "why": "Best direct match for interest expense.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses on lease liabilities",
+          "why": "Specific lease-interest subcomponent, less preferred than total interest expense.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Semantically matches but appears unpopulated; useful as alternate label if used in other years.",
+          "confidence": 0.71
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest item, not preferred over total interest expense.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses - Balancing value",
+          "why": "Balancing row, should not be preferred over actual reported interest expense.",
+          "confidence": 0.03
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list of reported interest expense labels; excludes balancing and lease-specific supplemental rows."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Candidate provided, but it includes minority interest and would risk double counting with MIB.",
+          "confidence": 0.18
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders equity"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the better owner-equity line. 'Shareholders equity' is preferred because BE should exclude non-controlling interests; using 'Rep Total Equity & Minority Interest' would violate the BE/MIB rule. | Escape-hatch used (final_choice outside candidate list): [Balance Sheet] Shareholders equity"
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest",
+          "why": "Income statement row exists but is blank in preview and not the preferred balance sheet location for MIB.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement row exists but is blank in preview and not the preferred balance sheet location for MIB.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Total equity including minority interest, not a standalone MIB line.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No standalone non-controlling interest/minority interest balance sheet line is present. Since BE uses 'Shareholders equity', set MIB to [] to avoid double counting."
+    }
+  ]
+}

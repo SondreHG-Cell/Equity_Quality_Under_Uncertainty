@@ -1,0 +1,182 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Primary top-line revenue line; preferred over total/subtotal.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "One-off compensation for loss of revenue received",
+          "why": "Not core revenue; other operating income-like compensation, not top-line sales.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Revenue total/subtotal; useful as fallback if label changes.",
+          "confidence": 0.92
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using 'Revenue' as primary top-line and 'Total Revenue' as fallback priority label."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Direct costs",
+          "why": "Best match for direct production/service costs.",
+          "confidence": 0.98
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Direct costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Direct costs is the clearest COGS/cost of sales line."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Core overhead/personnel cost bucket and strong SG&A component.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Items affecting comparability in personnel expenses",
+          "why": "Adjustment/special item rather than core recurring SG&A; likely embedded in personnel expenses.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-based payments",
+          "why": "Can be SG&A-related, but likely included within personnel expenses; selecting separately risks double count.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Salaries and wages",
+          "why": "Personnel subcomponent, but only reported in some years and likely included in personnel expenses.",
+          "confidence": 0.41
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Broad operating overhead bucket consistent with SG&A.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General office & Administrative Expenses",
+          "why": "SG&A-type subcomponent, but partial disclosure only and likely included in other operating expenses.",
+          "confidence": 0.5
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Items affecting comparability in other operating expenses",
+          "why": "Adjustment/special item rather than core recurring SG&A; likely embedded in other operating expenses.",
+          "confidence": 0.29
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A total line is present. Selected the main recurring overhead buckets and excluded subcomponents/adjustment rows to reduce double counting."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No R&D/research and development line is identifiable in the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Interest-related but appears absent and too narrow; not the main interest expense line.",
+          "confidence": 0.18
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest payable on borrowings"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the clearly better interest expense label present in the sheet: 'Interest payable on borrowings'. Selected outside candidates per instructions. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Interest payable on borrowings"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available equity line from candidates. No separate parent/owners' equity line is provided on the balance sheet.",
+          "confidence": 0.84
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No equity-attributable-to-parent line appears on the balance sheet. Using 'Total Equity' for BE; to avoid double counting, MIB is set to empty."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling Interests",
+          "why": "Correct MIB concept, but no values shown and BE uses Total Equity; selecting both could double count.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Correct MIB concept, but no values shown and BE uses Total Equity; selecting both could double count.",
+          "confidence": 0.4
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Because BE uses 'Total Equity' and no separate parent equity line is available, MIB is left empty to avoid double counting."
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Exact top-line revenue label; equals Net sales in preview and is the broader reported revenue label.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales",
+          "why": "Also a valid top-line sales label; identical values to Total Revenue, so useful as fallback across years.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used candidate labels as priority list for reported revenue line changes."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials and consumables",
+          "why": "Best available direct production cost line; appears to represent core input costs and is the closest match to COGS/cost of sales.",
+          "confidence": 0.76
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials and consumables"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list was empty. Selected from full preview. Manual review needed because true COGS may also involve inventory changes and small service-related costs, but 'Raw materials and consumables' is the clearest direct-cost row."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs",
+          "why": "Likely overhead/operating expense bucket and not a total; suitable SG&A component.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefit expense",
+          "why": "Personnel-related operating overhead component; suitable SG&A component.",
+          "confidence": 0.86
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefit expense"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list was empty. No explicit SG&A row exists, so selected best overhead buckets from full preview. Excluded COGS, D&A, interest, taxes, and totals. Manual review needed because 'Other external costs' may contain some production-related spend in a manufacturing context."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear R&D line appears in the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense for financial liabilities measured at amortized cost",
+          "why": "Most specific interest expense line and best match among candidates.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense for pension provision",
+          "why": "Interest-related but narrower and less preferred than core borrowing interest.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense, lease liability",
+          "why": "Interest-related but narrower and less preferred than core borrowing interest.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expenses",
+          "why": "Broader finance expense fallback if no explicit interest line is populated.",
+          "confidence": 0.38
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest fallback; less preferred than primary reported rows.",
+          "confidence": 0.3
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense for financial liabilities measured at amortized cost"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance cost"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial net"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Used candidate line first, but added 'Finance cost' and 'Financial net' from full preview because the candidate list appears to miss the changing reported single-line finance/interest label across years, especially 2025. Manual review needed since these broader finance labels may include non-interest items. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Finance cost, [Income Statement] Financial net"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to owners of the parent company",
+          "why": "Preferred owner/parent-only equity label, which excludes non-controlling interests and avoids double counting with MIB.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to owners of the parent company"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred parent-equity line selected to exclude NCI."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Exact balance-sheet NCI label; preferred for minority interest.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Alternative balance-sheet minority interest label; useful fallback.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income-statement allocation line, not preferred for balance-sheet minority interest.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income-statement allocation line, not preferred for balance-sheet minority interest.",
+          "confidence": 0.1
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used balance-sheet NCI labels only; income-statement minority rows were not selected."
+    }
+  ]
+}

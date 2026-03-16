@@ -1,0 +1,195 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net revenue",
+          "why": "Direct top-line revenue label; preferred candidate matches total sales/revenue.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected preferred candidate for revenue."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Goods for resale",
+          "why": "Best available direct cost line; appears to represent merchandise cost and aligns with cost of sales/COGS for a resale business.",
+          "confidence": 0.84
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Goods for resale"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list was empty. Chose 'Goods for resale' from the statement preview because it is the clearest direct product cost line and best proxy for COGS, but this required going outside the candidate list."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of personnel",
+          "why": "Clear operating overhead component and provided candidate.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs",
+          "why": "Likely overhead bucket capturing administrative/selling external costs; useful because no explicit SG&A total row is present.",
+          "confidence": 0.79
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of personnel"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "No explicit SG&A row exists. Selected overhead components instead. 'Cost of personnel' came from candidates; added 'Other external costs' from the preview because the candidate list appeared incomplete for SG&A coverage. Excluded depreciation/amortization, COGS-like 'Goods for resale', interest, and totals. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Other external costs"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear research & development expense line is present in the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest cost",
+          "why": "Most semantically precise interest expense line; better than broader financial expenses.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense Leases",
+          "why": "Specific interest expense line that may be reported in some years; suitable fallback after main interest cost line.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broader finance-cost line; fallback only if specific interest lines are unavailable.",
+          "confidence": 0.63
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest cost"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense Leases"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Preferred candidate list missed the clearer line 'Interest cost', so selected it from the preview as first priority, followed by lease interest and then broader financial expenses as fallback. Multiple rows are used as a priority list, not for summation. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Interest cost"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Best equity line here because it excludes non-controlling interest: in 2021 'Total equity' plus 'Non-controlling interest' equals 'Total Equity'.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Includes non-controlling interest based on 2021 reconciliation, so less suitable for BE under the no-double-counting rule.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Equity",
+          "why": "Balancing line, not an equity measure.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Total balance sheet, not book equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected 'Total equity' because it appears to exclude non-controlling interest and therefore avoids double counting with MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest",
+          "why": "Direct non-controlling interest line on the balance sheet; best match for minority interest.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equivalent label, likely alternate reporting line across years.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interest",
+          "why": "Income statement allocation of profit, not balance sheet minority equity; less suitable for MIB.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement-related total, not balance sheet minority equity.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected balance-sheet minority interest labels as a priority list. These complement BE='Total equity' without double counting."
+    }
+  ]
+}
