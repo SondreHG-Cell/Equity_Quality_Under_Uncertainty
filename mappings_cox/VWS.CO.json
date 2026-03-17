@@ -1,0 +1,397 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue label; preferred over duplicate total row.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Also a valid top-line revenue total, but less preferred than the primary revenue row.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Cost of Sales",
+          "why": "Not revenue; cost line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS",
+          "why": "Not revenue; COGS line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Cost of Sales",
+          "why": "Not revenue; cost line.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use as priority list; both rows are present and identical, with Revenue preferred as the primary top-line label."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Production costs",
+          "why": "Direct production cost line and matches reported cost base.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Cost of Sales",
+          "why": "Component/subcomponent of production costs rather than full COGS.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS",
+          "why": "Explicit COGS label; best direct mapping.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw Materials",
+          "why": "Inventory asset, not period COGS expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles in Production costs",
+          "why": "Only a component of production costs.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Production costs",
+          "why": "Only a component of production costs.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment losses, property, plant and equipment in Production costs",
+          "why": "Only a component of production costs.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment losses, intangible assets in Production costs",
+          "why": "Only a component of production costs.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Cost of Sales",
+          "why": "Only a component of cost of sales.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit COGS row rather than a component or alternative label."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administration costs",
+          "why": "Relevant SG&A overhead bucket, but duplicated in the statement with two different values, creating ambiguity.",
+          "confidence": 0.7
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation, intangible assets, in Administration costs",
+          "why": "D&A-related component; excluded by rule.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Administrative Exp.",
+          "why": "Potential overhead component but appears uninformative/empty in preview.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-Based Payment",
+          "why": "Could be an SG&A component, but likely partial overhead only, not full SG&A coverage.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, property, plant and equipment, in Administration costs",
+          "why": "D&A-related component; excluded by rule.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment losses, property, plant and equipment included in Administration costs",
+          "why": "Impairment-related; excluded by rule.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment losses, intangible assets, in Administration costs",
+          "why": "Impairment-related; excluded by rule.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization, depreciation & impairment of administrative expenses",
+          "why": "Explicit D&A/impaired subtotal; excluded by rule.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Distribution costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administration costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list clearly misses the important SG&A row Distribution costs. Chose outside-candidate overhead buckets to cover selling/distribution plus administration. Included Research and development costs as well so that PROF can subtract XRD if R&D is reported separately. Manual review is required because both Distribution costs and Administration costs appear twice with identical labels but different values, so the exact intended duplicate row cannot be uniquely identified from the preview. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Distribution costs, [Income Statement] Research and development costs"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development costs",
+          "why": "Dedicated R&D expense line, but the statement contains this exact label twice with different values, creating ambiguity.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in R&D",
+          "why": "Only a component, not total R&D expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expense - Capitalized",
+          "why": "Capitalized amount, not the primary expensed R&D line.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation, intangible assets, in Research & Development Expenses",
+          "why": "Only an amortization component of R&D.",
+          "confidence": 0.04
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, property, plant and equipment in Research & Development Expenses",
+          "why": "Only a depreciation component of R&D.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment losses, property, plant and equipment in Research & Development Expenses",
+          "why": "Only an impairment component of R&D.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment losses, intangible assets in Research & Development Expenses",
+          "why": "Only an impairment component of R&D.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Completed development projects",
+          "why": "Amortization-related/intangible project line, not current R&D expense.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development",
+          "why": "Too generic and empty in preview relative to dedicated expense line.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development projects in progress",
+          "why": "Balance sheet asset, not R&D expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Completed development projects",
+          "why": "Balance sheet asset, not R&D expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accumulated amortization of Completed Development Projects",
+          "why": "Balance sheet contra-asset, not R&D expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Completed Development Projects, Gross",
+          "why": "Balance sheet gross asset, not R&D expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Completed Development Projects",
+          "why": "Balance sheet item, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Dedicated R&D line exists, but the exact same row label appears twice with different values, so the correct instance cannot be uniquely disambiguated from the preview. Selected the exact label minimally and flagged for review."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial costs",
+          "why": "Broader finance-cost line; usable fallback if dedicated interest expense is unavailable.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on lease liabilities",
+          "why": "Specific interest component, but narrower than total interest expense.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial costs",
+          "why": "Not specifically interest expense.",
+          "confidence": 0.1
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the best available dedicated interest-expense label, Interest costs. Used it as first priority and Financial costs as fallback. Manual review flagged because primary selection is outside the candidate list. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Interest costs"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable toVestas Wind System A/S shareholders",
+          "why": "Preferred owner/parent equity line that excludes non-controlling interests.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Includes non-controlling interests, so less preferred when owner equity is available.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Not equity; full balance-sheet total.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable toVestas Wind System A/S shareholders"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred parent-shareholder equity line to avoid double counting with MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income statement allocation line, not the balance-sheet stock of minority interest.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement allocation line, not preferred for balance-sheet minority interest.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Direct balance-sheet NCI line; best match.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Also a valid balance-sheet minority interest label, likely duplicate alternative.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income - Attributable to Minority Interest - Total",
+          "why": "Comprehensive income flow line, not balance-sheet minority interest.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use as priority list for the balance-sheet minority interest / NCI line."
+    }
+  ]
+}

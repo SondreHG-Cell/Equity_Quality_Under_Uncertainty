@@ -1,0 +1,137 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Sales tax receivable",
+          "why": "Only provided candidate, but this is a balance-sheet receivable, not revenue/sales.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No revenue/sales line appears on the provided Income Statement; this looks like a pre-revenue company."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No cost of goods sold / cost of sales line appears on the provided Income Statement."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and administrative",
+          "why": "Explicit operating overhead / G&A line and clearly populated; per rules, prefer the explicit SG&A-type row and select only that row when it exists and is populated.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Marketing and investor relations",
+          "why": "Overhead-like component, but should not be added when an explicit populated G&A row exists because that likely already captures these items.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Headcount metric, not an expense row.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and administrative"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit populated SG&A-type row only, following the hierarchy rule. Excluded component/detail rows to avoid double counting within G&A."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Site development costs",
+          "why": "Could superficially resemble development spending, but this is not a dedicated research and development expense label.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated R&D expense line appears. 'Site development costs' is not sufficiently indicative of research and development."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance costs",
+          "why": "Broad finance-cost line that can serve as fallback when a pure interest-expense line is not consistently available.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Most specific interest-expense label present; preferred as first-priority interest line.",
+          "confidence": 0.86
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used a priority list: specific interest expense first, then broader finance costs as fallback. Did not attempt to include duplicate 'Finance costs' rows separately because final choices cannot repeat the same row_label."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Investment in equity accounted joint arrangement",
+          "why": "Asset/investment line, not shareholders' equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Correct equity line; no separate parent-equity line is shown.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL LIABILITIES AND EQUITY",
+          "why": "Balance-sheet total, not equity alone.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate parent/owners equity line is shown, so 'Total equity' is the best available BE mapping."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest / non-controlling interests line appears on the provided Balance Sheet. Since BE uses 'Total equity', MIB is left empty to avoid double counting."
+    }
+  ]
+}
