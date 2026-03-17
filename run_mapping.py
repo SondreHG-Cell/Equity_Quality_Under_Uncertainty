@@ -5,8 +5,8 @@ from openai import RateLimitError, APIStatusError
 from llm_row_mapper import llm_map_prof_rows, save_mapping
 
 BASE_DIR = Path(__file__).resolve().parent
-INPUT_DIR = BASE_DIR / "annual_xslx"
-MAPPINGS_DIR = BASE_DIR / "mappings"
+INPUT_DIR = BASE_DIR / "st2"
+MAPPINGS_DIR = BASE_DIR / "mappings_stx2"
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
 
         print(f"[map]  {firm_id}")
         try:
-            mapping = llm_map_prof_rows(f, model="gpt-5.1", reasoning_effort="low")
+            mapping = llm_map_prof_rows(f, model="gpt-5.4", reasoning_effort="low")
             save_mapping(mapping, out_path)
 
         except RateLimitError as e:

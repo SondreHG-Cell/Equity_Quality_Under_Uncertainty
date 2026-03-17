@@ -127,48 +127,52 @@ class ShortlistRule:
     exclude: List[str]
 
 
-SHORTLIST_RULES: Dict[str, ShortlistRule] = {
+SHORTLIST_RULES = {
     "REVT": ShortlistRule(
-        include=["revenue", "income", "sales", "turnover", "driftsinntek", "omsetn"],
-        exclude=["balancing", "other", "net", "income tax"],
+        include=["revenue", "revenues", "sales", "turnover"],
+        exclude=["balancing", "other", "net", "income tax", "operating income", "net income", "financial income"],
     ),
     "COGS": ShortlistRule(
         include=[
-            "cost of sales", "cogs", "cost of goods", "cost of services", "cost of revenue",
-            "cost of materials", "materials", "raw materials", "consumables", "changes in inventory",
-            "subcontract", "subcontractor", "external services",
-            "direct costs", "project costs", "traffic charges", "expense", "expenses",
-            "purchases", "varekost", "vareforbruk", "material", "materialkost",
-            "underentrepren", "direkte kost", "innkjøp"
+            "cost of sales", "cost of revenue", "cost of goods", "cost of services",
+            "raw materials and consumables", "materials and services", "raw materials", "property costs",
+            "subcontract", "subcontractor", "subcontractors", "production costs", "purchased goods and services",
+            "traffic charges", "direct costs", "project costs", "purchases", "changes in inventory", "goods for resale"
         ],
         exclude=["total", "balancing", "depreciation", "amortization", "impairment", "interest", "tax", "finance"],
     ),
     "XSGA_COMPONENTS": ShortlistRule(
         include=[
-            "selling, general", "selling general", "sg&a", "sga", "sales and administration",
-            "personnel", "salary", "wages", "lønn", "lonn", "administrative", "admin",
-            "selling", "general", "g&a", "g & a", "other operating", "andre drifts",
-            "operating expenses", "stock options", "share-based", "equity compensation"
+            "selling, general", "selling general", "sg&a", "sga", "selling/general/admin",
+            "sales and administration", "general and administrative", "general & administrative", "general and administration",
+            "administrative expenses", "selling expenses", "selling", "general", "admin", "external", 
+            "personnel", "salary", "wages", "personnel expenses", "employee benefits", "administrative", "administration", "employee",
+            "other operating expenses", "share-based", "equity compensation", "operating expenses"
         ],
-        exclude=[
-            "total", "balancing", "cost of sales", "cogs", "depreciation", "amortization",
-            "impairment", "interest", "tax", "finance", "financial"
-        ],
+        exclude=["total", "balancing", "cost of sales", "cost of revenue", "cogs", "depreciation", "amortization",
+                 "impairment", "interest", "tax", "finance", "financial"],
     ),
     "XRD": ShortlistRule(
-        include=["r&d", "research", "development", "forskning", "utvikling"],
+        include=["r&d", "research", "development", "research and development"],
         exclude=["total", "balancing"],
     ),
     "XINT": ShortlistRule(
-        include=["interest expense", "interest", "finanskost", "rentekost", "net finance"],
-        exclude=["total", "balancing", "interest income", "financial income"],
+        include=[
+            "interest expense", "interest expenses", "finance costs", "finance expense", "financial expenses", "net finance costs",
+            "interest on borrowings", "interest on debt", "interest on lease liabilities"
+        ],
+        exclude=["total", "balancing", "interest income", "income", "received", "interest-bearing"],
     ),
     "BE": ShortlistRule(
-        include=["total equity", "equity", "egenkap", "shareholders' equity", "owners' equity", "capital and reserves"],
+        include=[
+            "equity attributable to shareholders of the parent", "equity attributable to owners",
+            "owners' equity", "shareholders' equity", "parent equity",
+            "total equity", "capital and reserves", "equity"
+        ],
         exclude=["total assets", "liabilities", "balancing"],
     ),
     "MIB": ShortlistRule(
-        include=["minority", "non-controlling", "noncontrolling", "minoritets", "interests"],
+        include=["non-controlling interests", "non-controlling interest", "noncontrolling interests", "minority interest"],
         exclude=["total", "balancing"],
     ),
 }
@@ -366,6 +370,24 @@ def build_prompt(
     lines.append("- REVT should be treated as a single reported revenue line that may change label over time (e.g., 'Revenue' vs 'Total revenue').")
     lines.append("- Therefore, for REVT you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
     lines.append("- Do not sum revenue rows; later code will select the first non-missing value per year.")
+    lines.append("")
+
+    lines.append("R&D rule (XRD):")
+    lines.append("- XRD should be treated as a single reported R&D line item that may change label over time (or be missing).")
+    lines.append("- Therefore, for XRD you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not sum; later code will select the first non-missing value per year. If none exists, use final_choice=[].")
+    lines.append("")
+
+    lines.append("Book equity rule (BE):")
+    lines.append("- BE should be treated as a single balance sheet equity line that may change label over time.")
+    lines.append("- Therefore, for BE you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not sum; later code will select the first non-missing value per year.")
+    lines.append("")
+
+    lines.append("Minority interest rule (MIB):")
+    lines.append("- MIB should be treated as a single balance sheet non-controlling interest line that may change label over time.")
+    lines.append("- Therefore, for MIB you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not sum; later code will select the first non-missing value per year. If no NCI exists, use final_choice=[].")
     lines.append("")
 
     # Equity BE/MIB rule

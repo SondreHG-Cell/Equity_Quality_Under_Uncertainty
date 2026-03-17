@@ -1,0 +1,177 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenues - Live",
+          "why": "Revenue component only; not full top-line because separate RNG and other revenue rows exist.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenues - RNG",
+          "why": "Revenue component only; not full top-line because separate Live and other revenue rows exist.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating revenues",
+          "why": "Best total top-line row; equals the combination of reported revenue components and is the clearest total revenue/sales measure.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Revenues",
+          "why": "Supplementary revenue component, not total revenue.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating revenues"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit total revenue line rather than individual revenue components."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear cost of goods sold / cost of sales line is present on the provided Income Statement. Reported operating expense rows appear to be overhead and D&A rather than direct production/service costs."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel Expenses",
+          "why": "Clear operating overhead component; personnel costs are a standard SG&A component.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Clear operating overhead bucket and appropriate SG&A component; not a total row.",
+          "confidence": 0.92
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A total row is present. Selected the best overhead component rows and excluded D&A, impairments, finance items, and totals."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No research and development expense line is present on the provided Income Statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broader finance expense line; useful fallback when explicit interest expense is unavailable.",
+          "confidence": 0.73
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expenses",
+          "why": "Too narrow and not specifically interest expense.",
+          "confidence": 0.28
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses",
+          "why": "Best explicit interest expense line.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses on lease liabilities",
+          "why": "Specific subcomponent of interest expense only; should not be used as the main interest line if broader interest exists.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance Costs - Balancing value",
+          "why": "Balancing row and should not be selected.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial items"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Used 'Interest expenses' as the preferred explicit interest line, with 'Financial expenses' as fallback. Added 'Financial items' from the full preview because 2025 appears to report finance result under that label instead of the candidate labels. Manual review is needed because 'Financial items' may be net finance income/expense rather than pure interest expense. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Financial items"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Best available equity line. No separate parent/owners' equity line is shown, so total equity is the appropriate fallback.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Same concept with case variation; useful as fallback if label changes by year.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Not equity; total balance sheet and must not be used for book equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate parent/shareholders' equity excluding NCI is shown. Using total equity as instructed when no owner/parent equity line exists."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest / non-controlling interests line is present on the provided Balance Sheet. Since BE uses total equity, MIB is left empty to avoid double counting."
+    }
+  ]
+}
