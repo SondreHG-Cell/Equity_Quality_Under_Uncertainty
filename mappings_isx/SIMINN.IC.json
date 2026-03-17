@@ -1,0 +1,270 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit total revenue line; identical to Net sales and suitable as top-line revenue.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues/COGS",
+          "why": "This is COGS, not revenue, so not appropriate for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales",
+          "why": "Direct sales/revenue line; appropriate top-line revenue label.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use revenue labels as a priority list; Net sales is the most specific top-line label, with Total Revenue as fallback."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods and Services Sold",
+          "why": "Primary consolidated cost of sales line; matches direct production/service costs.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Services Sold",
+          "why": "Relevant conceptually but appears blank and narrower than the combined cost line.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods Sold",
+          "why": "Relevant conceptually but appears blank and narrower than the combined cost line.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Own Work Capitalized - Cost of Goods Sold",
+          "why": "A component/offset to COGS, not the full COGS line.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods and Services Sold - remaining",
+          "why": "Residual component, not the full COGS line.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues/COGS",
+          "why": "Also a valid total COGS label; identical to Cost of Goods and Services Sold.",
+          "confidence": 0.92
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods and Services Sold"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the main COGS total line rather than components or residual rows."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in SGA",
+          "why": "Clear SG&A personnel cost component.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative fine and damages",
+          "why": "Operating overhead-type expense, though somewhat unusual/nonrecurring.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "Explicitly excluded by SG&A rules because D&A should not be included.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in SGA"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Advertising Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Expenses - remaining"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative fine and damages"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list clearly misses important SG&A component labels present in the sheet, especially Advertising Expenses and Other Operating Expenses - remaining. I excluded Depreciation/Amortization in SGA per rules and avoided subtotal rows like Other Operating Expense / Operating (Income)/Expense, Net. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Advertising Expenses, [Income Statement] Other Operating Expenses - remaining"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line is present on the provided Income Statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest",
+          "why": "Best direct match to interest expense.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Interest-related but narrower component, not the preferred main interest expense line.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Finance expense but not specifically interest expense.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental duplicate-style disclosure, less preferred than the primary line.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Financial Expense",
+          "why": "Broader finance expense line; acceptable fallback only if direct interest expense unavailable.",
+          "confidence": 0.55
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Financial Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list uses the specific interest expense line first, with Total Financial Expense as broader fallback."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders equity",
+          "why": "Best match for parent/common equity and preferable to total equity when minority interest is separate.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity Minority Interests/Equity Non-controlling Interests",
+          "why": "This is minority interest, not book equity attributable to shareholders.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity",
+          "why": "Total/general equity line; usable fallback if label changes.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Entire balance sheet total, not equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use shareholder equity first; general Equity is a fallback label. Minority interest appears separate but empty, so BE should exclude it."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest from Continuing Operations",
+          "why": "Income statement attribution item, not balance sheet minority equity.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement attribution item and appears empty.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity Minority Interests/Equity Non-controlling Interests",
+          "why": "Correct concept for MIB, but appears not reported/populated in provided statements.",
+          "confidence": 0.6
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Correct concept for MIB, but appears not reported/populated in provided statements.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income - Attributable to Minority Interest - Total",
+          "why": "Income statement comprehensive income attribution, not balance sheet minority equity.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income before Minority Interest - Total",
+          "why": "Not a minority interest balance sheet line.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No reported non-controlling interest/minority interest balance sheet amount is evident; treat MIB as missing/zero."
+    }
+  ]
+}

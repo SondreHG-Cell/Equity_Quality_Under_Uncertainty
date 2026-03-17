@@ -1,0 +1,273 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue label; preferred over duplicate total.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Duplicate total revenue line with identical values; valid fallback if label changes.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of sales",
+          "why": "This is COGS, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total",
+          "why": "This is COGS, not revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used direct revenue labels as a priority list; do not sum."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of sales",
+          "why": "Direct COGS / cost of sales line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cost of raw materials and consumables",
+          "why": "Balance-sheet row, not the income statement COGS line.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total",
+          "why": "Duplicate/alternate total COGS label with same values as Cost of sales; good fallback.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of sales"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used direct cost-of-sales line with duplicate total as fallback priority."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs",
+          "why": "Valid overhead component and likely part of SG&A.",
+          "confidence": 0.88
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Brands, Patents, Trademarks, Marketing & Artistic Intangibles - Gross",
+          "why": "Balance-sheet asset row, not an expense component.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Brands, Patents, Trademarks, Marketing & Artistic Intangibles - Accumulated Amortization & Impairment",
+          "why": "Balance-sheet accumulated amortization row, not SG&A.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Staff costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Product Development"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list clearly missed an important overhead component: 'Staff costs'. No explicit SG&A subtotal exists, so selected best operating overhead buckets from full A-column labels. Included 'Product Development' as well because it appears to be a separate R&D expense line and the PROF formula uses (XSGA_COMPONENTS - XRD). | Escape-hatch used (final_choice outside candidate list): [Income Statement] Staff costs, [Income Statement] Product Development"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Product Development",
+          "why": "Most likely dedicated R&D expense line on the income statement.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Completed development projects",
+          "why": "Amortization, not current-period R&D expense.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Development Costs",
+          "why": "Amortization, not current-period R&D expense.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Completed product development projects",
+          "why": "Balance-sheet asset, not expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs, Gross",
+          "why": "Balance-sheet gross asset, not expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Acc Amort Research & Development Costs",
+          "why": "Balance-sheet accumulated amortization, not expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Product development projects in progress",
+          "why": "Balance-sheet asset, not expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Gross",
+          "why": "Balance-sheet gross asset, not expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Projects",
+          "why": "Balance-sheet/unspecified asset-style label, not clearly expense.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Product Development"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the dedicated income-statement R&D label. It is also included in XSGA_COMPONENTS so later subtraction can remove it."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broad finance-cost line; useful fallback if specific interest lines are unavailable.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Specific interest expense line, but only lease-related and likely incomplete.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Interest Expenses",
+          "why": "Most direct general interest-expense label among candidates.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental duplicate of lease interest; less preferred.",
+          "confidence": 0.45
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Interest Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list favors the most specific general interest-expense label first, then broader finance costs, then lease-interest line."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity",
+          "why": "Direct equity line; preferred over duplicate total-equity label.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Duplicate total equity line with identical values; valid fallback.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Total balance-sheet total, not book equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate parent-equity vs non-controlling-interest line is shown; used equity line and duplicate total-equity label as fallback."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest / non-controlling interests line appears on the provided balance sheet."
+    }
+  ]
+}

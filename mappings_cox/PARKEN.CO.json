@@ -1,0 +1,278 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Turnover",
+          "why": "Top-line revenue label; populated across years.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Merchandise Sales",
+          "why": "Revenue component only, not total revenue.",
+          "confidence": 0.16
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Season Ticket Sales",
+          "why": "Revenue component only, not total revenue.",
+          "confidence": 0.16
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "As Reported Total Revenue",
+          "why": "Explicit total revenue line; identical to Total Turnover and more semantically direct for REVT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Contract Assets - Short-Term - Unbilled Revenue in Excess of Advance Consideration & Progress Billings",
+          "why": "Balance sheet working-capital item, not revenue.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Contract Liabilities - Short-Term - Advance Consideration & Progress Billings in Excess of Unbilled Revenue",
+          "why": "Balance sheet liability, not revenue.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Contract Liabilities - Long-Term - Advance Consideration & Progress Billings in Excess of Unbilled Revenue",
+          "why": "Balance sheet liability, not revenue.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "As Reported Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Turnover"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using a priority list of total revenue labels; later code can take the first non-missing value."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods and Services Sold",
+          "why": "Direct cost/cost of sales line; best match for COGS.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods and Services Sold"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit cost of goods/services sold line."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Expenses",
+          "why": "Could be overhead bucket, but broader and less specific than explicit SG&A.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel Expenses",
+          "why": "Overhead component, but hierarchy prefers explicit SG&A row when available and populated.",
+          "confidence": 0.71
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling/General/Admin. Expense",
+          "why": "Explicit SG&A row and populated across years; hierarchy says select only this row when present and populated.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses",
+          "why": "Overhead component, but explicit SG&A row exists and is populated.",
+          "confidence": 0.69
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling, General & Admin",
+          "why": "Explicit SG&A wording but preview appears empty; less useful than populated SG&A row.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-Based Compensation",
+          "why": "Possible SG&A component, but preview empty and not needed when populated explicit SG&A exists.",
+          "confidence": 0.3
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling/General/Admin. Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Explicit SG&A row exists and is populated, so selected only that row per hierarchy. No separate R&D expense line identified."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Expenditure, net",
+          "why": "Balance sheet asset, not an income statement R&D expense line.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Expenditure, Gross",
+          "why": "Balance sheet asset, not an income statement R&D expense line.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated R&D expense line is present on the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses",
+          "why": "Broader finance cost line; usable fallback if explicit interest expense is unavailable.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses",
+          "why": "Explicit interest expense line; preferred for XINT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Only a subcomponent of interest expense, not the main reported interest expense.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental subcomponent only.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses - Balancing value",
+          "why": "Balancing line, less preferred than explicit reported interest expense.",
+          "confidence": 0.18
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list uses explicit interest expense first, with broader financial expenses as fallback if labeling changes."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best equity line excluding separate minority interest, since Minority Interest is reported separately on the balance sheet.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity",
+          "why": "Generic label but appears empty in preview; less reliable than populated Total Equity.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Includes minority interest, so would risk double counting when MIB is separately mapped.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Liabilities & Equity",
+          "why": "Total balance sheet size, not book equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected Total Equity because Minority Interest is separately available and will be mapped to MIB, avoiding double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest",
+          "why": "Income statement allocation item, but balance sheet minority interest is preferred for MIB.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement allocation item, but balance sheet minority interest is preferred for MIB.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Explicit balance sheet minority interest/non-controlling interest line; best match for MIB.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income before Minority Interest - Total",
+          "why": "Income measure, not balance sheet minority interest.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Combined equity plus minority interest, not standalone MIB.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using the explicit balance sheet minority interest line."
+    }
+  ]
+}

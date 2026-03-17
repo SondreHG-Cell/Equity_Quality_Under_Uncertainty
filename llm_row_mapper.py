@@ -357,6 +357,11 @@ def build_prompt(
         "'Operating expenses', 'Other operating expenses', 'Personnel costs', and similar."
     )
     lines.append("")
+    lines.append("R&D interaction rule (XSGA_COMPONENTS and XRD):")
+    lines.append("- The PROF formula uses (XSGA_COMPONENTS - XRD). This is intended to represent SG&A excluding R&D, regardless of reporting style.")
+    lines.append("- If the income statement reports an R&D expense line separately (e.g., 'Research and development', 'R&D expense') and it is NOT already part of a broader SG&A/operating overhead bucket you selected, then include that R&D line ALSO in XSGA_COMPONENTS.")
+    lines.append("- If R&D is already embedded in the selected SG&A/operating expenses bucket (or the statement clearly indicates R&D is included in SG&A), then do NOT add a separate R&D row to XSGA_COMPONENTS (to avoid double counting).")
+    lines.append("")
 
     # XINT priority
     lines.append("Interest expense rule (XINT):")
@@ -373,9 +378,12 @@ def build_prompt(
     lines.append("")
 
     lines.append("R&D rule (XRD):")
-    lines.append("- XRD should be treated as a single reported R&D line item that may change label over time (or be missing).")
-    lines.append("- Therefore, for XRD you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
-    lines.append("- Do not sum; later code will select the first non-missing value per year. If none exists, use final_choice=[].")
+    lines.append("- XRD should capture a dedicated R&D expense line when it exists (e.g., labels containing 'research' and/or 'development').")
+    lines.append("- The PROF formula uses (XSGA_COMPONENTS - XRD). This is intended to remove R&D from SG&A regardless of whether firms report R&D separately or embedded in overhead.")
+    lines.append("- If the income statement reports R&D as a separate expense line and it is NOT already included in the SG&A/operating overhead bucket(s) you selected for XSGA_COMPONENTS, then include that same R&D line in BOTH XRD and XSGA_COMPONENTS.")
+    lines.append("- If R&D is already embedded in the selected SG&A/operating expenses bucket (or the statement clearly indicates it is included), then include the R&D line in XRD only (do NOT add it to XSGA_COMPONENTS) to avoid double counting.")
+    lines.append("- XRD may change label over time; therefore you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not sum; later code will select the first non-missing value per year. If no dedicated R&D line exists, use final_choice=[].")
     lines.append("")
 
     lines.append("Book equity rule (BE):")

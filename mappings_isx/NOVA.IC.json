@@ -1,0 +1,212 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Direct total revenue line and a standard top-line revenue label.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of sales",
+          "why": "Not revenue; this is direct cost and therefore not appropriate for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales of Goods & Services - Net",
+          "why": "Direct sales/top-line label; suitable as a revenue line and may be the more specific label used across years.",
+          "confidence": 0.98
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales of Goods & Services - Net"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using revenue labels as a priority list. 'Sales of Goods & Services - Net' is the most specific top-line sales label; 'Total Revenue' is included as fallback if labeling changes across years."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of sales",
+          "why": "Direct cost-of-sales line and the best match for COGS.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Direct match for cost of goods sold / cost of sales."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Salaries and salary-related expenses",
+          "why": "Personnel overhead component; valid SG&A component.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-Based Compensation in Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A-related stock compensation component; valid SG&A component.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A line. Although preview values are empty, the row exists and may be populated in some years.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling, General & Administrative Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Salaries and salary-related expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-Based Compensation in Selling, General & Administrative Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Per rule hierarchy, an explicit SG&A row exists but appears empty in the preview, so included it and added overhead components to improve year coverage. Excluded depreciation/amortization and totals/balancing rows."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line appears on the provided Income Statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses",
+          "why": "Best direct match for interest expense; preferred primary XINT line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Interest-related line but narrower than total interest expense; suitable only as fallback if label changes.",
+          "confidence": 0.62
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental disclosure rather than the main reported interest expense line.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest - Balancing value",
+          "why": "Balancing value line; not preferred when a direct interest expense row exists.",
+          "confidence": 0.15
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using priority-list treatment for XINT. 'Interest expenses' is the preferred reported line. Lease-liability interest is retained only as a fallback for possible label changes; excluded supplemental and balancing rows from final choice."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity Earnings - Net of Tax",
+          "why": "Income statement line, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity earnings",
+          "why": "Income statement line, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity - Other",
+          "why": "Equity component, not total/book equity, and appears empty.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total",
+          "why": "Best match for book equity excluding non-controlling interest when available.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Acceptable only if no parent/shareholders equity line exists; here a better owner-equity line exists.",
+          "confidence": 0.78
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred 'Shareholders' Equity - Total' because it is more specific owner/shareholder equity and helps avoid double counting with MIB. Included 'Total Equity' only as fallback if labeling changes across years."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Continuing Operations",
+          "why": "Income statement attribution line, not the preferred balance-sheet non-controlling interest line for MIB.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement attribution line, not the preferred balance-sheet non-controlling interest line for MIB.",
+          "confidence": 0.12
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No balance-sheet non-controlling interest / minority interest line is present. Because BE uses 'Shareholders' Equity - Total', setting MIB to [] avoids double counting and is consistent with the provided statements."
+    }
+  ]
+}
