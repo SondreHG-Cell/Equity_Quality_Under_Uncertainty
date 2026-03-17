@@ -1,0 +1,224 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit total revenue line; suitable top-line and available in candidate list.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales",
+          "why": "Direct sales/revenue line; same values as Total Revenue and may be the primary label in some years.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using a priority list for revenue labels. 'Net sales' is the more specific operating top-line; 'Total Revenue' is a fallback."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials and consumables",
+          "why": "Direct production/input cost line and the best available match for cost of goods sold.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials and consumables"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the direct cost line from the candidate list."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs",
+          "why": "Overhead-style operating expense and valid SG&A component.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead-style operating expense and valid SG&A component, though sometimes smaller/more residual.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Headcount metric, not an expense line; not suitable for SG&A.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Staff costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Candidate list appears to miss a major SG&A component: 'Staff costs', which is a clear operating overhead line in the Income Statement. Included it along with candidate overhead rows 'Other external costs' and 'Other operating expenses'. Manual review flagged because selection uses a row outside the provided candidate list. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Staff costs"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Capitalized Research & Development Expenses - Supplemental",
+          "why": "Amortization of previously capitalized R&D, not current-period R&D expense.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Capitalized expenditure for research and development and similar",
+          "why": "Balance sheet asset, not income statement R&D expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Reserve for Development Expenses",
+          "why": "Equity reserve, not income statement R&D expense.",
+          "confidence": 0.03
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No current-period R&D expense row is identifiable in the provided statements. Candidate rows refer to balance sheet items or amortization, not XRD expense."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Best direct match for interest expense.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Too narrow to use as the main interest expense line unless nothing else exists.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest detail, not the main interest expense line.",
+          "confidence": 0.25
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Used 'Interest Expense' as primary. Added 'Financial costs' from the full preview as fallback because 2025 shows blank for 'Interest Expense' while 'Financial costs' is populated, suggesting a possible label/reporting change. Manual review flagged because fallback is outside the candidate list and is broader than pure interest expense. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Financial costs"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity - Restricted",
+          "why": "Equity component only, not full book equity.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity - Unrestricted",
+          "why": "Equity component only, not full book equity.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to parent company shareholders",
+          "why": "Best match because it captures parent shareholders' equity and excludes non-controlling interests.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Acceptable fallback, but less preferred if parent-only equity exists.",
+          "confidence": 0.75
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Shareholders Equity",
+          "why": "Balancing row, not preferred when explicit equity exists.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Equity",
+          "why": "Balancing row, not preferred when explicit equity exists.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Liability and Equity",
+          "why": "Not an equity line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Whole balance sheet total, not equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to parent company shareholders"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Parent-only equity is preferred to avoid double counting minority interests. 'Total Equity' included only as fallback."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest/non-controlling interest line is present in the provided Balance Sheet preview."
+    }
+  ]
+}
