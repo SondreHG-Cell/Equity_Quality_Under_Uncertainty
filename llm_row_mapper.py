@@ -143,9 +143,9 @@ SHORTLIST_RULES = {
     ),
     "XSGA_COMPONENTS": ShortlistRule(
         include=[
-            "selling, general", "selling general", "sg&a", "sga", "selling/general/admin",
+            "selling, general", "selling general", "sg&a", "sga", "selling/general/admin", "sales, general and administration",
             "sales and administration", "general and administrative", "general & administrative", "general and administration",
-            "administrative expenses", "selling expenses", "selling", "general", "admin", "external", 
+            "administrative expenses", "selling expenses", "selling", "general", "admin", "external", "marketing",
             "personnel", "salary", "wages", "personnel expenses", "employee benefits", "administrative", "administration", "employee",
             "other operating expenses", "share-based", "equity compensation", "operating expenses"
         ],
@@ -158,8 +158,8 @@ SHORTLIST_RULES = {
     ),
     "XINT": ShortlistRule(
         include=[
-            "interest expense", "interest expenses", "finance costs", "finance expense", "financial expenses", "net finance costs",
-            "interest on borrowings", "interest on debt", "interest on lease liabilities"
+            "interest expense", "interest expenses", "finance costs", "finance expense", "financial expense", "net finance costs",
+            "interest on borrowings", "interest on debt", "interest on lease liabilities", "financial cost"
         ],
         exclude=["total", "balancing", "interest income", "income", "received", "interest-bearing"],
     ),

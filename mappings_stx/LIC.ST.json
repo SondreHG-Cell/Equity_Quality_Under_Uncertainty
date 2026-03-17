@@ -6,13 +6,13 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Total Revenue",
-          "why": "Direct top-line revenue label; preferred over balancing item.",
+          "why": "Direct top-line revenue label and preferred over balancing item.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Balancing Item - Revenue",
-          "why": "Balancing row, not an actual reported revenue line.",
+          "why": "Explicitly a balancing row, not the reported revenue line.",
           "confidence": 0.05
         }
       ],
@@ -23,76 +23,126 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Selected the explicit reported revenue line and excluded the balancing item."
+      "notes": "Selected the explicit reported revenue line; excluded the balancing item."
     },
     {
       "variable": "COGS",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No cost of goods sold / cost of sales type row appears in the provided statements. This looks like an investment company-style income statement rather than a product/service cost presentation."
+      "notes": "No cost of goods sold / cost of sales line is present in the provided Income Statement. This appears to be an investment-type entity where such a line may not exist."
     },
     {
       "variable": "XSGA_COMPONENTS",
       "candidates": [
         {
           "sheet_name": "Income Statement",
-          "row_label": "Personnel Expenses",
-          "why": "Clear overhead component and preferred SG&A-type expense.",
-          "confidence": 0.95
+          "row_label": "Other External Expense",
+          "why": "Overhead-type operating expense and a valid SG&A component.",
+          "confidence": 0.92
         },
         {
           "sheet_name": "Income Statement",
-          "row_label": "Other External Expense",
-          "why": "Appears to be another operating overhead component not related to COGS, D&A, or finance items.",
-          "confidence": 0.76
+          "row_label": "Personnel Expenses",
+          "why": "Personnel costs are a standard SG&A component.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Headcount metric, not an expense row; not suitable for SG&A mapping.",
+          "confidence": 0.01
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
-          "row_label": "Personnel Expenses"
+          "row_label": "Other External Expense"
         },
         {
           "sheet_name": "Income Statement",
-          "row_label": "Other External Expense"
+          "row_label": "Personnel Expenses"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Candidate list only included Personnel Expenses, but the preview also shows Other External Expense, which appears to be an additional SG&A-type overhead component. No explicit SG&A total row is present. Manual review recommended to confirm Other External Expense is operating overhead and not a mixed/non-SG&A item. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Other External Expense"
+      "notes": "No explicit SG&A total line is present. Selected the best overhead component rows and excluded non-expense/statistical items and operating subtotals."
     },
     {
       "variable": "XRD",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No research and development row is present in the provided statements."
+      "notes": "No research and development expense line is present in the provided statements."
     },
     {
       "variable": "XINT",
       "candidates": [
         {
           "sheet_name": "Income Statement",
+          "row_label": "Financial Expense",
+          "why": "Broader finance-cost line that can serve as fallback if Interest Expense is missing.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
           "row_label": "Interest Expense",
-          "why": "Direct interest expense line; preferred choice.",
-          "confidence": 0.98
+          "why": "Most direct match to interest expense and preferred choice.",
+          "confidence": 0.97
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expense"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Selected the explicit interest expense row."
+      "notes": "Priority list: prefer the explicit interest expense line, then use financial expense as fallback."
     },
     {
       "variable": "BE",
-      "candidates": [],
-      "final_choice": [],
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total",
+          "why": "Best direct match for book equity attributable to shareholders; preferable to generic Total Equity.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Generic total equity line; acceptable fallback if shareholder equity line is unavailable.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Liability and Equity",
+          "why": "Balancing row, not an equity measure.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Liabilities & Equity",
+          "why": "Total balance sheet size, not equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
       "needs_manual_review": false,
-      "notes": "No Balance Sheet preview was provided, so book equity cannot be identified from the available sheets. Manual review is required once the Balance Sheet is available."
+      "notes": "Selected shareholder equity as primary book equity measure, with Total Equity as fallback. No separate non-controlling interest line is present, so BE can use total shareholder equity without double counting."
     },
     {
       "variable": "MIB",
@@ -100,19 +150,19 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Comprehensive Income - Attributable to Minority Interest - Total",
-          "why": "This is an income/comprehensive income allocation line, not a balance sheet minority interest equity line.",
-          "confidence": 0.08
+          "why": "This is an income statement flow item, not a balance sheet minority interest/equity stock measure.",
+          "confidence": 0.02
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Comprehensive Income before Minority Interest - Total",
-          "why": "This is not minority interest; it is a pre-allocation comprehensive income total.",
+          "why": "Not a minority interest balance sheet line.",
           "confidence": 0.01
         }
       ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "The provided candidates are income statement comprehensive income lines, not balance sheet non-controlling interest / minority interest. No Balance Sheet preview was provided, so MIB cannot be identified from the available sheets."
+      "notes": "No balance sheet line for minority interest / non-controlling interests is present. Per instructions, set to empty when the item truly does not exist."
     }
   ]
 }
