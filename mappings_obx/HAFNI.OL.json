@@ -1,0 +1,314 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Top-line revenue label used in earlier years; suitable as a fallback in a changing-label priority list.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue (Hafnia vessels and TC vessels)",
+          "why": "Revenue component only, not total company revenue.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue (External vessels in disponent-owner pools)",
+          "why": "Revenue component only, not total company revenue.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Best consolidated top-line revenue label, populated across all shown years.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income",
+          "why": "Finance income, not operating revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total comprehensive income for the year",
+          "why": "Bottom-line comprehensive income, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Sales and leaseback liabilities (accounted for as financing transaction)",
+          "why": "Balance sheet liability, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Deferred revenue",
+          "why": "Liability balance, not reported revenue.",
+          "confidence": 0.03
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use as priority list to accommodate label change over time; later years appear to use 'Total Revenue' while earlier years use 'Revenue'."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Inventories - Raw Materials - Net",
+          "why": "Inventory asset row, not an income statement expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Vessel operating expenses"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the correct concept. This shipping company appears to report direct operating/service costs across multiple rows such as 'Vessel operating expenses', voyage expenses, technical management expenses, charter hire expenses, and pool distributions rather than a single standard COGS line. Selected the closest direct-cost row minimally, but manual review is needed to determine whether PROF COGS should combine several direct cost rows. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Vessel operating expenses"
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue (External vessels in disponent-owner pools)",
+          "why": "Revenue, not SG&A.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Vessel operating expenses",
+          "why": "Direct operating cost, closer to COGS than SG&A.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A component and populated; best match under SG&A hierarchy.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Voyage expenses (External vessels in disponent-owner pools)",
+          "why": "Direct voyage cost, not SG&A.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Pool distributions for external vessels in disponent-owner pools",
+          "why": "Direct operating/pool cost, not SG&A.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Wages and salaries/social security costs",
+          "why": "Could be an SG&A component, but the explicit SG&A labor row is better.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-Based Compensation in Selling, General & Administrative Expenses",
+          "why": "Relevant SG&A component, but explicit SG&A row exists and should be preferred alone.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Headcount statistic, not expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in Selling, General & Administrative Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Explicit populated SG&A row exists, so selected only that row per hierarchy."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line is visible on the provided income statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Finance cost heading, but appears unpopulated and less granular than the specific interest line.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense",
+          "why": "Best recurring financing-cost line; preferred over net finance subtotal and underlying balancing rows.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Recurring finance cost component, but likely already included within total 'Interest expense'.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Loss arising on interest rate cap designated as a cash flow hedge",
+          "why": "Derivative/hedging valuation item, excluded by rule.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance expense - net",
+          "why": "Acceptable only if no better granular line exists; here 'Interest expense' is more specific.",
+          "confidence": 0.5
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Not a finance cost.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental disclosure and likely overlapping with interest expense.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other lease liabilities",
+          "why": "Liability balance, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Finance lease liabilities",
+          "why": "Liability balance, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Equity item, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equity item, not interest expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the specific recurring interest line and avoided double counting with lease-interest component and net finance subtotal."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity investments at FVOCI - net change in fair value",
+          "why": "OCI movement, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity",
+          "why": "Best book equity line available; no separate parent-equity line is shown and NCI appears absent.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Also valid total equity line, useful as fallback if label changes.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Common Shareholders - Number",
+          "why": "Shareholder count, not equity value.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity and liabilities",
+          "why": "Total balance sheet size, not equity alone.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list provided to handle possible label changes. Since no non-controlling interest amount is shown, total shareholders equity is appropriate for BE."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income statement allocation line, not balance sheet minority equity.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Correct minority-interest concept, but no values shown in preview.",
+          "confidence": 0.65
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Correct minority-interest concept, but no values shown in preview.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement allocation line, not balance sheet minority equity.",
+          "confidence": 0.07
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No non-controlling interest balance is visible; use 0 to avoid double counting with BE."
+    }
+  ]
+}
