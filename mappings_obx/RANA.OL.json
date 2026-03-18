@@ -1,0 +1,225 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue label; appears as the primary revenue line in some years.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales of Goods & Services - Gross",
+          "why": "Revenue-related line but gross and not the best single reported top-line when cleaner revenue labels exist.",
+          "confidence": 0.62
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Clear total top-line revenue line and suitable fallback if Revenue is missing in some years.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income - Bank Deposits",
+          "why": "Financial income, not operating revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income - Related Parties",
+          "why": "Financial income, not operating revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use as priority list, not a sum. 'Revenue' is preferred; 'Total Revenue' is fallback across years."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw Materials and Consumables Used",
+          "why": "Best direct production input cost line available; closest match to cost of goods sold.",
+          "confidence": 0.88
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw Materials and Consumables Used"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the direct production/service cost component available on the income statement."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefit expenses",
+          "why": "Operating overhead/personnel cost and appropriate SG&A component.",
+          "confidence": 0.91
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Expenses",
+          "why": "Broad operating overhead bucket; suitable SG&A component when no explicit SG&A subtotal exists.",
+          "confidence": 0.89
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefit expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A row is present, so selected the best overhead buckets. Excluded depreciation and COGS-related lines."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development row is visible on the provided income statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broad finance-cost total, but less preferred than granular recurring interest components.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest",
+          "why": "Direct interest expense line; strong match for recurring borrowing cost.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Recurring lease-interest cost; should be included in financing costs.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Capitalized Borrowing",
+          "why": "Capitalized interest is generally excluded from current-period expense.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Financial Expense - Related Parties",
+          "why": "Could reflect financing cost, but appears mostly absent and less clearly recurring interest.",
+          "confidence": 0.34
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Financial Expense - Other",
+          "why": "Likely recurring other finance expense; acceptable component when using granular finance-cost rows.",
+          "confidence": 0.66
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Derivatives on interest rates - Hedging - Gain/Loss",
+          "why": "Valuation/hedging gain-loss, not recurring interest expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Duplicate supplemental disclosure of lease-interest already reported above; avoid double counting.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Lease liabilities",
+          "why": "Balance sheet liability, not an income statement interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Lease liabilities (current portion)",
+          "why": "Balance sheet liability, not an income statement interest expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Financial Expense - Other"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred granular recurring finance-cost components over the broader 'Financial expenses' total. Excluded derivatives/hedging items, capitalized interest, and supplemental duplicate disclosure."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other equity",
+          "why": "Equity component only, not total book equity.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available total equity line on the balance sheet.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Entire balance sheet total, not equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate parent-equity line is shown. Using 'Total Equity' as BE; therefore MIB is set to empty to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest/non-controlling interest line is visible on the provided balance sheet."
+    }
+  ]
+}

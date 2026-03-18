@@ -1,0 +1,255 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating revenues",
+          "why": "Best revenue label; however it appears twice, and the lower instance appears to include 'Other operating revenues' in some years.",
+          "confidence": 0.89
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Finance income, not top-line revenue.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance Income",
+          "why": "Finance income, not operating sales/revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating revenues"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "'Operating revenues' appears twice with different values. The lower occurrence seems to be the total including 'Other operating revenues' in some years, but duplicate identical labels cannot be disambiguated in the required output format."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Materials",
+          "why": "Direct production/input cost and best match for cost of sales.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw Materials",
+          "why": "Inventory asset, not an income statement expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Materials"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the direct operating cost line from the income statement."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-based Compensation in SGA",
+          "why": "Explicit SG&A component.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating expenses",
+          "why": "Overhead bucket, but component rows exist so subtotal is less preferred.",
+          "confidence": 0.54
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other External Expenses - Third Parties",
+          "why": "Overhead component.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expense - Supplemental",
+          "why": "Explicit R&D exists only as supplemental and below EBIT, so not included in SG&A components to avoid misclassification.",
+          "confidence": 0.21
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Payroll expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Management Remuneration"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-based Compensation in SGA"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other External Expenses - Third Parties"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Maintenance"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rental Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Expense"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Preferred component overhead rows over subtotal 'Operating expenses'. Several strong SG&A components ('Payroll expenses', 'Management Remuneration', 'Maintenance', 'Rental Expense', 'Other Operating Expense') were not in the candidate list, so rows were chosen from the full preview. Excluded depreciation/amortisation and excluded supplemental R&D because it appears below operating profit. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Payroll expenses, [Income Statement] Management Remuneration, [Income Statement] Maintenance, [Income Statement] Rental Expense, [Income Statement] Other Operating Expense"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expense - Supplemental",
+          "why": "Explicit R&D expense line; appears below EBIT and is supplemental, but still the best available R&D measure.",
+          "confidence": 0.86
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Capitalized Research & Development Expenses - Supplemental",
+          "why": "Amortization of previously capitalized R&D, not current-period R&D expense.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs, Gross",
+          "why": "Balance sheet asset, not period expense.",
+          "confidence": 0.03
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expense - Supplemental"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Only clear R&D line is supplemental and below operating profit, so it is mapped to XRD but not added to XSGA_COMPONENTS."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Primary recurring interest cost line.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Recurring lease-related interest expense; appropriate to include with interest expense.",
+          "confidence": 0.86
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "attributable o non-controlling interests",
+          "why": "Minority attribution, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority interests",
+          "why": "Minority attribution, not interest expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used granular recurring finance-cost components and excluded FX and other net financial items."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Group equity",
+          "why": "Best owner/parent equity measure; preferable to total 'Equity' because MIB is reported separately.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity",
+          "why": "Total equity including non-controlling interests, so less preferred when NCI is separately available.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity and liabilites",
+          "why": "Balance sheet total, not equity attributable to owners.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Group equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred parent/group equity because non-controlling interests are separately reported in MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Best match for minority interest / NCI.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equivalent concept, secondary label.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority interests",
+          "why": "Income statement attribution, not balance sheet minority equity.",
+          "confidence": 0.16
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the balance-sheet NCI line to pair with BE without double counting."
+    }
+  ]
+}

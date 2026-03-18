@@ -1,0 +1,393 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue line at top of income statement; best match for total revenue/sales.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Financial income, not operating revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Income/(loss) before tax",
+          "why": "Pretax profit, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Ne tincome",
+          "why": "Net income, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reported Comprehensive Income",
+          "why": "Comprehensive income, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income before Minority Interest - Total",
+          "why": "Comprehensive income subtotal, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "VAT and Sales Related Taxes",
+          "why": "Balance sheet/current asset or liability related label, not revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the primary revenue line as the REVT priority label."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials, energy costs and freight",
+          "why": "Direct production/input cost line; best match for cost of goods sold/cost of sales.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Restructuring costs in raw materials, energy costs and freight",
+          "why": "Restructuring item, not recurring COGS.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw Materials",
+          "why": "Inventory balance sheet item, not income statement expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials energy costs and freight - Balancing value",
+          "why": "Balancing row should be excluded when the underlying component exists.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials, energy costs and freight"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the recurring direct cost line; excluded restructuring and balancing rows."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead bucket, but a more explicit SG&A row exists.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and administrative expense",
+          "why": "Explicit SG&A row and populated in multiple years; preferred under the SG&A hierarchy.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development",
+          "why": "Dedicated R&D line exists, but it appears in a supplemental section below operating profit and should not be added to XSGA here.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-Based Compensation",
+          "why": "Could be an SG&A component if populated, but no visible values in preview.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Acc Amort/Imp Research & Development Costs",
+          "why": "Balance sheet/intangible contra account, not SG&A expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employee benefits",
+          "why": "Balance sheet liability, not SG&A expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and administrative expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "An explicit SG&A line exists and is populated for multiple years, so selected only that row per hierarchy rule. Did not add Other operating expenses to avoid overcounting. Did not add Research and Development because the visible R&D line appears in a supplemental section below operating profit."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development",
+          "why": "Dedicated R&D expense label; best match for XRD.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Acc Amort/Imp Research & Development Costs",
+          "why": "Balance sheet contra-asset, not current-period R&D expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development costs net - Balancing value",
+          "why": "Balance sheet balancing row, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Mapped to the dedicated R&D line. It appears in a supplemental section below operating profit, so it was not also added to XSGA_COMPONENTS."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense and other financial items",
+          "why": "Single recurring finance cost total available consistently; preferred over potentially overlapping subcomponents to avoid double counting.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses on Capital Financing, Gross",
+          "why": "Semantically relevant but not visibly populated; also may overlap with broader interest expense lines.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Recurring interest component, but likely included in broader interest expense totals.",
+          "confidence": 0.5
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Semantically strong, but visible values are absent and may duplicate other interest rows.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Capital Financing - Gross",
+          "why": "Relevant component for some years, but incomplete across years and may overlap with broader interest expense.",
+          "confidence": 0.5
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Capitalized Interest",
+          "why": "Should be excluded from expense because it reduces/offsets reported interest cost rather than representing standalone recurring expense to add.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense",
+          "why": "Strong interest label for several years, but likely overlaps with lease/capital financing components.",
+          "confidence": 0.65
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Pensions",
+          "why": "Finance-related but not core borrowing interest; lower priority.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expense",
+          "why": "May include non-interest items; not ideal standalone.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Rate Swaps",
+          "why": "Derivative-related, likely valuation/non-recurring rather than recurring interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Not finance cost.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority interests",
+          "why": "Not finance cost.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental component and likely duplicative of the main lease-interest line.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Interest Rate Swap",
+          "why": "Balance sheet derivative, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current lease liabilities",
+          "why": "Liability balance, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-current lease liabilities",
+          "why": "Liability balance, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Equity item, not finance cost.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equity item, not finance cost.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense and other financial items"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the broader recurring finance-cost row because the available subcomponents appear overlapping/incomplete across years; this avoids double counting."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share of net income/(loss) in equity-accounted investees",
+          "why": "Income statement earnings item, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Shareholders of the parent",
+          "why": "Income attribution line on income statement, not balance sheet equity balance.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "OCI - Share of other comprehensive income of equity-accounted investees, excluding remeasurements",
+          "why": "OCI component, not equity balance.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net gain/(loss) on equity instruments at fair value through other comprehensive income",
+          "why": "OCI component, not equity balance.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to shareholders of the parent",
+          "why": "Preferred owner/parent equity line that excludes non-controlling interests.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Would include non-controlling interests, so lower priority than parent-only equity.",
+          "confidence": 0.6
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to shareholders of the parent"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the parent-attributable equity line to exclude non-controlling interests from BE."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income attribution line, not balance sheet minority equity balance.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority interests",
+          "why": "Income attribution line, not balance sheet minority equity balance.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Direct balance sheet minority interest/NCI line; best match.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Also a direct minority interest line; useful alternate label across years.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income before Minority Interest - Total",
+          "why": "Comprehensive income subtotal, not minority equity balance.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Provided balance-sheet NCI labels as a priority list for minority interest."
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Direct top-line revenue label and preferred candidate; matches Net sales values exactly and is a standard total revenue line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales",
+          "why": "Also a valid top-line revenue label in the preview, but Total Revenue is the more explicit reported revenue line.",
+          "confidence": 0.95
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit top-line revenue line from the candidate list."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials and consumables",
+          "why": "Direct production/input cost and strong COGS component.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Goods for resale",
+          "why": "Direct cost of purchased goods sold; also a COGS component.",
+          "confidence": 0.95
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw materials and consumables"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Goods for resale"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the direct cost component rows from the income statement. Did not use balance sheet inventory rows because COGS should come from the income statement."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs",
+          "why": "Operating overhead bucket; likely includes selling/admin/other external operating costs.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel cost",
+          "why": "Personnel expenses are a core SG&A/overhead component.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Additional operating overhead bucket above EBIT; acceptable since no explicit SG&A subtotal exists.",
+          "confidence": 0.78
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other external costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel cost"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A subtotal is present, so selected the best overhead component rows above EBIT. Excluded COGS rows and depreciation/amortization/impairment rows."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development row is visible in the income statement preview."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses",
+          "why": "Best direct recurring financing cost line. Prefer this over total Financial expenses because the latter includes non-interest items.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "IFRS 16 interest expenses",
+          "why": "Looks like a financing cost subcomponent, but adding it would risk double counting because one Interest expenses row appears to already include lease interest in some years.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broader finance-cost total, but includes non-interest items and is less preferred than specific interest expense.",
+          "confidence": 0.55
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected only Interest expenses to avoid double counting with IFRS 16 interest expenses and broader Financial expenses."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to parent company shareholders",
+          "why": "Preferred owner/parent equity line; excludes non-controlling interests and therefore is ideal for BE.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY",
+          "why": "Usable only as fallback if parent equity were unavailable, but it includes non-controlling interests.",
+          "confidence": 0.52
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to parent company shareholders"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used parent equity to keep BE exclusive of minority interests."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Direct balance-sheet minority interest / NCI line; preferred for MIB.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equivalent concept, but Non-controlling interests is the more standard balance-sheet label here.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the balance-sheet NCI line to pair with parent-only BE without double counting."
+    }
+  ]
+}
