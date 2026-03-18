@@ -1,0 +1,180 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Direct top-line revenue label; equals Net sales in the preview and is the clearest total revenue line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales",
+          "why": "Also a direct top-line revenue label; useful as an alternate label if reporting changes across years.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using a priority list of revenue labels, not summing them."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services",
+          "why": "Best match for direct production/service costs in the income statement.",
+          "confidence": 0.95
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the income statement cost line rather than balance sheet inventory-related rows."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A row and it is populated, so per rules it should be selected alone rather than combining component buckets.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Overhead-related component, but not needed because an explicit populated SG&A line exists.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development",
+          "why": "R&D label exists, but it appears below operating result and should not be added to SG&A from this presentation.",
+          "confidence": 0.51
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling, General & Administrative Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Per SG&A hierarchy, selected only the explicit populated SG&A row. Did not add Personnel expenses or Other operating costs because the explicit SG&A line exists. Did not add Research & Development because it appears below operating result, so including it in SG&A could misclassify/non-operating double count."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development",
+          "why": "Dedicated R&D label exists. It appears below operating result, so it can still be mapped to XRD but should not be added to SG&A.",
+          "confidence": 0.76
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Mapped the dedicated R&D line even though it appears below operating result; not included in XSGA_COMPONENTS due to placement rule."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses on bank loans and overdrafts",
+          "why": "Granular recurring interest expense line; preferred over broader Financial expenses.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Recurring lease-related interest cost; should be included with interest expense components.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broader finance-cost bucket, but less preferred because granular interest components are available.",
+          "confidence": 0.71
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses on bank loans and overdrafts"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used granular recurring interest components and excluded the broader Financial expenses row to avoid double counting and inclusion of non-interest finance items."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available equity line; no separate parent/owners' equity line is shown.",
+          "confidence": 0.91
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Duplicate-equivalent equity label that may be used in some years; included as fallback priority.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No owner/parent-only equity line is present, so using total equity as BE. Therefore MIB is left empty to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Correct concept for minority interest, but no values are shown and BE uses total equity; selecting both could double count.",
+          "confidence": 0.63
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Left empty because BE is mapped to Total Equity/Total equity; adding Non-controlling interests separately could double count. The preview does not show a distinct populated NCI amount."
+    }
+  ]
+}
