@@ -5,20 +5,56 @@
       "candidates": [
         {
           "sheet_name": "Income Statement",
+          "row_label": "Insurance Income - Total",
+          "why": "Revenue-related line, but it only captures insurance income component and is far smaller than full top-line.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
           "row_label": "Total Revenue",
-          "why": "Direct top-line revenue label and best match for total revenue / sales.",
+          "why": "Best match for total top-line revenue/sales; appears to aggregate the insurer's revenue streams.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Income Statement",
-          "row_label": "Business-Related Financing Revenue - Other",
-          "why": "Financing-related revenue component, not the overall top line.",
+          "row_label": "Investment income",
+          "why": "Non-core revenue component, not total top-line.",
           "confidence": 0.08
         },
         {
           "sheet_name": "Income Statement",
-          "row_label": "Business-Related Financing Revenue - Other - Balancing value",
-          "why": "Balancing item, not an appropriate reported top-line revenue row.",
+          "row_label": "Non-Insurance/Non-Technical Income/Expense - Total",
+          "why": "Below-operating/non-technical subtotal, not revenue.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reported Comprehensive Income",
+          "why": "Bottom-line comprehensive income, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive income for the period",
+          "why": "Bottom-line comprehensive income, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued Interest Income",
+          "why": "Balance sheet asset, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Prepaid expenses and accrued income",
+          "why": "Balance sheet asset, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued expenses and deferred income",
+          "why": "Balance sheet liability, not revenue.",
           "confidence": 0.01
         }
       ],
@@ -29,7 +65,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Selected the explicit total revenue line."
+      "notes": "Selected the single best top-line revenue row."
     },
     {
       "variable": "COGS",
@@ -41,7 +77,7 @@
         }
       ],
       "needs_manual_review": true,
-      "notes": "No candidate was provided. For an insurance company, claims incurred is the closest analogue to direct cost of sales / service costs. Chosen from the full preview because none of the candidate lists contained an appropriate insurance COGS-style row."
+      "notes": "No COGS candidates were provided. For an insurance company, the closest analogue to direct cost of services is claims incurred. Selected 'Total claims incurred (after outward reinsurance)' from the income statement, but this requires manual review because insurance statements do not present standard industrial COGS."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -49,13 +85,13 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Operating expenses",
-          "why": "Best overhead bucket available on the income statement; appears to capture operating overhead separate from claims incurred.",
-          "confidence": 0.93
+          "why": "Best available overhead bucket and valid candidate; populated across years.",
+          "confidence": 0.91
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
-          "why": "Headcount metric, not an expense row.",
+          "why": "Operational metric, not an expense row.",
           "confidence": 0.01
         }
       ],
@@ -66,21 +102,52 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Selected the explicit operating overhead row. Excluded balancing rows and non-expense rows."
+      "notes": "Used 'Operating expenses' as the best SG&A/overhead bucket. Did not use 'Selling, General & Administrative Expenses - Balancing value' because balancing rows are explicitly excluded."
     },
     {
       "variable": "XRD",
       "candidates": [],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No research and development expense line appears to exist in the provided statements."
+      "notes": "No dedicated research and development expense line appears in the provided income statement."
     },
     {
       "variable": "XINT",
-      "candidates": [],
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Dividends on shares and participating interests",
+          "why": "Investment income, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shares and participating interests",
+          "why": "Balance sheet asset, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income, bonds and other interest-bearing securities",
+          "why": "Interest income, opposite of interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Bonds and Other Interest-Bearing Securities",
+          "why": "Balance sheet asset, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued Interest Income",
+          "why": "Balance sheet asset, not interest expense.",
+          "confidence": 0.01
+        }
+      ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No interest expense or net finance cost line appears in the provided income statement. Investment charges are not treated as interest expense here."
+      "notes": "No suitable recurring interest expense / finance cost row is visible in the provided statements."
     },
     {
       "variable": "BE",
@@ -88,19 +155,19 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Shareholders' Equity - Total",
-          "why": "Best match for book equity and preferable to total equity because it clearly refers to shareholders' equity.",
-          "confidence": 0.98
+          "why": "Best match for book equity attributable to shareholders; preferred over generic total equity.",
+          "confidence": 0.99
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total Equity",
-          "why": "Acceptable fallback, but less specific than shareholders' equity.",
-          "confidence": 0.9
+          "why": "Also matches equity, but less specific than shareholder equity.",
+          "confidence": 0.88
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total equity and liabilities",
-          "why": "Not equity alone; includes liabilities, so not appropriate.",
+          "why": "Full balance sheet total, not equity.",
           "confidence": 0.01
         }
       ],
@@ -115,7 +182,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list uses the more specific shareholders' equity label first, then total equity as fallback."
+      "notes": "Priority list uses specific shareholder equity first, then generic total equity as fallback."
     },
     {
       "variable": "MIB",

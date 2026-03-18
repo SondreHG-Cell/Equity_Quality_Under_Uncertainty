@@ -1,0 +1,213 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue line; preferred over duplicate subtotal 'Total Revenue'.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales/Plantation",
+          "why": "Revenue-like label but appears non-core/alternate and not populated in preview.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Valid revenue subtotal, but duplicate of 'Revenue' and less preferred than the primary line.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues/COGS",
+          "why": "This is COGS, not revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Use 'Revenue' as primary; 'Total Revenue' as fallback for label changes across years."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues/COGS",
+          "why": "Direct COGS label from income statement; matches values of 'Costs of goods sold'.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw materials",
+          "why": "Inventory component on balance sheet, not period cost of goods sold.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues/COGS"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit COGS row from the candidate list."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Headcount metric, not an income statement expense row.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Staff Costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other expenses"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list clearly misses the correct labels. No explicit SG&A line is present; selected the best overhead component rows from the Income Statement. Excluded 'Operating (Income)/Expense - Net' because it is a subtotal and may include non-SG&A items such as D&A/other operating items. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Staff Costs, [Income Statement] Other expenses"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line is visible in the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense",
+          "why": "Populated interest expense line; best match for XINT.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Same concept with different capitalization, but unpopulated in preview; useful as fallback if label changes by year.",
+          "confidence": 0.72
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list uses the populated lowercase line first, then the capitalized variant as fallback."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity Earnings - before Tax",
+          "why": "Income statement earnings line, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to owners of the Company",
+          "why": "Preferred parent/owner equity line that excludes non-controlling interests.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Includes non-controlling interests, so less preferred when owner equity is available.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total liabilities and equity",
+          "why": "Balance sheet total, not equity attributable to shareholders.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to owners of the Company"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred owner-attributable equity to avoid double counting with MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interest",
+          "why": "Income statement allocation of earnings, not balance sheet minority equity.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement allocation of earnings, not balance sheet minority equity.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income statement OCI/comprehensive income allocation, not balance sheet minority equity.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Direct balance sheet minority equity line; preferred.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equivalent balance sheet label; fallback if reporting label changes.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used balance sheet NCI labels only; income statement minority allocations were excluded."
+    }
+  ]
+}

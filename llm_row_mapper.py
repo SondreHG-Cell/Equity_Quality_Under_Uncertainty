@@ -14,7 +14,7 @@ from openai import OpenAI
 # -----------------------------
 # Config
 # -----------------------------
-DEFAULT_MODEL = "gpt-5.1"  # user request
+DEFAULT_MODEL = "gpt-5.4"  # user request
 # GPT-5.1 supports configurable reasoning effort via Responses API docs. :contentReference[oaicite:1]{index=1}
 DEFAULT_REASONING_EFFORT = "medium"  # "none"|"low"|"medium"|"high" (try "low" first)
 
@@ -129,12 +129,12 @@ class ShortlistRule:
 
 SHORTLIST_RULES = {
     "REVT": ShortlistRule(
-        include=["revenue", "revenues", "sales", "turnover"],
+        include=["revenue", "revenues", "sales", "turnover", "income"],
         exclude=["balancing", "other", "net", "income tax", "operating income", "net income", "financial income"],
     ),
     "COGS": ShortlistRule(
         include=[
-            "cost of sales", "cost of revenue", "cost of goods", "cost of services",
+            "cost of sales", "cost of revenue", "cost of goods", "cost of services", "material", "cost of",
             "raw materials and consumables", "materials and services", "raw materials", "property costs",
             "subcontract", "subcontractor", "subcontractors", "production costs", "purchased goods and services",
             "traffic charges", "direct costs", "project costs", "purchases", "changes in inventory", "goods for resale"
@@ -145,21 +145,22 @@ SHORTLIST_RULES = {
         include=[
             "selling, general", "selling general", "sg&a", "sga", "selling/general/admin", "sales, general and administration",
             "sales and administration", "general and administrative", "general & administrative", "general and administration",
-            "administrative expenses", "selling expenses", "selling", "general", "admin", "external", "marketing",
+            "administrative expenses", "selling expenses", "selling", "general", "admin", "external", "marketing", "staff", "staf",
             "personnel", "salary", "wages", "personnel expenses", "employee benefits", "administrative", "administration", "employee",
-            "other operating expenses", "share-based", "equity compensation", "operating expenses"
+            "other operating expenses", "share-based", "equity compensation", "operating expenses",
+            "r&d", "research", "development", "research and development"
         ],
         exclude=["total", "balancing", "cost of sales", "cost of revenue", "cogs", "depreciation", "amortization",
                  "impairment", "interest", "tax", "finance", "financial"],
     ),
     "XRD": ShortlistRule(
-        include=["r&d", "research", "development", "research and development"],
+        include=["r&d", "research", "development", "research and development", "r & d"],
         exclude=["total", "balancing"],
     ),
     "XINT": ShortlistRule(
         include=[
-            "interest expense", "interest expenses", "finance costs", "finance expense", "financial expense", "net finance costs",
-            "interest on borrowings", "interest on debt", "interest on lease liabilities", "financial cost"
+            "interest expense", "interest expenses", "finance costs", "finance expense", "financial expense", "net finance costs", "borrowing costs",
+            "interest on borrowings", "interest on debt", "interest on lease liabilities", "financial cost", "lease interest", "lease liabilities", "interest"
         ],
         exclude=["total", "balancing", "interest income", "income", "received", "interest-bearing"],
     ),
@@ -167,12 +168,12 @@ SHORTLIST_RULES = {
         include=[
             "equity attributable to shareholders of the parent", "equity attributable to owners",
             "owners' equity", "shareholders' equity", "parent equity",
-            "total equity", "capital and reserves", "equity"
+            "total equity", "capital and reserves", "equity", "parent", "shareholders"
         ],
         exclude=["total assets", "liabilities", "balancing"],
     ),
     "MIB": ShortlistRule(
-        include=["non-controlling interests", "non-controlling interest", "noncontrolling interests", "minority interest"],
+        include=["non-controlling interests", "non-controlling interest", "noncontrolling interests", "minority interest", "minority"],
         exclude=["total", "balancing"],
     ),
 }
@@ -363,11 +364,12 @@ def build_prompt(
     lines.append("- If R&D is already embedded in the selected SG&A/operating expenses bucket (or the statement clearly indicates R&D is included in SG&A), then do NOT add a separate R&D row to XSGA_COMPONENTS (to avoid double counting).")
     lines.append("")
 
-    # XINT priority
-    lines.append("Interest expense rule (XINT):")
-    lines.append("- XINT should be treated as a single reported line item that may change label over time.")
-    lines.append("- Therefore, for XINT you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
-    lines.append("- Do not try to sum interest expense rows; later code will select the first non-missing value per year.")
+    # XINT sum
+    lines.append("Finance cost rule (XINT):")
+    lines.append("- XINT should capture recurring financing costs (primarily interest and other recurring finance costs).")
+    lines.append("- XINT may therefore be a SUM of multiple recurring finance cost rows (e.g., 'Interest expense', 'Interest on debt/borrowings', 'Interest on lease liabilities', 'Other financial expenses' if recurring).")
+    lines.append("- EXCLUDE non-recurring/valuation items such as: foreign exchange gain/loss, FX revaluation, fair value changes, derivative gains/losses, impairment/write-downs, and other one-off financial items.")
+    lines.append("- Avoid double counting: do NOT select both a 'Total/Net finance costs' row and its underlying components. Prefer the most granular recurring components; if only a total/net finance cost line exists, select ONLY that single row.")
     lines.append("")
 
     # REVT priority
@@ -378,12 +380,13 @@ def build_prompt(
     lines.append("")
 
     lines.append("R&D rule (XRD):")
-    lines.append("- XRD should capture a dedicated R&D expense line when it exists (e.g., labels containing 'research' and/or 'development').")
-    lines.append("- The PROF formula uses (XSGA_COMPONENTS - XRD). This is intended to remove R&D from SG&A regardless of whether firms report R&D separately or embedded in overhead.")
-    lines.append("- If the income statement reports R&D as a separate expense line and it is NOT already included in the SG&A/operating overhead bucket(s) you selected for XSGA_COMPONENTS, then include that same R&D line in BOTH XRD and XSGA_COMPONENTS.")
-    lines.append("- If R&D is already embedded in the selected SG&A/operating expenses bucket (or the statement clearly indicates it is included), then include the R&D line in XRD only (do NOT add it to XSGA_COMPONENTS) to avoid double counting.")
-    lines.append("- XRD may change label over time; therefore you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
-    lines.append("- Do not sum; later code will select the first non-missing value per year. If no dedicated R&D line exists, use final_choice=[].")
+    lines.append("- XRD should capture a dedicated R&D expense line when it exists (labels containing 'research' and/or 'development').")
+    lines.append("- Use the placement rule above: prefer R&D rows that appear ABOVE 'Operating profit/Operating income/EBIT'.")
+    lines.append("- If such an above-EBIT R&D row exists and is NOT already included in the SG&A/operating overhead bucket(s) you selected for XSGA_COMPONENTS, then include the same row in BOTH XRD and XSGA_COMPONENTS (so that XSGA_COMPONENTS - XRD removes it).")
+    lines.append("- If the SG&A final choice clearly does not include R&D (if it is stated in the row(s) chosen), then the choice for XRD should be an empty list.")
+    lines.append("- If the only R&D-related rows appear BELOW 'Operating profit/Operating income/EBIT', do NOT include them in XSGA_COMPONENTS, but you may still map XRD to this. Otherwise use final_choice=[] if there are no suitable rows.")
+    lines.append("- XRD may change label over time; you may output multiple final_choice rows as a PRIORITY list (most preferred first).")
+    lines.append("- Do not sum; later code will select the first non-missing value per year.")
     lines.append("")
 
     lines.append("Book equity rule (BE):")
@@ -406,6 +409,10 @@ def build_prompt(
     lines.append("- Only use 'Total equity' for BE if no owner/parent equity line exists; in that case set MIB final_choice to [] (so MIB becomes 0).")
     lines.append("")
 
+    lines.append("Ordering rule:")
+    lines.append("- The order of rows in the preview reflects the income statement order. Use that order to decide whether an item is above or below operating profit.")
+    lines.append("")
+
     # Missing data rule
     lines.append("Missing data rule (IMPORTANT):")
     lines.append("- If a target variable truly does not exist in the statements, set final_choice to [].")
@@ -418,12 +425,13 @@ def build_prompt(
     lines.append("IMPORTANT DATA RULE:")
     lines.append("- If a row label is present in the sheet, it means it has a value in at least one year (even if columns B–F are empty in this preview).")
     lines.append("- Therefore, do NOT exclude a row just because its A–F preview values are empty or 'nan'.")
+    lines.append("- If a row label is present and matches well with the target variable, but all its preview values appear empty, you should still consider it a strong candidate. This can happen when the firm has changed the label for reporting the variable in recent years.")
     lines.append("- Prefer the most semantically correct label even if its preview values appear empty.")
     lines.append("")
 
     # Preview
     lines.append("Context: Below is a preview of the first 6 columns (A–F) from each sheet.")
-    lines.append("Column A is the row label. Columns B–F are recent values/years when present.")
+    lines.append("Column A is the row label. Columns B–F are recent values.")
     lines.append("Use this numeric preview to detect duplicated totals/subtotals (e.g., a 'Total ...' row identical to a component row).")
     lines.append("")
 

@@ -1,0 +1,185 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Best direct top-line revenue label; preferable to duplicate total row 'Total Revenue'.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Duplicate total revenue line with identical values; lower priority than non-total 'Revenue'.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating Income - Total (Non-revenue) - Other",
+          "why": "Clearly non-revenue operating income, not sales.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used priority order for possible label changes over time; prefer 'Revenue' over duplicate total row."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear cost of goods sold / cost of sales line appears on the Income Statement. 'Personal expenses' and 'Other operating expenses' are overhead/opex, not COGS."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Valid overhead bucket and the only provided candidate; should be included in SG&A components.",
+          "confidence": 0.87
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personal expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED.No explicit SG&A subtotal exists. Selected best overhead component rows from the full A-column preview. 'Personal expenses' is a major operating overhead line clearly missing from candidates, so outside-candidate selection was necessary. Excluded R&D and D&A per rules. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Personal expenses"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development expenses",
+          "why": "Direct match to R&D expense.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Direct R&D line present."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses",
+          "why": "Broader finance-cost line; useful fallback if specific interest expense is unavailable in some years.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net",
+          "why": "Most specific interest expense line and preferred choice.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Specific lease-interest component only; too narrow for primary mapping.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental component, not preferred as primary interest expense.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list: prefer the specific interest line, then use broader finance expense if needed. Excluded lease-interest component rows to avoid overly narrow fallback."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Equity total exists but includes minority interest, so it is not preferred when parent/owner equity is available.",
+          "confidence": 0.6
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Equity",
+          "why": "Balancing item, not a real equity line.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Eget kapital hänförligt till moderbolagets ägare"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Preferred parent-equity line exists in the Balance Sheet and should be used instead of 'Total Equity' to avoid double counting minority interest in BE + MIB. This correct label was not in candidates, so outside-candidate selection was necessary. | Escape-hatch used (final_choice outside candidate list): [Balance Sheet] Eget kapital hänförligt till moderbolagets ägare"
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest",
+          "why": "Income statement minority interest is attribution of earnings, not balance sheet minority equity.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Direct match to balance sheet minority/non-controlling interest.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement attribution line, not balance sheet minority equity.",
+          "confidence": 0.1
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used balance sheet minority interest to pair with parent-equity BE and avoid double counting."
+    }
+  ]
+}

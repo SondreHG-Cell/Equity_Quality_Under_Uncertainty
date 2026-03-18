@@ -1,0 +1,353 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Direct top-line revenue label; preferred generic revenue line and matches Net Sales values.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales Gain/Loss on Assets Held for Sale",
+          "why": "Not revenue; disposal gain/loss line, so not appropriate.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales",
+          "why": "Also a valid top-line sales label; suitable fallback if Total Revenue is missing in some years.",
+          "confidence": 0.95
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using priority list for revenue line changes across years; do not sum."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services",
+          "why": "Best match for direct production/service costs beneath revenue.",
+          "confidence": 0.93
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the direct cost line most consistent with cost of sales."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead-like operating expense bucket, but explicit SG&A row exists so this is less preferred under hierarchy.",
+          "confidence": 0.62
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Product Development Expenses",
+          "why": "R&D-related line; could belong in XSGA only if used alongside XRD, but appears empty in preview and a better R&D line exists.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Overhead component, but explicit SG&A row exists so components are less preferred than the dedicated SG&A row.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-Based Compensation in SGA",
+          "why": "Valid SG&A component, but explicit SG&A row exists so not needed unless SG&A row were missing/insufficient.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Personnel Expenses",
+          "why": "Possible overhead component, but explicit SG&A row exists.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Voluntary personnel expenses",
+          "why": "Component of personnel costs; less preferred than explicit SG&A row.",
+          "confidence": 0.34
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External services",
+          "why": "Possible overhead component; less preferred than explicit SG&A row.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and general expenses",
+          "why": "Explicit SG&A row, populated, so hierarchy says to select this row only unless separate R&D should also be included for subtraction logic.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-Based Compensation",
+          "why": "Share-based compensation can be SG&A-related, but line appears supplemental/standalone and explicit SG&A row exists.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development",
+          "why": "Dedicated R&D expense line above Operating profit. Since separate from SG&A row, include in XSGA as well so XSGA-XRD removes it in PROF formula.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "STAFF EXPENSES",
+          "why": "Too generic and appears empty; inferior to explicit populated rows.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Costs, Net",
+          "why": "Balance sheet asset, not income statement SG&A expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Cost",
+          "why": "Balance sheet capitalized cost, not SG&A expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and general expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Explicit populated SG&A row exists, so selected it. Added separate above-EBIT R&D line as required by the XSGA-XRD interaction rule because it appears separately reported rather than embedded in the SG&A row."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Product Development Expenses",
+          "why": "Possible R&D label, but preview is empty and a clearer populated R&D line exists.",
+          "confidence": 0.48
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development",
+          "why": "Dedicated R&D expense line above Operating profit; best match.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Costs, Net",
+          "why": "Balance sheet asset balance, not period R&D expense.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Development Cost",
+          "why": "Balance sheet gross capitalized development cost, not expense.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Acc Amortization Development Costs",
+          "why": "Amortization contra-asset, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Product Development Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list for dedicated R&D expense labels; both are above EBIT candidates, with Research and Development clearly preferred."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broad finance cost line, not preferred when a direct interest expense line exists.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Only lease-interest component, so too narrow to be primary choice.",
+          "confidence": 0.52
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Direct interest expense line; best match and preferred.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Too broad/other finance costs; poor match.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "other financial expenses",
+          "why": "Too broad/other finance costs; poor match.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses (net)",
+          "why": "Acceptable fallback if direct interest expense unavailable; broader net finance cost line.",
+          "confidence": 0.76
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest component only; too narrow for primary mapping.",
+          "confidence": 0.35
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses (net)"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list: direct interest expense first, then broader net finance cost line, then total financial expenses as last fallback. Do not sum."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Unrestricted shareholders equity reserve",
+          "why": "Reserve component only, not total book equity.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to parent-company shareholders",
+          "why": "Preferred owner/parent equity line that excludes non-controlling interests, matching BE rule.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to non-controlling interests",
+          "why": "This is minority interest, not BE.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total shareholders equity",
+          "why": "Could represent total equity, but less preferred because owner equity line exists and this may include NCI.",
+          "confidence": 0.6
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Explicitly includes minority interest, so not suitable when separate parent equity exists.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to parent-company shareholders"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected parent equity to exclude non-controlling interests and avoid double counting with MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest",
+          "why": "Income statement attribution line, less preferred than balance-sheet NCI line for MIB.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority interests",
+          "why": "Income statement attribution line, less preferred than balance-sheet NCI line.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income statement attribution line, less preferred than balance-sheet equity line.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to non-controlling interests",
+          "why": "Direct balance-sheet minority interest / NCI equity line; best match.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Also a direct balance-sheet minority interest label; valid fallback.",
+          "confidence": 0.93
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list for non-controlling interest labels on the balance sheet; do not sum."
+    }
+  ]
+}

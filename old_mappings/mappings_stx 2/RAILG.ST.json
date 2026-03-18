@@ -1,0 +1,222 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "As Reported Total Revenue",
+          "why": "Explicit total revenue line; matches top-line revenue.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales",
+          "why": "Direct sales/revenue line and appears to be the primary operating revenue label.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Operating Income - Total (Non-revenue)",
+          "why": "Explicitly non-revenue, so not appropriate for REVT.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "As Reported Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used revenue priority list with the more specific operating top-line label first."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw Materials and Consumables",
+          "why": "Direct production/input cost on the income statement; best match for COGS among provided labels.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw materials and consumables",
+          "why": "Inventory asset on the balance sheet, not an expense.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw Materials and Consumables"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the income statement expense row, not the balance sheet inventory row."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other External Costs",
+          "why": "Operating overhead bucket likely including outsourced/admin/selling-related costs; suitable SG&A component.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Personnel costs are a standard SG&A overhead component when not part of COGS disclosure.",
+          "confidence": 0.86
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Residual operating overhead bucket; acceptable SG&A component and not a total/subtotal.",
+          "confidence": 0.82
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other External Costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A subtotal is present, so selected the best overhead component rows and excluded COGS and D&A."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Capitalized Research & Development Expenses - Supplemental",
+          "why": "This is amortization of previously capitalized R&D, not current-period R&D expense.",
+          "confidence": 0.09
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Capitalised development costs",
+          "why": "Balance sheet asset, not income statement R&D expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cap Exp for Development Work - Accumulated Amortization & Impairment",
+          "why": "Balance sheet accumulated amortization, not current R&D expense.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cap Exp for Development Work - Gross",
+          "why": "Balance sheet gross asset, not current R&D expense.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cap Exp for Development Work - Net - Balancing value",
+          "why": "Balancing value on the balance sheet, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No current-period R&D expense line is identifiable on the provided statements. Supplemental amortization and balance sheet development assets are not XRD."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest",
+          "why": "Best direct match for interest expense.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Specific component of interest expense, not preferred over the broader interest expense line.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental component/disclosure, not preferred as the main XINT line.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense - Net of Capitalized Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the direct interest expense line only; excluded lease-interest component lines to avoid using a partial measure as fallback."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Holdings reported according to the equity method",
+          "why": "Investment asset line, not equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available book equity line; no separate parent/owners equity line or NCI line is shown.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Shareholders Equity",
+          "why": "Balancing row, not appropriate.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Liability and Equity",
+          "why": "Balancing row, not appropriate.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY AND LIABILITIES",
+          "why": "Total liabilities plus equity, not book equity alone.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No owner/parent-only equity line is present, so used Total Equity as BE. Per rules, MIB is set to [] to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest/non-controlling interests line is present on the provided balance sheet."
+    }
+  ]
+}

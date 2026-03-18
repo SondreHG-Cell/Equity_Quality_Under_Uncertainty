@@ -6,20 +6,20 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Revenues",
-          "why": "Most direct top-line revenue label and appears intended as the primary revenue line.",
-          "confidence": 0.97
+          "why": "Top-line revenue label and the broadest standardized revenue row near the top of the income statement.",
+          "confidence": 0.95
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Revenue from Goods & Services",
-          "why": "Also a valid revenue label that may be used in some periods as the reported top-line.",
-          "confidence": 0.92
+          "why": "Clear revenue line and plausible alternate label over time.",
+          "confidence": 0.9
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Revenue from Business Activities - Total",
-          "why": "Revenue subtotal; useful fallback if top-line label changes across years.",
-          "confidence": 0.88
+          "why": "Also a revenue line, but marked as total so slightly less preferred than the simpler top-line labels.",
+          "confidence": 0.83
         }
       ],
       "final_choice": [
@@ -37,32 +37,38 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list of revenue labels; later code should take the first non-missing value by year."
+      "notes": "Using a priority list of top-line revenue labels; later code should take the first non-missing value by year."
     },
     {
       "variable": "COGS",
       "candidates": [
         {
           "sheet_name": "Income Statement",
-          "row_label": "Cost of Revenues - Total",
-          "why": "Best candidate-list match for cost of sales / cost of revenues.",
-          "confidence": 0.86
+          "row_label": "Cost of Operating Revenue",
+          "why": "Best direct production/service cost label; preferred over subtotal/total variants.",
+          "confidence": 0.94
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Cost of Revenues - Unclassified",
-          "why": "Potential direct cost line, but less preferable than the total cost of revenues label.",
-          "confidence": 0.72
+          "why": "Possible alternate COGS label, but less preferred than the more explicit operating revenue cost line.",
+          "confidence": 0.79
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total",
+          "why": "Clearly a total/subtotal; less preferred when a more specific component-like COGS line exists.",
+          "confidence": 0.7
         }
       ],
       "final_choice": [
         {
           "sheet_name": "Income Statement",
-          "row_label": "Cost of Revenues - Total"
+          "row_label": "Cost of Operating Revenue"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Although 'Cost of Operating Revenue' also appears in the sheet, 'Cost of Revenues - Total' is an acceptable direct-cost line from the candidate list and matches COGS."
+      "notes": "Selected the most specific COGS-style row and avoided subtotal/total alternatives."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -70,20 +76,20 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Selling, General & Administrative Expenses excluding Research & Development Expenses",
-          "why": "Explicit SG&A row, populated, and already excludes R&D, making it the best single overhead line per hierarchy rule.",
-          "confidence": 0.99
+          "why": "Explicit SG&A row, populated, and already excludes R&D; per hierarchy, select only this row.",
+          "confidence": 0.98
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Labor & Related Expenses including Stock-Based Compensation in Selling, General & Administrative Expenses",
-          "why": "A component of SG&A, but should not be used when an explicit populated SG&A line exists.",
-          "confidence": 0.78
+          "why": "Valid SG&A component, but less preferred because an explicit populated SG&A row exists.",
+          "confidence": 0.84
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Operating Expenses",
-          "why": "Broad overhead bucket, but inferior to explicit populated SG&A.",
-          "confidence": 0.45
+          "why": "Too broad compared with explicit SG&A.",
+          "confidence": 0.35
         }
       ],
       "final_choice": [
@@ -93,7 +99,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Explicit populated SG&A row exists, so select only that row. It already excludes R&D."
+      "notes": "Explicit populated SG&A row exists and should be used alone. It already excludes R&D, so no separate XRD row is added into XSGA_COMPONENTS."
     },
     {
       "variable": "XRD",
@@ -101,13 +107,13 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Selling, General & Administrative Expenses excluding Research & Development Expenses",
-          "why": "Not an R&D expense line; it indicates SG&A excluding R&D and therefore should not be mapped to XRD.",
-          "confidence": 0.05
+          "why": "This is not an R&D expense row; it indicates SG&A excluding R&D, so it does not match XRD.",
+          "confidence": 0.02
         }
       ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No dedicated research and development expense line appears in the provided statements."
+      "notes": "No dedicated research/development expense line is present in the preview. The only candidate explicitly excludes R&D and therefore is not suitable for XRD."
     },
     {
       "variable": "XINT",
@@ -115,20 +121,14 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense",
-          "why": "Most direct interest expense label; preferred when available.",
-          "confidence": 0.97
+          "why": "Most direct recurring interest-expense label.",
+          "confidence": 0.96
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense - Net of Capitalized Interest",
-          "why": "Also a direct interest expense label and a good fallback across years.",
-          "confidence": 0.93
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Interest Expense - Net of (Interest Income)",
-          "why": "Net interest measure; less preferred than pure interest expense but acceptable if that is the available reported line.",
-          "confidence": 0.8
+          "why": "Good alternate interest-expense label for years where the plain interest expense line may be missing.",
+          "confidence": 0.9
         }
       ],
       "final_choice": [
@@ -139,14 +139,10 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense - Net of Capitalized Interest"
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Interest Expense - Net of (Interest Income)"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list of interest-expense labels; later code should take the first non-missing value by year."
+      "notes": "Using a priority list of recurring interest-expense labels and avoiding broader finance totals that include non-interest items."
     },
     {
       "variable": "BE",
@@ -154,26 +150,20 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Shareholders' Equity - Attributable to Parent Shareholders - Total",
-          "why": "Best match for book equity excluding non-controlling interests, which is preferred by rule.",
+          "why": "Best owner/parent-only equity line; excludes minority interest and matches book equity definition.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Common Equity Attributable to Parent Shareholders",
-          "why": "Equivalent parent-attributable equity line and good fallback.",
-          "confidence": 0.96
+          "why": "Also owner-attributable equity and suitable alternate label over time.",
+          "confidence": 0.95
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Common Equity - Total",
-          "why": "Also appears to equal parent equity here; acceptable fallback.",
-          "confidence": 0.88
-        },
-        {
-          "sheet_name": "Balance Sheet",
-          "row_label": "Shareholders Equity - Common",
-          "why": "Another equity synonym and acceptable lower-priority fallback.",
-          "confidence": 0.83
+          "why": "Likely equivalent common equity measure, but slightly less explicit than parent-attributable labels.",
+          "confidence": 0.86
         }
       ],
       "final_choice": [
@@ -188,14 +178,10 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Common Equity - Total"
-        },
-        {
-          "sheet_name": "Balance Sheet",
-          "row_label": "Shareholders Equity - Common"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list uses owner/parent-attributable equity lines to avoid double counting minority interest."
+      "notes": "Priority list favors equity attributable to parent/owners, which avoids double counting with MIB."
     },
     {
       "variable": "MIB",
@@ -203,14 +189,14 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Minority Interest - Equity",
-          "why": "Direct balance-sheet minority interest / non-controlling interest line; best match.",
+          "why": "Direct balance-sheet non-controlling interest label.",
           "confidence": 0.98
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Minority Interest - Total",
-          "why": "Another direct minority-interest label and a valid fallback across years.",
-          "confidence": 0.94
+          "why": "Reasonable alternate minority-interest label over time.",
+          "confidence": 0.9
         }
       ],
       "final_choice": [
@@ -224,7 +210,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list of balance-sheet minority-interest labels; later code should take the first non-missing value by year."
+      "notes": "Priority list of balance-sheet minority interest labels; values appear to be zero, but the rows do exist and are the correct mapping."
     }
   ]
 }

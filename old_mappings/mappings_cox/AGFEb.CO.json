@@ -1,0 +1,236 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Ticket Sales",
+          "why": "Revenue-related line but appears to be only one component of sales, not total top-line.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit total top-line revenue label; matches Net Sales values exactly and is a valid revenue line.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales",
+          "why": "Direct top-line sales label and appears to be the primary reported revenue line; matches Total Revenue values exactly.",
+          "confidence": 0.98
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using revenue priority list with the more specific sales label first, followed by the synonymous total revenue label."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External Costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list for COGS is empty. 'External Costs' is the best available Income Statement label for direct operating/service costs and is more consistent with COGS than personnel or overhead rows, but classification is not fully certain and should be reviewed manually."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External Costs",
+          "why": "Candidate exists, but this more likely represents direct operating/service costs and is better mapped to COGS than SG&A.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and Marketing Expenses",
+          "why": "Explicit SG&A component and should be included even if preview values are blank.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses",
+          "why": "Explicit SG&A component and should be included even if preview values are blank.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel Expenses",
+          "why": "Overhead/personnel cost bucket and likely a major SG&A component here.",
+          "confidence": 0.88
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating Expenses",
+          "why": "Generic overhead bucket, but less preferred than explicit components.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Wages and Salaries",
+          "why": "Could be a personnel subcomponent, but less preferable than broader Personnel Expenses.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-Based Compensation",
+          "why": "Valid SG&A-type item when populated, but appears supplemental and blank in preview.",
+          "confidence": 0.28
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling and Marketing Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected explicit SG&A component rows and the main personnel overhead bucket. Excluded 'External Costs' as likely COGS/direct costs. Excluded totals/generic buckets and D&A-related lines."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line is present on the provided Income Statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses",
+          "why": "Broad finance cost line; useful fallback when dedicated interest expense is missing.",
+          "confidence": 0.78
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Finance-related but not necessarily interest; weaker fallback.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses",
+          "why": "Dedicated interest expense line; preferred for XINT.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Specific interest item but supplemental and incomplete across years.",
+          "confidence": 0.5
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses - Balancing value",
+          "why": "Balancing line should not be preferred when direct reported lines exist.",
+          "confidence": 0.12
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using priority list with dedicated interest expense first and broader financial expenses as fallback for years where the interest line is absent."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best book equity line here. It appears to exclude minority interest because 'Rep Total Equity & Minority Interest' differs by the minority interest amount.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Includes minority interest and would risk double counting if MIB is also selected.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Liabilities & Equity",
+          "why": "Not an equity measure; entire balance sheet total.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected 'Total Equity' because a separate minority interest line exists and the reported combined equity-plus-minority line confirms 'Total Equity' is the cleaner BE measure."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest",
+          "why": "Income statement allocation line, not preferred for balance sheet minority equity.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement allocation line, not preferred for balance sheet minority equity.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Direct balance sheet minority interest / non-controlling interest line.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Combined total, not a standalone minority interest line.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the standalone balance sheet minority interest line to avoid double counting with BE."
+    }
+  ]
+}

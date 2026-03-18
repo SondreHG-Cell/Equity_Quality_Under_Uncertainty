@@ -6,19 +6,43 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Revenue from contracts with customers",
-          "why": "Direct top-line revenue label; preferred over duplicate total row.",
+          "why": "Direct top-line revenue line; preferred over broader duplicate total.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Total Revenue",
-          "why": "Top-line total revenue row, but appears duplicative of the more specific revenue label.",
-          "confidence": 0.95
+          "why": "Duplicate total revenue line with identical values; useful as fallback priority label across periods.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rental income",
+          "why": "Non-core ancillary income, not top-line sales.",
+          "confidence": 0.05
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Sales and marketing expenses",
           "why": "Operating expense, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income",
+          "why": "Finance income, not operating revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Deferred tax (expense)/income",
+          "why": "Tax line, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total comprehensive income",
+          "why": "Bottom-line comprehensive income, not revenue.",
           "confidence": 0.01
         }
       ],
@@ -33,7 +57,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Use as priority list across years; do not sum."
+      "notes": "Using revenue labels as priority list, not summing. 'Revenue from contracts with customers' is the cleanest top-line label; 'Total Revenue' is a duplicate fallback."
     },
     {
       "variable": "COGS",
@@ -41,7 +65,7 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Cost of goods and services purchased",
-          "why": "Direct cost-of-sales / cost-of-goods line.",
+          "why": "Direct cost-of-sales style line directly below revenue and clearly represents direct service/product costs.",
           "confidence": 0.98
         }
       ],
@@ -52,7 +76,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Direct production/service cost row."
+      "notes": "Clear COGS/cost of sales mapping."
     },
     {
       "variable": "XSGA_COMPONENTS",
@@ -60,49 +84,67 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Personnel costs",
-          "why": "Core operating overhead component.",
+          "why": "Core overhead component.",
           "confidence": 0.96
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating expenses",
-          "why": "Operating overhead bucket; appropriate SG&A component.",
+          "why": "Broad overhead bucket; selected because no explicit SG&A total row exists.",
           "confidence": 0.93
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Sales and marketing expenses",
-          "why": "Classic SG&A component.",
-          "confidence": 0.97
+          "why": "Selling expense component of SG&A.",
+          "confidence": 0.95
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Other operating expenses - rest",
-          "why": "Could be an overhead component, but potentially supplemental/duplicate versus other operating expense buckets.",
-          "confidence": 0.45
+          "why": "Additional overhead component, appears to be a subcomponent/rest bucket rather than total.",
+          "confidence": 0.8
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Administration expenses",
-          "why": "Classic SG&A component.",
-          "confidence": 0.97
+          "why": "Administrative overhead component of SG&A.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expense - Supplemental",
+          "why": "Dedicated R&D line; include in XSGA as well if not already embedded so XSGA-XRD removes it.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Completed development projects - Gross",
+          "why": "Balance sheet asset, not SG&A expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Ongoing development projects - Gross",
+          "why": "Balance sheet asset, not SG&A expense.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Brands, Patents, Trademarks, Marketing & Artistic Intangibles - Gross",
-          "why": "Balance-sheet asset, not an expense.",
+          "why": "Balance sheet asset, not SG&A expense.",
           "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Accrued personnel expenses",
-          "why": "Balance-sheet liability, not income-statement SG&A expense.",
-          "confidence": 0.02
+          "why": "Balance sheet liability, not income statement expense row.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
-          "why": "Operational metric, not an expense row.",
+          "why": "Operational statistic, not expense.",
           "confidence": 0.01
         }
       ],
@@ -121,11 +163,19 @@
         },
         {
           "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses - rest"
+        },
+        {
+          "sheet_name": "Income Statement",
           "row_label": "Administration expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expense - Supplemental"
         }
       ],
       "needs_manual_review": false,
-      "notes": "No explicit single SG&A total row is present. Selected best overhead components and excluded depreciation/amortization/impairment, COGS, and likely-duplicative 'Other operating expenses - rest'. R&D appears as a supplemental line and is likely embedded in these operating expense buckets, so not additionally included here to avoid double counting."
+      "notes": "No explicit populated SG&A total row exists. Selected overhead components only, excluding COGS and D&A. Included 'Research & Development Expense - Supplemental' in XSGA_COMPONENTS per rule so XSGA_COMPONENTS - XRD removes R&D if separately reported."
     },
     {
       "variable": "XRD",
@@ -133,43 +183,43 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Amortization of Completed Development Projects",
-          "why": "Amortization, not current-period R&D expense.",
+          "why": "Amortization of capitalized development, not current-period R&D expense.",
           "confidence": 0.15
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Amortization of Ongoing Development Projects",
-          "why": "Amortization-related/supplemental, not dedicated R&D expense.",
-          "confidence": 0.1
+          "why": "Amortization-related, not direct R&D expense.",
+          "confidence": 0.05
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Research & Development Expense - Supplemental",
-          "why": "Dedicated R&D expense line.",
-          "confidence": 0.99
+          "why": "Dedicated R&D expense line; best available mapping.",
+          "confidence": 0.89
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Completed development projects - Gross",
-          "why": "Balance-sheet asset, not R&D expense.",
+          "why": "Balance sheet asset, not R&D expense.",
           "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Completed development projects - Accumulated Amortization & Impairment",
-          "why": "Balance-sheet contra-asset, not R&D expense.",
+          "why": "Balance sheet contra-asset, not R&D expense.",
           "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Ongoing development projects - Gross",
-          "why": "Balance-sheet asset, not R&D expense.",
+          "why": "Balance sheet asset, not R&D expense.",
           "confidence": 0.01
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Ongoing development projects - Accumulated Amortization & Impairment",
-          "why": "Balance-sheet contra-asset, not R&D expense.",
+          "why": "Balance sheet contra-asset, not R&D expense.",
           "confidence": 0.01
         }
       ],
@@ -180,7 +230,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Dedicated R&D expense line exists. Kept separate from XSGA_COMPONENTS because it is likely already embedded in the selected operating expense buckets."
+      "notes": "Mapped to the dedicated R&D expense line. Although marked supplemental and located below net income in the preview, it is still the only explicit R&D expense label available."
     },
     {
       "variable": "XINT",
@@ -188,58 +238,100 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Other financial expenses",
-          "why": "Broader finance-expense line; useful fallback if specific interest expense missing.",
-          "confidence": 0.7
+          "why": "Broad finance-cost bucket but likely includes non-interest items such as FX and impairments; avoid when granular interest rows exist.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Lease interests",
+          "why": "Recurring interest cost on lease liabilities; include as financing cost component.",
+          "confidence": 0.94
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest expenses",
-          "why": "Direct interest expense line; best match.",
-          "confidence": 0.99
+          "why": "Direct interest expense line; core XINT component.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net interest for defined benefit plans",
+          "why": "Recurring net interest financing-related pension cost; small but finance-cost related.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Attributable to non-controlling interests",
+          "why": "Profit attribution, not interest expense.",
+          "confidence": 0.01
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
-          "why": "Specific lease-interest component; useful lower-priority fallback.",
-          "confidence": 0.78
+          "why": "Appears duplicative of 'Lease interests' with same values; do not double count.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Equity line, not interest expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equity line, not interest expense.",
+          "confidence": 0.01
         }
       ],
       "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Lease interests"
+        },
         {
           "sheet_name": "Income Statement",
           "row_label": "Interest expenses"
         },
         {
           "sheet_name": "Income Statement",
-          "row_label": "Other financial expenses"
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+          "row_label": "Net interest for defined benefit plans"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list with direct interest expense first; broader finance cost and lease-interest supplemental retained as fallbacks across years."
+      "notes": "Used granular recurring finance-cost components and excluded 'Other financial expenses' because it likely contains non-interest items. Excluded 'Interest Expense on Financial Lease Liabilities - Supplemental' to avoid double counting with 'Lease interests'."
     },
     {
       "variable": "BE",
       "candidates": [
         {
+          "sheet_name": "Income Statement",
+          "row_label": "Attributable to shareholders of Trifork Group AG",
+          "why": "Income statement attribution of earnings, not balance-sheet equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Attributable to shareholders of Trifork Holding AG",
+          "why": "Comprehensive income attribution, not balance-sheet equity.",
+          "confidence": 0.01
+        },
+        {
           "sheet_name": "Balance Sheet",
           "row_label": "Equity attributable to shareholders of Trifork Group AG",
-          "why": "Owner/parent equity line excluding non-controlling interests; best book equity measure.",
+          "why": "Preferred parent/shareholder equity line excluding non-controlling interests.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Total shareholders equity",
-          "why": "Includes non-controlling interests, so less preferred for BE under BE+MIB framework.",
-          "confidence": 0.72
+          "why": "Total equity includes NCI; fallback only if parent-equity line absent.",
+          "confidence": 0.45
         },
         {
           "sheet_name": "Balance Sheet",
-          "row_label": "Total shareholders equity and liabilities",
-          "why": "Total balance sheet, not equity.",
+          "row_label": "Common Shareholders - Number",
+          "why": "Share count, not book equity.",
           "confidence": 0.01
         }
       ],
@@ -247,14 +339,10 @@
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Equity attributable to shareholders of Trifork Group AG"
-        },
-        {
-          "sheet_name": "Balance Sheet",
-          "row_label": "Total shareholders equity"
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list prefers parent-only equity to avoid double counting with MIB. Total equity kept only as fallback."
+      "notes": "Preferred owner-attributable equity line to avoid double counting with MIB."
     },
     {
       "variable": "MIB",
@@ -262,26 +350,26 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Attributable to non-controlling interests",
-          "why": "Income-statement allocation of earnings, not balance-sheet minority interest stock.",
+          "why": "Income statement profit attribution, not balance-sheet minority interest stock.",
           "confidence": 0.05
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Non-controlling interests",
-          "why": "Direct balance-sheet minority interest line; best match.",
+          "why": "Direct balance-sheet NCI line; best mapping.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Balance Sheet",
           "row_label": "Minority Interest",
-          "why": "Equivalent balance-sheet label; useful fallback.",
-          "confidence": 0.96
+          "why": "Duplicate label with identical values; useful fallback priority.",
+          "confidence": 0.97
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Minority Interest - Total",
-          "why": "Income-statement attribution total, not balance-sheet equity.",
-          "confidence": 0.05
+          "why": "Income statement attribution total, not preferred versus balance-sheet stock line.",
+          "confidence": 0.08
         }
       ],
       "final_choice": [
@@ -295,7 +383,7 @@
         }
       ],
       "needs_manual_review": false,
-      "notes": "Priority list uses balance-sheet NCI labels only; excluded income-statement attribution rows."
+      "notes": "Using balance-sheet NCI labels as priority list; values are duplicates, not to be summed."
     }
   ]
 }

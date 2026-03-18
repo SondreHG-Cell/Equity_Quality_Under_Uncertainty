@@ -1,0 +1,278 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Direct top-line revenue label; exact total revenue line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS",
+          "why": "Not revenue; this is cost line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-GAAP Revenues",
+          "why": "Non-GAAP and appears unpopulated; less preferred than reported revenue.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales",
+          "why": "Also a valid top-line revenue label; same values as Total Revenue, useful as fallback across years.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using reported top-line revenue labels as priority list; later code should take the first available non-missing value."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of goods sold",
+          "why": "Direct reported COGS line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS",
+          "why": "Equivalent alternate COGS label with same values; useful as fallback.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Finished goods and goods for resale",
+          "why": "Inventory balance sheet item, not income statement COGS expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Goods Sold - balancing",
+          "why": "Explicit balancing row, so should not be preferred.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Impairment in Cost of Goods Sold",
+          "why": "Impairment component, not full COGS.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of goods sold"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of revenues/COGS"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using direct COGS line with equivalent alternate label as fallback."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling expenses",
+          "why": "Clear SG&A overhead component.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative expenses",
+          "why": "Administrative overhead, but appears to include a separate D&A/impairment subcomponent.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Administrative expenses",
+          "why": "Cleaner administrative overhead component excluding the separate D&A/impairment row.",
+          "confidence": 0.87
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Could be overhead, but this statement's other operating lines appear mixed with non-core/FX items and may be noisy.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Costs for remuneration to employees",
+          "why": "Personnel costs are often SG&A, but here likely span broader functions including production, so less suitable.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Salary liabilities",
+          "why": "Balance sheet liability, not income statement expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Administrative expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A total row is present. Selected the best overhead components while avoiding totals and avoiding Administrative expenses because it appears to include a separate D&A/impairment subcomponent."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development in COR/COGS",
+          "why": "Explicit R&D expense embedded in cost of goods sold.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "R&D",
+          "why": "Most semantically direct R&D label; use as preferred fallback even though preview is empty.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Capital Development Expenses , Gross",
+          "why": "Balance sheet capitalized development asset, not period R&D expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accumulated Amortization Capital Development Expenses",
+          "why": "Balance sheet amortization contra-asset, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "R&D"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development in COR/COGS"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using R&D labels as a priority list. The direct 'R&D' row is most semantically correct; 'Research and Development in COR/COGS' is the explicit embedded R&D expense fallback."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broader finance-cost line; acceptable fallback if specific interest expense is unavailable.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "interest expense",
+          "why": "Direct interest expense line; best match.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Specific lease-interest component, narrower than total interest expense.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Broad finance expense category, not specifically interest.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest component, narrower and less preferred.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "interest expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using direct interest expense first, with broader financial expenses as fallback if the specific line is missing in some years."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Explicitly includes minority interest, so less preferred for BE because BE should exclude MIB when possible.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "equity Interest-bearing/non-interest-bearing",
+          "why": "Appears to equal total assets, so not an equity line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders equity Liabilities and provisions",
+          "why": "Best available equity label that does not explicitly mention minority interest; likely total shareholders' equity.",
+          "confidence": 0.83
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders equity Liabilities and provisions"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the best available equity line that does not explicitly include minority interest. Since no separate non-controlling interest line is shown, MIB is set to empty to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "This is total equity including minority interest, not a standalone minority-interest line.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No standalone minority interest / non-controlling interests row is present in the balance sheet preview. Per instructions, using [] rather than a total-equity-with-minority line to avoid double counting."
+    }
+  ]
+}

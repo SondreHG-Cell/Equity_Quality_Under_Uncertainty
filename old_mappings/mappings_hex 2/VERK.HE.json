@@ -1,0 +1,282 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue label; preferred over duplicate total row.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Duplicate total revenue row with identical values; less preferred than the direct revenue line.",
+          "confidence": 0.93
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using revenue labels as a priority list because both appear; 'Revenue' is preferred and 'Total Revenue' is a fallback if needed."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services",
+          "why": "Best direct cost-of-sales style line; appears to aggregate purchases/inventory change/external services.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Purchases during the financial year",
+          "why": "Component of materials/services, not the full COGS concept when aggregate exists.",
+          "confidence": 0.68
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services - Balancing value",
+          "why": "Balancing row, should not be used when the main line exists.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Materials and services"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the aggregate direct production/service cost line and excluded lower-level components and balancing rows."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "External services",
+          "why": "Could be overhead, but likely already included in broader operating expense buckets; less preferred than explicit SG&A line.",
+          "confidence": 0.46
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefit expenses",
+          "why": "Overhead-related personnel cost, but an explicit SG&A line exists, so subtotal/component selection is not preferred.",
+          "confidence": 0.61
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Wages and salaries",
+          "why": "Personnel component, but narrower and only partial years; not preferred when explicit SG&A exists.",
+          "confidence": 0.37
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-based payments",
+          "why": "Valid overhead component, but explicit SG&A exists and should be preferred alone.",
+          "confidence": 0.43
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead bucket, but explicit SG&A line exists and is populated.",
+          "confidence": 0.73
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling/ Administrative Expense",
+          "why": "Explicit SG&A row and populated in multiple years; per hierarchy this should be selected alone.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "The Office of the Data Protection Ombudsman - An administrative fine",
+          "why": "Specific unusual item, not a normal recurring SG&A component.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs, Net",
+          "why": "Balance-sheet asset, not income-statement SG&A expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Gross",
+          "why": "Balance-sheet asset gross amount, not SG&A expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Headcount metric, not an expense row.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling/ Administrative Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Explicit SG&A line exists and is populated, so selected only that row. Excluded other operating/personnel rows to avoid mixing components with a broader SG&A line. No separate R&D expense line above EBIT was identified to add here."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs, Net",
+          "why": "Capitalized balance-sheet R&D asset, not a dedicated R&D expense line.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Gross",
+          "why": "Balance-sheet gross capitalized R&D asset, not expense.",
+          "confidence": 0.04
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Accumulated Amortization & Impairment",
+          "why": "Contra-asset amortization/impaired amount, not current-period R&D expense.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs, Net - Balancing value",
+          "why": "Balancing row, not expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated income-statement R&D expense row is present. The available R&D-related rows are balance-sheet capitalized development cost assets, so XRD is treated as missing."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance costs",
+          "why": "Broad finance cost line available across years; usable fallback if no cleaner interest-expense line is chosen.",
+          "confidence": 0.78
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other finance costs",
+          "why": "Too narrow and excludes core interest cost.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest and other financial expenses to other",
+          "why": "Semantically relevant but appears unpopulated in preview.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest only, not total interest expense.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance costs - Balancing value",
+          "why": "Balancing row, not appropriate.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other interest costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Chose 'Other interest costs' from the full A-column labels because it is a more precise interest-expense concept than the candidate list provides. Included 'Finance costs' as fallback for years where the specific interest-cost line is missing. Manual review needed because the best label was outside the candidate list and 'Finance costs' may include non-interest finance items. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Other interest costs"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Realized changes in fair values of equity investments",
+          "why": "Income-statement gain/loss line, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Changes in fair values of equity investments",
+          "why": "Income-statement/OCI-type line, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity holders of the company",
+          "why": "Comprehensive-income attribution line, not balance-sheet equity.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity investments",
+          "why": "Asset line, not shareholders' equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Invested unrestricted equity fund",
+          "why": "Equity component only, not total book equity.",
+          "confidence": 0.28
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Best available total equity line on the balance sheet.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Duplicate capitalization variant of the same total equity concept.",
+          "confidence": 0.88
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No parent-only equity line or non-controlling interest line is present, so total equity is the best available BE proxy. MIB is left empty to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest/non-controlling interest row is present on the balance sheet."
+    }
+  ]
+}
