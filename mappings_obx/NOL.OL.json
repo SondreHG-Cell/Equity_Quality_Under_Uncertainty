@@ -1,0 +1,207 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Contract Revenue",
+          "why": "Revenue component, but not full top-line because reimbursable revenue is reported separately and a total revenue line exists.",
+          "confidence": 0.66
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Reimbursable Revenue",
+          "why": "Revenue component, not the full top-line on its own.",
+          "confidence": 0.38
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating revenues",
+          "why": "Best match for total revenue/top-line; it equals the sum of revenue components and is the reported total revenue line.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Non-operating income, not revenue from customers.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued income",
+          "why": "Balance sheet asset, not income statement revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Short-term portion of deferred revenue",
+          "why": "Balance sheet liability, not recognized revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Long-term deferred revenue",
+          "why": "Balance sheet liability, not recognized revenue.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating revenues"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the reported total revenue line rather than underlying components."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Material and supplies, net",
+          "why": "Inventory/asset balance, not an income statement expense line.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rig operating expenses"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the likely direct operating cost line. For a drilling contractor, 'Rig operating expenses' appears to represent the closest COGS/cost of services line. Chosen from the full income statement preview outside the candidate list, so manual review is warranted. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Rig operating expenses"
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rig operating expenses",
+          "why": "Likely direct operating/service cost rather than SG&A; excluded from overhead.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses",
+          "why": "Clear overhead/administrative expense line and best SG&A component available.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued administrative expenses",
+          "why": "Balance sheet liability, not an income statement expense row for PROF mapping.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued operating expenses",
+          "why": "Balance sheet liability, not an income statement expense row for PROF mapping.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Operating metric, not an expense row.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the explicit overhead component row. Excluded 'Rig operating expenses' as COGS-like direct operating cost. No separate above-EBIT R&D row identified to add."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line appears on the provided income statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expenses",
+          "why": "Appears to be a recurring finance cost line and can be included with interest expense if no evidence it is non-recurring.",
+          "confidence": 0.7
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Direct match for interest expense.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued interest expense",
+          "why": "Balance sheet accrual, not the period expense line.",
+          "confidence": 0.04
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Income",
+          "why": "Finance income, opposite of interest expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other financial expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Included granular recurring finance cost rows and excluded interest income and FX gains/losses. Did not use the total other income/expenses subtotal to avoid double counting."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Best available equity line; no separate parent/owners' equity line is shown.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Duplicate equity total with different capitalization; same concept as 'Total equity'.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total liabilities and equity",
+          "why": "Total balance sheet size, not book equity alone.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate non-controlling interest or parent-only equity line is shown, so used total equity and set MIB to empty to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No minority interest/non-controlling interests line appears on the provided balance sheet."
+    }
+  ]
+}
