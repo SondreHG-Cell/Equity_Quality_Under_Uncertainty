@@ -1,0 +1,223 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit top-line revenue label; values align with reported sales.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue Operating expenses",
+          "why": "Appears to be a malformed/concatenated revenue row with identical values to Total Revenue; possible alternate imported label.",
+          "confidence": 0.72
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue Operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used explicit revenue line first. Included the duplicated malformed revenue label as lower-priority fallback only."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total",
+          "why": "Explicit total cost of revenues / cost of sales line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Staff Costs in Cost of Revenue",
+          "why": "Component of cost of revenues, but incomplete on its own.",
+          "confidence": 0.71
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - the rest",
+          "why": "Residual component of cost of revenues, but incomplete on its own.",
+          "confidence": 0.68
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Revenues - Total"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit COGS total rather than underlying components to avoid incomplete coverage in years where components are not fully populated in preview."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Distribution, selling and marketing costs",
+          "why": "Clear selling/marketing overhead component above EBIT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs",
+          "why": "Clear administrative overhead component above EBIT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share-based payments",
+          "why": "Could be SG&A-related overhead, but likely already embedded in broader operating expense lines; using it risks double counting.",
+          "confidence": 0.44
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in Administrative Expenses",
+          "why": "Subcomponent of administrative costs; lower priority than the full component row.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses inDistribution, sales, marketing costs",
+          "why": "Subcomponent of selling/marketing costs; lower priority than the full component row.",
+          "confidence": 0.74
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Distribution, selling and marketing costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No single explicit SG&A row is present. Selected the two main overhead component rows above EBIT. Excluded Operating Expenses - Total because it is a total, and excluded Share-based payments to avoid likely double counting."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development row appears in the provided income statement."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on lease liabilities",
+          "why": "Granular recurring finance cost component.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on loans payable",
+          "why": "Granular recurring borrowing cost component.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense",
+          "why": "Aggregate interest expense line that appears to equal the two granular components; lower priority than components to avoid losing granularity.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on lease liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest on loans payable"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred granular recurring interest components over the aggregate Interest expense line. Excluded supplemental lease-interest rows because they duplicate the main lease-interest line."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to owners of the parent",
+          "why": "Best match for book equity excluding non-controlling interests.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total",
+          "why": "Appears equal to parent-attributable equity and excludes NCI here; suitable fallback label.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Includes non-controlling interests, so less preferred for BE under the rules.",
+          "confidence": 0.55
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to owners of the parent"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Chose owner/parent equity to exclude non-controlling interests from BE. Included Shareholders' Equity - Total as fallback because it matches the same values in the preview."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Explicit balance sheet NCI line; best match for minority interest.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Alternate explicit label with identical values; suitable fallback.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income statement attribution line, not preferred when balance sheet NCI exists.",
+          "confidence": 0.46
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used balance-sheet NCI labels as priority list. Excluded income-statement attribution rows because MIB should come from the balance sheet when available."
+    }
+  ]
+}

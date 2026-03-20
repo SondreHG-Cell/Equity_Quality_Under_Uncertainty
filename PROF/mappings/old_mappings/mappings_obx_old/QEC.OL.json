@@ -1,0 +1,203 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Petroleum and natural gas sales including royalty revenue",
+          "why": "Represents gross petroleum and natural gas sales before deducting royalties; best match for total revenue/top-line.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Petroleum and natural gas revenue, net of royalties",
+          "why": "Represents primary operating revenue after royalty deductions; useful as an alternative revenue label across years.",
+          "confidence": 0.86
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Petroleum and natural gas sales including royalty revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Petroleum and natural gas revenue, net of royalties"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using gross sales as the primary REVT line and net-of-royalties revenue as a fallback label for other periods if needed."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Bad debt expense",
+          "why": "Expense item but relates to receivables credit risk, not direct production costs; not appropriate for COGS.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other income (expense)",
+          "why": "Mixed or non-operating line, not specifically direct production or service costs.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other (income) expense",
+          "why": "Mixed or non-operating line, not specifically direct production or service costs.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock Based Compensation Expense",
+          "why": "Compensation-related overhead, more akin to SG&A than COGS and is also not clearly linked to direct production costs.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Deposits and prepaid expenses",
+          "why": "Balance sheet asset; not an income statement expense and therefore cannot represent COGS.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Direct operating"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. None of the provided COGS candidates represent direct production/service costs. The row 'Direct operating' on the income statement is the standard oil & gas equivalent of COGS, so it is selected from outside the candidate list. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Direct operating"
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and Administrative",
+          "why": "Explicit SG&A-type overhead category, separate from COGS and D&A, and populated in recent years.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and Administrative"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Explicit G&A row exists and is populated, so it alone is used for SG&A components per the hierarchy rule."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No research & development expense line is apparent in the provided income statement; assume R&D is not separately reported."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest and other income",
+          "why": "Net interest and other income line, but includes non-interest items; use only if pure interest expense lines were absent.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Primary interest expense line; best representation of financing cost.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net interest and other income",
+          "why": "Net interest plus other income; not pure interest expense but can provide data if specific expense lines are missing for some years.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities",
+          "why": "Interest component related to lease liabilities; a secondary, more specific interest expense line.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental disclosure of lease-related interest; useful as an additional fallback label.",
+          "confidence": 0.78
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Prioritized pure interest expense lines first; lease-related interest lines included as fallbacks. Net interest/other income lines were not selected because they mix interest with other items."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Loss on equity investment",
+          "why": "Income statement item; not an equity balance sheet account.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Gain on equity investment",
+          "why": "Income statement item; not an equity balance sheet account.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders Equity",
+          "why": "Equity attributable to shareholders; matches required book equity excluding any non-controlling interests.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Total equity; appears numerically identical to Shareholders Equity but less specific regarding ownership attribution.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Liabilities & Equity",
+          "why": "Balance sheet total; includes liabilities and equity and thus is not suitable as BE.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Chose 'Shareholders Equity' as book equity attributable to owners; minority interests are not separately disclosed, so no adjustment is needed."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No line for non-controlling interests or minority interests appears on the balance sheet; MIB is treated as zero."
+    }
+  ]
+}

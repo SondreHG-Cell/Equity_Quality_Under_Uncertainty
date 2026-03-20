@@ -1,0 +1,229 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total revenue",
+          "why": "Explicit total top-line revenue row; matches target directly.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Sales",
+          "why": "Not revenue; this is COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales",
+          "why": "Also a valid top-line sales label and identical to Total revenue here; useful as fallback if label changes across years.",
+          "confidence": 0.96
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Using revenue labels as a priority list; do not sum."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Sales",
+          "why": "Direct match to cost of goods sold / cost of sales.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of Sales"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Direct COGS line."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel costs",
+          "why": "Valid SG&A/overhead component, but appears incomplete as sole SG&A proxy because other overhead is reported separately.",
+          "confidence": 0.82
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other External Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. No explicit SG&A total row is present. Candidate list clearly misses another major overhead bucket, 'Other External Expenses', which appears to be an operating overhead component alongside 'Personnel costs'. Selected both components and excluded COGS and D&A. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Other External Expenses"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Amortization line, not current-period R&D expense; excluded from XRD.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Capitalized Research & Development Expenses - Supplemental",
+          "why": "Supplemental amortization, not R&D expense.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Capitalised Development Exp- IT",
+          "why": "Balance sheet asset line, not income statement R&D expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Gross",
+          "why": "Balance sheet gross asset line, not expense.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Accumulated Amortization & Impairment",
+          "why": "Balance sheet contra-asset, not expense.",
+          "confidence": 0.04
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear R&D expense row is reported in the provided statements. Supplemental amortization and balance-sheet development cost lines are not valid XRD expense inputs."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Preferred direct interest expense line.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses in accordance with IFRS 16",
+          "why": "Lease-interest component only; too narrow as standalone if broader interest expense exists.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest component only; too narrow as standalone.",
+          "confidence": 0.28
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Financial Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Preferred direct line is 'Interest Expense', but it is blank in 2025 while 'Total Financial Expense' is populated. Added 'Total Financial Expense' as fallback because candidate list misses the broader finance-cost label needed for years where direct interest expense is unavailable. Excluded IFRS 16 lease-interest component as too narrow. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Total Financial Expense"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available equity line and reported across years.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Could include minority interest and is therefore less preferred for BE.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Equity",
+          "why": "Balancing row; should not be used.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate parent-equity line is available; using Total Equity. To avoid double counting, MIB is set to empty."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest",
+          "why": "Income statement minority allocation line, but appears unpopulated and not appropriate for balance sheet MIB when total equity is used for BE.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Income statement label, unpopulated and not preferred for balance-sheet MIB.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity Minority Interests/Equity Non-controlling Interests",
+          "why": "Correct balance-sheet concept, but appears unreported here.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Correct concept, but appears unreported here.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Comprehensive Income before Minority Interest - Total",
+          "why": "Not a balance-sheet minority interest line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Rep Total Equity & Minority Interest",
+          "why": "Total including minority interest; not appropriate as MIB component itself.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No separate non-controlling interest balance-sheet amount is reported. Since BE uses 'Total Equity', MIB is left empty to avoid double counting."
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Direct top-line revenue label; preferred over duplicate total row.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Duplicate revenue total; usable fallback if Revenue is missing in some years.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected priority list for revenue; later code should use the first non-missing value."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw materials and consumables",
+          "why": "Candidate list provides a balance-sheet inventory row, which is not an income-statement COGS expense and does not match the concept.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw material and consumables used"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the correct income-statement expense label. Chose 'Raw material and consumables used' from the full preview because it is the direct production/service cost row and best matches COGS. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Raw material and consumables used"
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefits expenses",
+          "why": "Personnel cost is a standard SG&A/overhead component.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Looks like an overhead bucket, but likely a subtotal because it is broken into component rows below.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Marketing",
+          "why": "Selling/marketing overhead component.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administration",
+          "why": "Administrative overhead component.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating Expenses",
+          "why": "Overhead component/bucket within other operating expenses; preferable to the broader subtotal when components exist.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development Exp.",
+          "why": "R&D label exists but appears unpopulated and is below EBIT supplemental area; not selected for SG&A to avoid placement issue.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expenses",
+          "why": "Dedicated R&D line exists but appears in supplemental section below EBIT; per rule, do not include in XSGA when only below-EBIT R&D rows exist.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Share-Based Incentives",
+          "why": "Balance-sheet equity row, not an income-statement SG&A expense.",
+          "confidence": 0.03
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefits expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Marketing"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administration"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating Expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A total row is present. Selected overhead components and buckets while excluding COGS, D&A, interest, and subtotal rows like 'Other operating expenses' because component rows exist beneath it."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development Exp.",
+          "why": "Dedicated R&D line, but preview shows no values and it appears in supplemental section below EBIT.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expenses",
+          "why": "Dedicated R&D expense line with values; best available R&D label, though it appears in supplemental section below EBIT.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and Development Exp."
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Mapped dedicated R&D line as a priority list. Not added to XSGA_COMPONENTS because the R&D rows appear only in the supplemental/below-EBIT section."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses",
+          "why": "Broad finance cost bucket; fallback if no specific interest line is available.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses from financial liabilities measured at amortised cost",
+          "why": "Specific interest expense line; preferred conceptually.",
+          "confidence": 0.87
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Too broad and not specifically interest.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses of lease liabilities according to IFRS",
+          "why": "Specific interest expense line and materially populated.",
+          "confidence": 0.89
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental restatement of lease interest expense; valid fallback.",
+          "confidence": 0.8
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses of lease liabilities according to IFRS"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses from financial liabilities measured at amortised cost"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Financial expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Provided priority list of interest-related labels, preferring specific interest expense lines over the broader 'Financial expenses' bucket."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "To equity holders of the parent gg",
+          "why": "Income statement comprehensive income attribution, not balance-sheet book equity.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "To equity holders of the parent",
+          "why": "Income statement comprehensive income attribution, not balance-sheet book equity.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Reserve for invested unrestricted equity",
+          "why": "Only one equity component, not total book equity.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Best available balance-sheet total equity line.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity & Minority Interest",
+          "why": "Could overstate BE if minority interest exists; use only if no separate BE line exists.",
+          "confidence": 0.5
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No separate parent/owners' equity or non-controlling interest line is visible. Selected 'Total Equity' for BE and leave MIB empty to avoid double counting."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity & Minority Interest",
+          "why": "Aggregate equity including minority interest, not a standalone minority-interest line.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No standalone minority interest/non-controlling interests row is present. Because BE uses 'Total Equity', MIB is set to empty to avoid double counting."
+    }
+  ]
+}

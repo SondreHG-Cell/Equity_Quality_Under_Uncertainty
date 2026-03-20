@@ -18,7 +18,7 @@ from openai import OpenAI
 load_dotenv()
 
 DEFAULT_MODEL = "gpt-5.4"
-DEFAULT_REASONING_EFFORT = "medium"  # "none"|"low"|"medium"|"high"
+DEFAULT_REASONING_EFFORT = "low"  # "none"|"low"|"medium"|"high"
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 

@@ -1,0 +1,211 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Foreign Exchange Income - Business Revenue",
+          "why": "Candidate is only one component of revenue/business revenue and is far below the broader revenue aggregation lines; it does not represent total top-line.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "INCOME TOTAL"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the correct top-line concept. For this financial-services statement, 'INCOME TOTAL' appears to be the best total revenue/income line, aggregating fee/commission income, trading/securities income, interest income, etc. Chosen from full preview outside candidate list. | Escape-hatch used (final_choice outside candidate list): [Income Statement] INCOME TOTAL"
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No clear COGS/cost of sales line is present. This appears to be a financial-services income statement where direct production-style COGS is not separately reported."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Clear overhead component above operating profit; personnel costs are standard SG&A.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock-Based Compensation in Selling, General & Administrative Expenses",
+          "why": "SG&A-related, but likely a subcomponent of personnel/labor expenses, so including it with parent rows risks double counting.",
+          "confidence": 0.52
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor & Related Expenses in Selling, General & Administrative Expenses",
+          "why": "SG&A-related, but likely overlaps with 'Personnel expenses' and should not be added if parent personnel row is used.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other administrative expenses",
+          "why": "Clear administrative overhead component above operating profit.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling, General & Administrative Expenses - Other",
+          "why": "Likely overlaps with 'Other administrative expenses' rather than being fully separate; using both may double count.",
+          "confidence": 0.56
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Residual operating overhead bucket above operating profit; acceptable SG&A component when not a total.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees - Full-Time/Full-Time Equivalents - Period End",
+          "why": "Not an expense line and not from the income statement.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other administrative expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected overhead components above operating profit and avoided likely overlapping subcomponents/subtotals such as stock-based compensation, labor-related SG&A, and 'Selling, General & Administrative Expenses - Other' to reduce double counting risk. No separate R&D line is present."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line is present."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses",
+          "why": "Direct match for interest expense. Best single reported line for finance cost.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit interest expense line as the priority label."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Income from equity investments",
+          "why": "Income statement earnings line, not balance sheet equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity holders of parent company",
+          "why": "Comprehensive income line on the income statement, not book equity.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Fund of invested non-restricted equity",
+          "why": "Only one equity component, not total book equity.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity to holders of parent company",
+          "why": "Best match for owner/parent equity excluding non-controlling interests, which is preferred for BE.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders' Equity - Total",
+          "why": "Potentially includes non-controlling interests in some years, so less preferred when parent-only equity exists.",
+          "confidence": 0.62
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Clearly includes non-controlling interests; only fallback if no parent-only equity exists.",
+          "confidence": 0.35
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity to holders of parent company"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred parent-holder equity line to exclude non-controlling interests and avoid double counting with MIB."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Continuing Operations",
+          "why": "Income statement attribution line, not balance sheet minority equity.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interest",
+          "why": "Income statement comprehensive income attribution line, not balance sheet minority equity.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest in capital",
+          "why": "Direct balance sheet non-controlling interest line.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Direct balance sheet minority interest line; equivalent concept.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement attribution line, not balance sheet minority equity.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the balance sheet minority interest line to pair with parent-only BE."
+    }
+  ]
+}

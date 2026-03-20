@@ -1,0 +1,217 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Income",
+          "why": "Best available top-line revenue/sales style row; appears to aggregate rental/service/coworking income.",
+          "confidence": 0.89
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rental and service income",
+          "why": "Major revenue component and may be the reported revenue label in some years.",
+          "confidence": 0.73
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Income"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Rental and service income"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED.No preferred REVT candidates were provided. Selected from the Income Statement preview; 'Income' looks like the main top-line, with 'Rental and service income' as fallback if labels changed across years."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating costs",
+          "why": "Best match for direct property/service operating costs below revenue and above NOI.",
+          "confidence": 0.8
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating costs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Maintenance"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Property Tax"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Coworking expenses"
+        },
+         {
+          "sheet_name": "Income Statement",
+          "row_label": "Lease and property administration costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. No preferred COGS candidates were provided. 'Operating costs' appears to represent direct operating/property costs consistent with cost of sales, but this classification is industry-specific and should be reviewed."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Labor Costs Administrative Expenses",
+          "why": "Administrative labor is a clear SG&A component.",
+          "confidence": 0.86
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Central administrative expenses - rest",
+          "why": "Residual central admin overhead excluding identified depreciation line.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling/General/Admin Expense",
+          "why": "Explicit SG&A label exists, though preview is empty.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Central administrative costs",
+          "why": "Closest populated overhead bucket needed for years where explicit SG&A/components are missing in preview.",
+          "confidence": 0.78
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Selling/General/Admin Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Central administrative costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Candidate list misses the populated overhead bucket 'Central administrative costs'. Per SG&A hierarchy, included explicit 'Selling/General/Admin Expense' plus the closest populated overhead bucket for coverage across years. Avoided adding labor/rest components together with the subtotal to prevent overlap/double counting. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Central administrative costs"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No R&D line is identifiable in the provided Income Statement preview."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest costs",
+          "why": "Most semantically correct reported interest expense line; preferable to lease-interest supplemental or other financial expenses.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net interest items",
+          "why": "Fallback net finance cost line if 'Interest costs' is unavailable in some years.",
+          "confidence": 0.69
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Financial Expenses",
+          "why": "Candidate provided, but broader than pure interest expense and therefore lower priority.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest only; too narrow for total interest expense.",
+          "confidence": 0.21
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest costs" 
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net interest items"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "REVIEWED. Preferred candidate list missed the main interest-expense label. Selected 'Interest costs' as primary and 'Net interest items' as fallback. Manual review needed because 'Interest costs' appears more than once in the preview, creating duplicate-label ambiguity in the source sheet. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Interest costs, [Income Statement] Net interest items"
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to Parent Company shareholders",
+          "why": "Best owner/parent equity line and excludes non-controlling interest, avoiding double counting with MIB.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Usable only if parent-equity line were unavailable.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Not equity; balance sheet total, so not suitable.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity attributable to Parent Company shareholders"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred parent-attributable equity line is available and is the correct BE choice."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest",
+          "why": "Standard label for minority/non-controlling interest.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equivalent alternative label present in the sheet.",
+          "confidence": 0.94
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interest"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Included both synonymous NCI labels as a priority list because labels may vary across years."
+    }
+  ]
+}

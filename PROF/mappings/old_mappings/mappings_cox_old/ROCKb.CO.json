@@ -1,0 +1,279 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue",
+          "why": "Best top-line revenue label; preferred over subtotal 'Total Revenue'.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Revenue subtotal/total, useful fallback if primary label changes.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Gain/Loss on Sales/Scrapping",
+          "why": "Non-core gain/loss, not revenue.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Balancing Item - Revenue",
+          "why": "Balancing row, not a reported revenue line.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used reported revenue line with total as fallback priority."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Delivery costs and indirect costs",
+          "why": "Looks production/distribution related and could be part of cost of sales, but does not capture core materials cost by itself.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Raw Materials and consumables",
+          "why": "Balance sheet inventory component, not an income statement expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Raw material costs and production material costs"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list clearly misses the main income-statement COGS label. Selected the most direct production cost row from the full A-column labels. Manual review recommended because 'Delivery costs and indirect costs' may also be part of cost of sales, but COGS should remain minimal when choosing outside candidates. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Raw material costs and production material costs"
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefits expenses",
+          "why": "Core overhead/personnel expense component and a strong SG&A bucket.",
+          "confidence": 0.88
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employee benefit obligations",
+          "why": "Balance sheet liability, not income statement SG&A expense.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Employees provision",
+          "why": "Balance sheet provision, not income statement SG&A expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Employee benefits expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Stock Option Compensation Expense - Pre-tax"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "No explicit SG&A total row exists. Selected best overhead components: personnel, other expenses, and share-based compensation. Chose outside the candidate list because it clearly misses additional valid overhead rows such as 'Other expenses' and 'Stock Option Compensation Expense - Pre-tax'. Excluded depreciation/amortization, impairments, finance items, and totals. Did not add 'Research & Development Costs' to avoid likely double counting because it appears to be a separate/supplemental disclosure that is likely embedded within operating overhead buckets. | Escape-hatch used (final_choice outside candidate list): [Income Statement] Other expenses, [Income Statement] Stock Option Compensation Expense - Pre-tax"
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Costs",
+          "why": "Dedicated R&D expense disclosure; best match for XRD.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Completed development projects",
+          "why": "Balance sheet asset, not period R&D expense.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accumulated depreciation Development Property",
+          "why": "Balance sheet accumulated depreciation, not R&D expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research & Development Costs"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Dedicated R&D expense line exists."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance expenses",
+          "why": "Broader finance-cost line; fallback if dedicated interest expense unavailable.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses and similar",
+          "why": "Most direct interest expense label; preferred.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses lease liabilities",
+          "why": "Specific lease-interest subset, narrower than total interest expense.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Semantically correct but appears unpopulated in preview; possible alternate label across periods.",
+          "confidence": 0.6
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental lease-interest subset, not total interest expense.",
+          "confidence": 0.4
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expenses and similar"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Finance expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list prefers dedicated interest expense, then broader finance expense, then alternate label."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Equity in Affiliates, Supplemental",
+          "why": "Income statement supplemental item, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Listed equity securities",
+          "why": "Asset line, not shareholders' equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to shareholders of ROCKWOOL A/S",
+          "why": "Best owner-only equity line; excludes non-controlling interests.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Includes non-controlling interests; only fallback if owner-only equity unavailable.",
+          "confidence": 0.7
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Balance sheet total, not equity.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Equity attributable to shareholders of ROCKWOOL A/S"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Preferred owner-attributable equity to avoid double counting with MIB; total equity kept only as fallback priority."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income allocation line, not preferred versus balance sheet equity component.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority interests",
+          "why": "Income statement allocation line, less preferred than balance sheet NCI.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Direct balance sheet NCI line; best match for MIB.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equivalent balance sheet label and good fallback.",
+          "confidence": 0.95
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used balance sheet NCI labels as priority list."
+    }
+  ]
+}

@@ -1,0 +1,346 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating revenue",
+          "why": "Primary top-line operating revenue; matches revenue amounts and is the clearest revenue label.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating income",
+          "why": "Appears to be an alternative label for total operating revenue with identical figures; kept as fallback for older periods/label changes.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Share of income/loss from joint ventures",
+          "why": "Equity income from JVs, not core revenue; should not be used for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest income",
+          "why": "Financial income, not operating revenue; incorrect for REVT.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total comprehensive income",
+          "why": "Bottom-line comprehensive income, not revenue; incorrect for REVT.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Operating revenue"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total operating income"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Revenue is clearly labeled as 'Operating revenue'. 'Total operating income' carries identical figures and is included as a fallback label over time."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "Major operating cost but may include both direct and overhead personnel. Possible component of COGS/operating costs but less clearly direct than 'Other operating expenses'.",
+          "confidence": 0.6
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Broad bucket of operating costs likely to include direct service/operating expenses for this drilling-focused business; best proxy for cost of sales given absence of a dedicated COGS line.",
+          "confidence": 0.7
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net financial expenses",
+          "why": "Financing costs, not production costs; should not be used as COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Net Financing Income/Expense -Remaining Value",
+          "why": "Residual financing adjustment, not operating COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other Non-operating Expense",
+          "why": "Non-operating, not part of COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Accrued Expenses",
+          "why": "Balance sheet liability, not an income statement expense line; not appropriate for COGS.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit 'Cost of sales' line is present. Among available operating expense buckets, 'Other operating expenses' is the best single proxy for direct operating/production costs for a drilling company."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses",
+          "why": "A core operating overhead category (personnel), typically part of SG&A; fits SG&A components definition.",
+          "confidence": 0.86
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Mixed operating cost bucket that may contain both direct operating costs and overhead; partly SG&A but also likely includes COGS-type items, so less clean for SG&A mapping here.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Brands, Patents, Trademarks, Marketing & Artistic Intangibles - Gross",
+          "why": "Balance sheet intangible asset, not an expense; should not be used as SG&A expense component.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Brands, Patents, Trademarks, Marketing & Artistic Intangibles",
+          "why": "Amortization expense, which should be excluded from SG&A per instructions (exclude D&A, impairments).",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Brands, Patents, Trademarks, Marketing & Artistic Intangibles - Accumulated Amortization & Impairment",
+          "why": "Balance sheet accumulated amortization, not a current-period SG&A expense.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Personnel expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A line exists. 'Personnel expenses' is a clear overhead component; 'Other operating expenses' is more mixed and is being used as COGS, so only 'Personnel expenses' is mapped as SG&A component to avoid double counting."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Gross",
+          "why": "Capitalized R&D asset, not current-period expense; does not represent R&D expense in the income statement.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Research & Development Costs - Accumulated Amortization & Impairment",
+          "why": "Accumulated amortization/impairment of R&D assets on the balance sheet; not a current-period R&D expense line.",
+          "confidence": 0.1
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "There is no income statement line for R&D expense. Only capitalized R&D assets appear on the balance sheet, which should not be used for XRD. XRD is therefore treated as 0."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense Leases",
+          "why": "Explicit lease-related interest expense; relevant but more specific than the main interest expense line, so used as a secondary priority.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Primary interest expense line capturing financing costs; best candidate for XINT.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest rate swaps",
+          "why": "Derivative fair value/hedging-related result, not pure interest expense; not ideal as XINT.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Attribution of net income, not an interest expense.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Same as non-controlling interests; not interest expense.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental",
+          "why": "Supplemental disclosure of lease interest; valid as a tertiary/fallback interest expense label.",
+          "confidence": 0.75
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current interest-bearing borrowings",
+          "why": "Balance sheet liability, not an expense line.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-current interest-bearing borrowings",
+          "why": "Balance sheet liability, not an expense line.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Equity attribution, not interest expense.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Equity attribution, not interest expense.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense Leases"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense on Financial Lease Liabilities - Supplemental"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The main 'Interest Expense' line is used as primary XINT. Lease-related interest expense lines are included as fallbacks in case of label changes or disaggregation over time."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Paid in equity",
+          "why": "Component of shareholders’ equity but not total equity; using it alone would omit retained earnings and reserves.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other equity",
+          "why": "Another component of shareholders’ equity but not the total; incomplete for BE by itself.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity",
+          "why": "Represents total equity attributable to owners (given separate Minority Interest/Non-controlling interests lines and a higher 'TOTAL EQUITY' including them). Best match for BE which should exclude minorities.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "TOTAL EQUITY",
+          "why": "Includes both owners’ equity and minority interests (slightly higher than 'Total equity'); not appropriate for BE which must exclude minorities.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Shareholders Equity",
+          "why": "Technical balancing line, not a substantive equity measure; should not be used.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Equity",
+          "why": "Balancing adjustment, not the substantive equity value.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Total Liability and Equity",
+          "why": "Balancing line; not the equity measure.",
+          "confidence": 0.0
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity and liabilities",
+          "why": "Total assets/ liabilities+equity; not equity alone.",
+          "confidence": 0.0
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total equity"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "'Total equity' is interpreted as equity attributable to owners, with minority interests reported separately and included only in 'TOTAL EQUITY'. This matches the requirement that BE exclude non-controlling interests."
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Non-controlling interests",
+          "why": "Income statement attribution of profit, not the balance sheet amount used in the BE+MIB denominator; less suitable than balance sheet lines.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interests",
+          "why": "Same as income statement non-controlling interests; not the desired balance sheet stock variable.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests",
+          "why": "Balance sheet line item for non-controlling interests; primary choice for MIB.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest",
+          "why": "Alternative label for non-controlling interests with same figures; included as fallback for label changes.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Non-controlling interests"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority Interest"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Balance sheet non-controlling interest lines are used so MIB captures the stock of minority interest that pairs with BE in the denominator."
+    }
+  ]
+}

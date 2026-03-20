@@ -1,0 +1,177 @@
+{
+  "variables": [
+    {
+      "variable": "REVT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue",
+          "why": "Explicit top-line revenue total on the income statement; best match for total revenue/sales.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Total Revenue"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit revenue total line."
+    },
+    {
+      "variable": "COGS",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No cost of goods sold/cost of sales concept is apparent in these bank statements; leave missing."
+    },
+    {
+      "variable": "XSGA_COMPONENTS",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Staff costs and administrative expenses",
+          "why": "Explicit operating overhead bucket combining staff and administrative expenses; populated and preferable to selecting multiple subcomponents when an explicit SG&A-like row exists.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other administrative expenses",
+          "why": "Overhead component, but subordinate to the broader explicit SG&A-like row.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other operating expenses",
+          "why": "Overhead-like expense bucket, but rule prefers the explicit SG&A row when populated.",
+          "confidence": 0.7
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Staff costs and administrative expenses"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Per XSGA hierarchy, selected only the explicit populated SG&A-like row and excluded D&A and other non-SG&A items."
+    },
+    {
+      "variable": "XRD",
+      "candidates": [],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No dedicated research and development expense line appears in the provided statements."
+    },
+    {
+      "variable": "XINT",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense",
+          "why": "Candidate label for interest expense, but appears unpopulated in preview; could reflect an alternate label in some periods.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense",
+          "why": "Explicit reported interest expense line with populated values; best primary choice.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense on deposits and other debt",
+          "why": "Too narrow/component-level interest expense, not preferred over the consolidated interest expense line.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense on bonds issued",
+          "why": "Component of interest expense only.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Other interest expense",
+          "why": "Minor component only.",
+          "confidence": 0.25
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest expense"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Interest Expense"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Priority list uses the consolidated populated interest expense line first, then the alternate-cased label as fallback for possible label variation across periods."
+    },
+    {
+      "variable": "BE",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Fair value, designated at initial recognition, equity investments (FVPL",
+          "why": "Not an equity/book equity balance-sheet line; not a match.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Transfer to equity",
+          "why": "Income allocation line, not book equity.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "EQUITY A/C PROFITS",
+          "why": "Not a usable book equity line here.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Reserve for net revaluation according to equity method",
+          "why": "Equity component only, not total owner equity.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Equity",
+          "why": "Usable only if no parent/owner equity line exists, but a better parent-equity line is present.",
+          "confidence": 0.65
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Shareholders of Sydbank A/S"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list clearly misses the best BE label. Selected the balance-sheet parent equity line 'Shareholders of Sydbank A/S', which excludes minority interests and is preferable to 'Total Equity' to avoid double counting with MIB. | Escape-hatch used (final_choice outside candidate list): [Balance Sheet] Shareholders of Sydbank A/S"
+    },
+    {
+      "variable": "MIB",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Minority Interest - Total",
+          "why": "Income statement allocation line, not balance-sheet minority interest/NCI.",
+          "confidence": 0.15
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Minority shareholders"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Candidate list misses the correct balance-sheet non-controlling interest line. Selected 'Minority shareholders' from the Balance Sheet as the appropriate MIB label. | Escape-hatch used (final_choice outside candidate list): [Balance Sheet] Minority shareholders"
+    }
+  ]
+}
