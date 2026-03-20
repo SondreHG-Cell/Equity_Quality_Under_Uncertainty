@@ -2,7 +2,7 @@ from pathlib import Path
 
 from openai import RateLimitError, APIStatusError
 
-from PROFF.llm_row_mapper import llm_map_prof_rows, save_mapping
+from PROF.llm_row_mapper import llm_map_prof_rows, save_mapping
 
 BASE_DIR = Path(__file__).resolve().parent
 INPUT_DIR = BASE_DIR / "stx_xlsx"
