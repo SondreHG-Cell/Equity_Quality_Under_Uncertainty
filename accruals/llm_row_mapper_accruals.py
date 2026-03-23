@@ -47,10 +47,10 @@ ACCRUALS_TARGETS = {
 ALL_VARS = list(ACCRUALS_TARGETS.keys())
 
 # Variables interpreted as priority lists later (first non-missing per year)
-PRIORITY_LIST_VARS = {"ACT", "CHE", "LCT", "TXP", "PPEGT", "AT", "OANCF"}
+PRIORITY_LIST_VARS = {"ACT", "CHE", "LCT", "TXP", "AT", "OANCF"}
 
 # Variables interpreted as sums later (sum of components per year)
-SUM_VARS = {"STD"}  # under IFRS, short-term debt is often split across multiple lines
+SUM_VARS = {"STD", "PPEGT"}  # under IFRS, short-term debt is often split across multiple lines
 
 # Light “balancing” patterns (avoid only when clearly a balancing line)
 FORBIDDEN_BALANCING_PATTERNS = [
