@@ -10,8 +10,8 @@ from llm_row_mapper_accruals import llm_map_accruals_rows, save_mapping_accruals
 # -----------s------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-INPUT_DIR = BASE_DIR.parent / "data" / "obx_xlsx"
-MAPPINGS_DIR = BASE_DIR / "acc_mappings" / "acc_mappings_obx"
+INPUT_DIR = BASE_DIR.parent / "data" / "stx_xlsx"
+MAPPINGS_DIR = BASE_DIR / "acc_mappings" / "acc_mappings_stx"
 
 
 # -----------------------------

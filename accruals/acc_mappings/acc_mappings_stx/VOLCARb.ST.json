@@ -1,0 +1,238 @@
+{
+  "variables": [
+    {
+      "variable": "ACT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Current Assets",
+          "why": "Exact match for total current assets on the balance sheet.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current assets held under operating lease",
+          "why": "This is only one current-asset component, not the total.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total non-current assets Current assets",
+          "why": "Corrupted subtotal label; not the clean current-assets total.",
+          "confidence": 0.15
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Current Assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit total current assets line."
+    },
+    {
+      "variable": "CHE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cashandcashequivalents",
+          "why": "Exact balance-sheet cash and cash equivalents line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cash in banks",
+          "why": "Cash component only, not full cash and cash equivalents.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Restricted cash",
+          "why": "Restricted cash is typically excluded from cash and cash equivalents.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash and cash equivalents at end of period",
+          "why": "Cash flow statement ending balance matches, but balance-sheet label is preferred.",
+          "confidence": 0.75
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cashandcashequivalents"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the balance-sheet line as requested."
+    },
+    {
+      "variable": "LCT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Current Liabilities",
+          "why": "Exact match for total current liabilities.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other current liabilities - Balancing value",
+          "why": "Only a component of current liabilities, not the total.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Current Liabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit total current liabilities line."
+    },
+    {
+      "variable": "STD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Currentbonds",
+          "why": "Clearly a current financing liability and part of short-term debt.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Othercurrentinterest-bearingliabilities",
+          "why": "Clearly current interest-bearing debt; relevant for STD.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Debt - Long-Term - Maturities - within 1 Year",
+          "why": "Represents current portion of long-term debt, but may overlap with current debt lines reported elsewhere.",
+          "confidence": 0.55
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Liabilities to credit institutions",
+          "why": "Likely includes current bank debt, but the same label also appears in non-current liabilities, creating ambiguity in this output format.",
+          "confidence": 0.45
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Currentbonds"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Othercurrentinterest-bearingliabilities"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "STD appears split across several debt lines. I selected the unambiguous current debt labels and excluded lease rows. Manual review is needed because 'Liabilities to credit institutions' appears both current and non-current with the exact same label, and 'Debt - Long-Term - Maturities - within 1 Year' may overlap with current borrowings."
+    },
+    {
+      "variable": "TXP",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Currenttaxliabilities",
+          "why": "Direct match for current tax liabilities / taxes payable.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "VAT liabilities",
+          "why": "Indirect tax liability, not income taxes payable.",
+          "confidence": 0.1
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Currenttaxliabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Confident match for taxes payable/current tax liabilities."
+    },
+    {
+      "variable": "PPEGT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Tangible assets",
+          "why": "Best balance-sheet proxy for total property, plant and equipment under IFRS.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Right of Use Tangible Assets - Capital/Finance Lease - Gross",
+          "why": "Lease-related component only, not total PPE.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Intangible assets",
+          "why": "Wrong asset class.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Tangible assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Used the reported total tangible assets line as total/net PPE proxy."
+    },
+    {
+      "variable": "AT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Assets",
+          "why": "Exact match for total assets.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the explicit total assets line."
+    },
+    {
+      "variable": "OANCF",
+      "candidates": [
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash flow from operating activities INVESTING ACTIVITIES",
+          "why": "This appears to be the net cash flow from operating activities, with the next section header concatenated onto the label.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash flow from movements in working capital",
+          "why": "Only a component of operating cash flow, not the full net operating cash flow.",
+          "confidence": 0.18
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash flow from operating activities INVESTING ACTIVITIES"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Chose the operating cash flow total despite the concatenated section header, because values and placement clearly indicate net cash flow from operating activities."
+    }
+  ]
+}
