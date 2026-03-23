@@ -1,0 +1,322 @@
+{
+  "variables": [
+    {
+      "variable": "ACT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total current assets",
+          "why": "Exact match for total current assets on the balance sheet.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other Current Assets - Total - Balancing value",
+          "why": "Balancing value, not the reported total current assets line.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Current Assets",
+          "why": "Balancing item rather than the reported total.",
+          "confidence": 0.05
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Noncurrent Assets",
+          "why": "Non-current assets balancing item, not current assets total.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total non-current assets CURRENT ASSETS Inventories",
+          "why": "Malformed/concatenated non-current assets line, not the clean current assets total.",
+          "confidence": 0.02
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total current assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the clean reported total current assets line."
+    },
+    {
+      "variable": "CHE",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cash and cash equivalents",
+          "why": "Exact balance-sheet cash line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash and cash equivalents at end of period",
+          "why": "Cash flow statement ending cash, consistent with balance sheet but balance sheet is preferred.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash and cash equivalents at beginning of period",
+          "why": "Beginning cash, not the balance-sheet stock at period end.",
+          "confidence": 0.1
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Exchange differences in cash and cash equivalents",
+          "why": "Flow adjustment, not cash balance.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Adjustments for non-cash items",
+          "why": "Non-cash adjustment line, unrelated.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Other non cash items",
+          "why": "Non-cash adjustment line, unrelated.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Cash and cash equivalents"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Balance sheet cash balance is the preferred CHE mapping."
+    },
+    {
+      "variable": "LCT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Current Liabilities",
+          "why": "Exact match for total current liabilities.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other Current Liabilities",
+          "why": "Component of current liabilities, not the total.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Current Liabilities",
+          "why": "Balancing item rather than the reported total.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total non-current liabilities",
+          "why": "Wrong maturity bucket.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Balancing Item - Noncurrent Liabilities",
+          "why": "Balancing item and wrong maturity bucket.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Current Liabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the clean reported total current liabilities line."
+    },
+    {
+      "variable": "STD",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current interest-bearing liabilities",
+          "why": "Current financing debt line; best match for short-term debt and excludes explicit lease line.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current interest-bearing liabilities (for receivables guaranteed by EKN)",
+          "why": "Also current financing-related debt; appears to be a separate current borrowing bucket and should be included if not already consolidated.",
+          "confidence": 0.87
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Long Term Debt Maturing within 1 Year",
+          "why": "Current portion of long-term debt; useful fallback/older-period label but may overlap with current interest-bearing liabilities.",
+          "confidence": 0.73
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Overdraft",
+          "why": "Could be short-term debt if populated, but shown as empty here.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current interest-bearing liabilities"
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Current interest-bearing liabilities (for receivables guaranteed by EKN)"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Chose the current interest-bearing debt rows on the balance sheet and excluded 'Current lease liabilities' per rule. Did not include 'Long Term Debt Maturing within 1 Year' to avoid possible double counting with the current interest-bearing liability totals."
+    },
+    {
+      "variable": "TXP",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Tax Liabilities",
+          "why": "Best balance-sheet match for current tax liabilities/taxes payable.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Taxes",
+          "why": "Possible tax-related current liability component, but less clean and may overlap with other items.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Taxes and Social Security",
+          "why": "Mixed payroll/social-security liability, not a clean taxes-payable line.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Tax Liabilities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "No shortlist candidate existed, but 'Tax Liabilities' is a clear current taxes payable/current tax liability label."
+    },
+    {
+      "variable": "PPEGT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total tangible fixed assets",
+          "why": "Best reported total PPE-type line on the balance sheet; preferred over components and cash flow capex line.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Right of Use Tangible Assets, Gross",
+          "why": "Lease/ROU component only, not total PPE.",
+          "confidence": 0.28
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Right of Use Tangible Assets, Accumulated Depreciation",
+          "why": "Contra-asset line, not PPE total.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Acquisition of property, plant and equipment",
+          "why": "Cash flow capex, not the balance-sheet PPE stock.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total intangible assets",
+          "why": "Wrong asset class.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Intangible Assets, Net - Balancing value",
+          "why": "Wrong asset class and balancing line.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Right of Use Tangible Assets - Capital/Finance Lease - Net - Balancing value",
+          "why": "Balancing value for lease asset component, not total PPE.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total tangible fixed assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the clean total tangible fixed assets line as the closest total/net PPE measure."
+    },
+    {
+      "variable": "AT",
+      "candidates": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Assets",
+          "why": "Exact match for total assets.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Other Current Assets - Total - Balancing value",
+          "why": "Not total assets.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Balance Sheet",
+          "row_label": "Total Assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Exact total assets line."
+    },
+    {
+      "variable": "OANCF",
+      "candidates": [
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash flow from operating activities Investing activities",
+          "why": "This line's values equal net cash flow from operating activities; label appears concatenated with the next section header.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash flow from operating activities before changes in working capital Cash flow from changes in working capital",
+          "why": "Pre-working-capital subtotal, not net operating cash flow.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash Flow from Operating Activities before Changes in Working Capital",
+          "why": "Blank subtotal line, not net operating cash flow.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Cash Flow",
+          "row_label": "Cash flow from operating activities Investing activities"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The chosen row is the net operating cash flow line despite a concatenated section-header label; values reconcile as operating cash flow after working-capital changes."
+    }
+  ]
+}
