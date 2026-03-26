@@ -1,0 +1,85 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in COR/COGS",
+          "why": "This is an explicit COGS-related D&A component, but it appears to roll up into the already selected parent row 'Cost of sales' together with 'Amortization in COR/COGS' and 'Cost of sales - Other', so adding it separately would double count.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in COR/COGS",
+          "why": "This is an explicit COGS-related D&A component, but it appears to be included within the already selected parent row 'Cost of sales'; adding it separately would double count.",
+          "confidence": 0.98
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS reference bucket is 'Cost of sales'. The statement structure shows 'Cost of sales' as a parent total and the COGS D&A rows as components beneath it, so no separate COGS D&A should be added."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in SGA",
+          "why": "This appears to be a separate SG&A-related D&A row sitting outside the selected component row 'Selling, General & Administrative Expenses - Other'. The sales and distribution total appears to be built from 'Selling, General & Administrative Expenses - Other' plus this row plus 'Sales and distribution costs/ Amortization and impairment', so it should be added separately relative to the selected XSGA component bucket.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales and distribution costs/ Amortization and impairment",
+          "why": "This is a separate SG&A amortization row that appears to sit outside the selected 'Selling, General & Administrative Expenses - Other' row and roll into the broader sales/distribution total, so it should be added separately.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs, depreciation and impairment",
+          "why": "This is a separate administrative D&A row outside the selected 'Administrative costs - Other' row. The administrative total appears to be composed of 'Administrative costs - Other' plus this depreciation/impairment row plus the administrative amortization row, so it should be added separately.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs, amortization and impairment",
+          "why": "This is a separate administrative amortization row outside the selected 'Administrative costs - Other' row and appears to roll into the administrative total, so it should be added separately.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development costs, depreciation and impairment",
+          "why": "Although this is explicit R&D-related D&A, the same above-EBIT R&D row 'Research and development costs' was already selected in both XSGA_COMPONENTS and XRD. Per the R&D interaction rule, adding R&D D&A separately would risk distortion/double handling, so it should not be added.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Research and development costs, amortization and impairment",
+          "why": "Although this is explicit R&D-related D&A, the same above-EBIT R&D row 'Research and development costs' was already selected in both XSGA_COMPONENTS and XRD. Per the R&D interaction rule, this should not be added separately.",
+          "confidence": 0.84
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in SGA"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Sales and distribution costs/ Amortization and impairment"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs, depreciation and impairment"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Administrative costs, amortization and impairment"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected XSGA component bucket uses 'other' rows rather than parent totals, so the visible SG&A/admin D&A lines sit outside those selected rows and should be added separately. R&D D&A rows are excluded because 'Research and development costs' is already selected in both XSGA_COMPONENTS and XRD."
+    }
+  ]
+}

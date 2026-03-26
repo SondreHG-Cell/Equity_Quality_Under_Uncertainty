@@ -2,17 +2,72 @@
   "variables": [
     {
       "variable": "COGS_DA",
-      "candidates": [],
-      "final_choice": [],
-      "needs_manual_review": false,
-      "notes": "No depreciation or amortisation row is visible in the provided income statement excerpt. Relative to the selected COGS bucket ('Other aviation expenses' and 'Aircraft fuel'), there is no separate same-level COGS-related D&A line to add, so use no separate COGS_DA row."
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization",
+          "why": "Explicit operating D&A summary line shown separately at the same level as the selected aviation cost rows, so it does not appear embedded within the selected COGS component rows. However, the statement does not explicitly indicate how much belongs to aviation/direct operating costs versus overhead.",
+          "confidence": 0.66
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of operating assets",
+          "why": "Component of the separate D&A section. Likely relates substantially to operating assets used in airline operations, but a higher-level D&A summary row exists, so this should not be chosen over the summary unless the summary is rejected.",
+          "confidence": 0.52
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of right-of-use assets",
+          "why": "Component of the separate D&A section. Could relate to aircraft/operating leases, but it is a sub-component beneath the D&A summary and should not be selected if the summary row is used.",
+          "confidence": 0.5
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of intangible assets",
+          "why": "Small component of the separate D&A section. This is more likely non-direct/overhead than aviation COGS and is subordinate to the D&A summary row.",
+          "confidence": 0.28
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Selected the summary D&A row because D&A is presented as a separate operating line, not as part of the already selected COGS component rows. Manual review is needed because the excerpt does not explicitly split D&A between direct aviation costs and SG&A/overhead, so assigning the full separate D&A line to COGS may overstate COGS-related D&A."
     },
     {
       "variable": "XSGA_DA",
-      "candidates": [],
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization",
+          "why": "Separate operating D&A summary line exists outside the selected XSGA rows ('Salaries and salary-related expenses' and 'Other operating expenses'). But the statement does not indicate that this D&A belongs to SG&A specifically, and a substantial portion likely relates to operating/aviation assets instead.",
+          "confidence": 0.37
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of operating assets",
+          "why": "Component of total D&A and not clearly SG&A-specific. More likely tied to operating assets than to overhead, and it is subordinate to the summary row.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of right-of-use assets",
+          "why": "Component of total D&A, likely associated with leased operating assets rather than SG&A specifically. Also subordinate to the summary row.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of intangible assets",
+          "why": "Could potentially relate to administrative/intangible overhead, but the statement provides no SG&A-specific linkage, and it is only a component of the total D&A section.",
+          "confidence": 0.18
+        }
+      ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No depreciation or amortisation row is visible in the provided income statement excerpt. Relative to the selected XSGA bucket ('Salaries and salary-related expenses' and 'Other operating expenses'), there is no separate same-level SG&A-related D&A line to add, so use no separate XSGA_DA row."
+      "notes": "No SG&A-specific D&A row is identified. Although total D&A is shown separately from the selected XSGA rows, the excerpt does not support assigning any explicit D&A row to SG&A rather than to operating/aviation activities. Conservative choice avoids double counting."
     }
   ]
 }

@@ -1,0 +1,65 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit D&A row exists separately from the selected COGS row 'Direct Costs Related to Revenue', but nothing indicates it is COGS-specific or tied to direct costs.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and impairment",
+          "why": "Separate operating line, but not identified as related to cost of sales/direct costs; also includes impairment so bucket attribution to COGS is not supported.",
+          "confidence": 0.23
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation / Amortization",
+          "why": "Appears to be a blank header rather than a numeric summary row, so it should not be selected.",
+          "confidence": 0.12
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit COGS/cost-of-revenue D&A row is shown. The visible D&A lines are separate operating lines without COGS attribution, so conservatively do not add any row to COGS_DA."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A line at the same level as the selected overhead component rows 'Staff Costs' and 'Other external expenses'; since those selected rows explicitly excluded D&A, this depreciation appears to sit outside them and should be added separately.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and impairment",
+          "why": "Separate operating line alongside the selected overhead component rows, with no dedicated R&D row visible. It appears outside the selected XSGA component bucket and should be added separately rather than assumed embedded in staff/external expenses.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation / Amortization",
+          "why": "Looks like a section header with no values, not a usable summary row.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and impairment"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected XSGA bucket consists only of 'Staff Costs' and 'Other external expenses'. The D&A rows appear as separate same-level operating expenses, so they should be added separately to avoid understating operating overhead. The blank 'Depreciation / Amortization' row is not used because it appears to be a header, not a numeric summary."
+    }
+  ]
+}

@@ -2,17 +2,60 @@
   "variables": [
     {
       "variable": "COGS_DA",
-      "candidates": [],
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization",
+          "why": "Two rows with this label appear. The first sits directly beneath 'Production expenses' and above 'Production expenses - Balancing value', which indicates it is a sub-component of 'Production expenses', not a separate add-on to the selected COGS row 'Cost of Revenues - Total'. The second sits beneath 'Other Operating Expense' and appears SG&A-related rather than COGS.",
+          "confidence": 0.88
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "The duplicate 'Depreciation' rows appear in older periods alongside 'Labour Expenses' and 'Other Operating Expense' in the operating expense section, not as components tied to 'Cost of Revenues - Total'. They do not clearly belong to the selected COGS bucket.",
+          "confidence": 0.73
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Balancing value",
+          "why": "This is a balancing line, not a real D&A expense to add separately.",
+          "confidence": 0.99
+        }
+      ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No depreciation/amortisation row related to COGS is visible in the provided income statement excerpt. With no explicit separate D&A line at the same level as the selected COGS bucket ('Cost of Revenues - Total'), the conservative conclusion is that no separate COGS D&A row should be added."
+      "notes": "No explicit D&A row clearly sits outside or alongside the selected COGS bucket 'Cost of Revenues - Total'. The visible D&A rows are either components of other operating expense buckets or ambiguous operating-expense lines, so adding them to COGS would risk misclassification or double counting."
     },
     {
       "variable": "XSGA_DA",
-      "candidates": [],
-      "final_choice": [],
-      "needs_manual_review": false,
-      "notes": "No SG&A-related depreciation/amortisation row is visible in the provided income statement excerpt. The excerpt ends before operating expense detail, and no explicit separate D&A line is shown relative to the selected XSGA component rows, so no separate XSGA D&A row should be added."
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization",
+          "why": "One 'Depreciation & Amortization' row of 39.19 appears directly under 'Other Operating Expense' and above 'Other Operating Expense - Balancing value', indicating it is already embedded in the selected SG&A parent bucket 'Other Operating Expense'. The earlier 50.35 row appears under 'Production expenses' and is not SG&A.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "In older periods, two separate 'Depreciation' rows appear at the same operating-expense level as 'Labour Expenses' and 'Other Operating Expense', suggesting separate operating D&A outside the selected SG&A rows. However, the exact duplicated label makes the source row ambiguous if selected by label only.",
+          "confidence": 0.76
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Balancing value",
+          "why": "This is only a balancing line and should not be added as D&A.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "For the newer period, the 39.19 'Depreciation & Amortization' line looks like a component already included within selected SG&A row 'Other Operating Expense', so it should not be added. In the older periods, the separate same-level 'Depreciation' rows appear outside the selected SG&A rows ('Labour Expenses' and 'Other Operating Expense'), so D&A should be added separately. Manual review is needed because there are two distinct rows with the exact same label 'Depreciation', which cannot be uniquely identified by label alone and may create ambiguity."
     }
   ]
 }

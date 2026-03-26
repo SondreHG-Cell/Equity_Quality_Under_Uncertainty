@@ -1,0 +1,75 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Separate operating D&A line above EBIT, but not labelled as cost of sales / production / COR / COGS; no clear evidence it belongs specifically to the selected COGS bucket 'Raw material and consumables used'.",
+          "confidence": 0.26
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A line above EBIT, but not specifically tied to COGS and could relate to broader operating overhead.",
+          "confidence": 0.24
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Lease Assets",
+          "why": "Separate operating D&A line above EBIT, but no wording indicates it is embedded in or specifically attributable to the selected COGS row.",
+          "confidence": 0.23
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS bucket is only 'Raw material and consumables used'. The visible D&A rows are separate operating lines, but nothing in the excerpt ties them specifically to COGS/cost of sales. To avoid misallocating overhead or company-wide depreciation into COGS, do not add any COGS_DA row separately."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Separate operating D&A component above EBIT and outside the selected XSGA rows ('Employee benefits expenses', 'Other operating expenses', 'Research & Development Expenses'). Could reasonably represent operating overhead D&A to add separately.",
+          "confidence": 0.64
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A component above EBIT and not obviously embedded in the selected XSGA rows. Could be part of operating overhead D&A.",
+          "confidence": 0.61
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Lease Assets",
+          "why": "Separate operating D&A component above EBIT and not obviously embedded in the selected XSGA rows. Could be part of operating overhead D&A.",
+          "confidence": 0.6
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Impairment",
+          "why": "This is the apparent summary D&A row, but it explicitly includes impairment, which is out of scope for this task. Therefore it should not be used as the add-back row despite being the summary line.",
+          "confidence": 0.74
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Lease Assets"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "The selected XSGA bucket excludes any explicit D&A row, and these D&A lines appear separately at the same operating level, so they are not already embedded in the selected XSGA rows. The summary row 'Depreciation and Impairment' is not chosen because it includes impairment, which should be ignored. Using the visible non-impairment components is the best operating-only approximation, but allocation between production and overhead is not explicit, so manual review is warranted."
+    }
+  ]
+}

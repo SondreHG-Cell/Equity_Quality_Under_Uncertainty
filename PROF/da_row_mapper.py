@@ -233,17 +233,20 @@ def extract_existing_cogs_xsga_choices(mapping: dict) -> dict:
 def read_income_statement_excerpt_a_to_f(
     xlsx_path: Path,
     max_rows: int = 5000,
+    min_preview_rows: int = 25,
 ) -> tuple[str, list[list[str]]]:
     """
-    Reads A:F from the income statement sheet only and truncates the preview
-    at the first operating profit / EBIT / profit before financial items row.
+    Reads A:F from the income statement sheet only.
 
-    Assumes first real statement line items start at Excel row 19, which matches
-    the convention used in the earlier mapper.
+    Start rule:
+    - find the row where column A is exactly 'Field Name'
+    - start the preview from the next row
 
-    Returns:
-      sheet_name
-      preview_rows: [[A,B,C,D,E,F], ...]
+    Cut rule:
+    - find the first row whose label contains 'interest'
+    - if that row appears before `min_preview_rows`, cut at `min_preview_rows`
+    - otherwise cut at the first 'interest' row
+    - if no 'interest' row exists, keep full preview
     """
     xl = pd.ExcelFile(xlsx_path)
     sheet_names = xl.sheet_names
@@ -258,55 +261,54 @@ def read_income_statement_excerpt_a_to_f(
     if income_sheet is None:
         income_sheet = sheet_names[0]
 
-    SKIPROWS = 17  # matches earlier mapper convention
-
+    # Read raw with no fixed skiprows
     df = pd.read_excel(
         xlsx_path,
         sheet_name=income_sheet,
         usecols="A:F",
-        skiprows=SKIPROWS,
+        header=None,
         nrows=max_rows,
     )
 
     if df.shape[1] == 0:
         return income_sheet, []
 
-    colA = df.columns[0]
-    df[colA] = df[colA].astype(str).str.strip()
-    df = df.replace({pd.NA: "", "nan": "", "None": ""})
+    # Clean everything to strings
+    df = df.fillna("")
+    df = df.astype(str).apply(lambda col: col.str.strip())
+
+    # Find header row where column A == "Field Name"
+    header_idx = None
+    for i in range(len(df)):
+        if df.iat[i, 0] == "Field Name":
+            header_idx = i
+            break
+
+    if header_idx is None:
+        raise ValueError(f"'Field Name' not found in column A for sheet {income_sheet} in {xlsx_path.name}")
+
+    # Data starts after the Field Name row
+    data_df = df.iloc[header_idx + 1 :].copy()
 
     preview_rows: list[list[str]] = []
-    for _, row in df.iterrows():
-        row_vals = []
-        for c in df.columns[:6]:
-            v = row.get(c, "")
-            v = "" if v is None else str(v).strip()
-            row_vals.append(v)
+    for _, row in data_df.iterrows():
+        row_vals = [str(row.iloc[j]).strip() if j < len(row) else "" for j in range(min(6, len(row)))]
+        while len(row_vals) < 6:
+            row_vals.append("")
 
         if row_vals[0] != "":
             preview_rows.append(row_vals)
 
-    cutoff_keywords = [
-        "operating profit",
-        "operating income",
-        "operating result",
-        "operating earnings",
-        "ebit",
-        "profit before financial",
-        "net profit before financial",
-        "income before financial",
-        "result before financial",
-    ]
-
-    cut_idx = None
+    first_interest_idx = None
     for i, r in enumerate(preview_rows):
         label = r[0].lower()
-        if any(k in label for k in cutoff_keywords):
-            cut_idx = i
+        if "interest" in label:
+            first_interest_idx = i
             break
 
-    if cut_idx is not None:
-        preview_rows = preview_rows[: cut_idx + 1]
+    if first_interest_idx is not None:
+        cut_idx = max(first_interest_idx, min_preview_rows)
+        preview_rows = preview_rows[:cut_idx]
 
     return income_sheet, preview_rows
 
@@ -363,6 +365,13 @@ def build_da_prompt(
     lines.append("- For COGS_DA: choose ONLY D&A rows that should be ADDED separately later to COGS.")
     lines.append("- For XSGA_DA: choose ONLY D&A rows that should be ADDED separately later to XSGA_COMPONENTS.")
     lines.append("- If D&A is already embedded in the selected parent row(s), then final_choice must be [].")
+    lines.append("")
+    
+    lines.append("Important scope restriction:")
+    lines.append("- The preview is intended to show only the operating section before financial lines begin.")
+    lines.append("- You must focus only on rows BEFORE financial lines.")
+    lines.append("- If a row appears to belong to interest income, interest expense, finance costs, financial income/expenses, FX, fair value, tax, or other non-operating items, ignore it even if it appears in the preview.")
+    lines.append("- For this task, only operating rows above the financial section are relevant.")
     lines.append("")
 
     lines.append("Critical rules:")

@@ -1,0 +1,61 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "The selected COGS row is 'Cost of goods sold ex depreciation', which explicitly excludes depreciation. A separate operating 'Depreciation' line appears above financial items and reconciles the ex-depreciation COGS toward total COGS, so it should be added separately to the COGS bucket.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of goods sold ex depreciation",
+          "why": "This is the already selected parent COGS row, not a D&A row to add separately.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "This is clearly tied to SGA, not COGS.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Because the chosen COGS reference bucket is explicitly ex-depreciation, the separate operating 'Depreciation' row should be added to capture COGS-related D&A. No more specific COGS-only D&A summary is shown."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "Although this is the relevant SGA D&A line, it appears to be a component of the selected 'Operating expenses' parent total (e.g., Operating expenses = Administrative/General Expenses - Balancing value + Depreciation/Amortization in SGA in years shown). Since XSGA_COMPONENTS already includes 'Operating expenses', adding this separately would risk double counting.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "This appears tied to COGS/gross profit presentation rather than SG&A specifically.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of goods sold ex depreciation",
+          "why": "This is not an SGA D&A row.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Do not add separate SGA D&A because 'Depreciation/Amortization in SGA' appears embedded within the already selected XSGA reference bucket via the selected parent row 'Operating expenses'. Conservative choice avoids double counting."
+    }
+  ]
+}

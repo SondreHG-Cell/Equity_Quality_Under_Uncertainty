@@ -1,0 +1,55 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "A separate D&A row exists, but there is no selected COGS bucket in the original mapping and this statement appears to be for a financial institution without a distinct operating COGS line. Therefore this row should not be added to COGS.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "A separate amortization row exists, but there is no selected COGS bucket in the original mapping and no evidence this belongs to COGS/cost of sales. Therefore it should not be added to COGS.",
+          "confidence": 0.94
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No COGS row was selected earlier, and nothing in the excerpt indicates COGS-specific D&A."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "equipment and intangible assets",
+          "why": "This appears to be the summary D&A line for SG&A-related equipment/intangible assets, because its values closely match the sum of the two component rows beneath it: Depreciation and Amortization of Intangibles excluding Goodwill. It also appears outside the selected parent row General administrative expenses, whose balancing structure suggests those D&A amounts are not embedded there. Per the summary-vs-components rule, prefer this summary row only.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Likely a component of the summary row equipment and intangible assets, so selecting it separately would risk double counting.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Likely a component of the summary row equipment and intangible assets, so selecting it separately would risk double counting.",
+          "confidence": 0.92
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "equipment and intangible assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "General administrative expenses was the selected XSGA bucket. The excerpt suggests D&A is presented separately from that row, with equipment and intangible assets acting as the summary total over Depreciation and Amortization of Intangibles excluding Goodwill, so only the summary row should be added later."
+    }
+  ]
+}

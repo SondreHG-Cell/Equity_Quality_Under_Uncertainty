@@ -1,0 +1,86 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles in Production costs",
+          "why": "This appears to be a component nested under the operating cost total that matches the selected COGS bucket ('Cost of revenues/COGS'), so adding it separately would likely double count.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Production costs",
+          "why": "This is a depreciation component within Production costs, which aligns with the selected total COGS row and therefore appears already embedded in that parent bucket.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Cost of Sales",
+          "why": "This would be the most direct separate COGS D&A row if populated, but the row is blank in the preview, so there is nothing to add separately.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS reference bucket is the explicit total row 'Cost of revenues/COGS'. The visible production-cost D&A rows look like sub-components of that total, not separate same-level operating rows to be added later. The direct 'Depreciation in Cost of Sales' row is blank."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation, intangible assets, in Distribution costs",
+          "why": "This appears directly underneath one 'Distribution costs' row as a component of that expense bucket. Because the selected XSGA bucket already uses 'Distribution costs', this D&A is likely embedded if the first occurrence was intended; if the later duplicate was intended, it might need adding, but that is ambiguous.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, property, plant and equipment, in Distribution costs",
+          "why": "This also looks like a sub-component of the first 'Distribution costs' row rather than a separate same-level line. Duplicate distribution rows create ambiguity about whether the selected parent includes or excludes D&A.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation, intangible assets, in Administration costs",
+          "why": "This is presented as a component under one 'Administration costs' row. Since 'Administration costs' was selected as part of XSGA_COMPONENTS, adding this separately risks double counting unless the selected duplicate was the later net row.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, property, plant and equipment, in Administration costs",
+          "why": "This is another apparent child component of 'Administration costs'. Because duplicate administration rows exist, inclusion is ambiguous, so conservative treatment is not to add separately.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in R&D",
+          "why": "This row exists but is blank, and the dedicated R&D expense row is already selected in both XSGA_COMPONENTS and XRD, so per the R&D interaction rule it should not be added separately.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation, intangible assets, in Research & Development Expenses",
+          "why": "This appears as a component under the later detailed R&D expense presentation. Since 'Research and development costs' is already selected in both XSGA_COMPONENTS and XRD, adding R&D D&A separately would likely distort the intended XSGA-XRD netting.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, property, plant and equipment in Research & Development Expenses",
+          "why": "Same reasoning as the R&D amortisation row: it looks like a component of the R&D bucket already selected in both XSGA and XRD, so separate addition is not appropriate.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization Expense in Research & Development Expenses - Balancing value",
+          "why": "This is a balancing/component-style row within the detailed R&D section, not a clean separate same-level SG&A D&A line to add. It should not be added separately.",
+          "confidence": 0.84
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": true,
+      "notes": "Conservative output to avoid double counting. The statement contains duplicate 'Distribution costs', 'Administration costs', and 'Research and development costs' rows, with one presentation apparently including D&A components and a later duplicate apparently excluding them. Because the earlier selected XSGA_COMPONENTS rows use those exact duplicate labels without unique identifiers, it is genuinely unclear whether the chosen parent rows already embed the visible D&A components. Under the conservative rule, no separate XSGA D&A rows are added. R&D D&A is also not added because 'Research and development costs' was already selected in both XSGA_COMPONENTS and XRD."
+    }
+  ]
+}

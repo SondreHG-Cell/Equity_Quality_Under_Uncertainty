@@ -1,0 +1,123 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A line above EBIT, but not labelled as COGS/cost of sales and could relate to broader operating overhead rather than the selected COGS row 'Goods'.",
+          "confidence": 0.28
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Separate amortization line above EBIT, but no indication it belongs to COGS; more likely overhead/intangibles-related than inventory/input costs in 'Goods'.",
+          "confidence": 0.16
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicitly tied to R&D, not COGS.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Brands, Patents, Trademarks, Marketing & Artistic Intangibles",
+          "why": "Brand/marketing intangible amortization appears SG&A/marketing-related, not COGS.",
+          "confidence": 0.03
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Licenses, Copyrights, Property Rights & Designs",
+          "why": "Intangible amortization line with no COGS indication; more likely operating overhead than the selected COGS bucket 'Goods'.",
+          "confidence": 0.12
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software",
+          "why": "Software amortization is typically overhead/administrative, not directly tied to the selected COGS row 'Goods'.",
+          "confidence": 0.05
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS bucket is only 'Goods'. No visible D&A row is explicitly labelled as COGS/cost of sales or clearly sits as a separate COGS-specific line relative to 'Goods'. To avoid double counting or misallocating overhead D&A into COGS, no separate COGS_DA row is added."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating depreciation line above EBIT and outside the selected XSGA component rows ('Other external expenses', 'Personnel expenses', 'Other operating expenses'), so it appears to require separate add-back for operating overhead.",
+          "confidence": 0.75
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate depreciation component above EBIT, likely operating overhead and outside the selected XSGA component rows; should be added separately if building SG&A with separate D&A.",
+          "confidence": 0.79
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicit operating amortization in R&D. Since XRD final_choice is empty and no standalone R&D expense row is selected above EBIT, this is the special case that may need to be added to XSGA_DA.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Brands, Patents, Trademarks, Marketing & Artistic Intangibles",
+          "why": "Separate operating amortization line tied to brands/marketing intangibles, which aligns with SG&A/marketing overhead rather than COGS.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Licenses, Copyrights, Property Rights & Designs",
+          "why": "Separate operating amortization component above EBIT, likely part of operating overhead and outside the selected XSGA component rows.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software",
+          "why": "Separate operating software amortization line above EBIT, typically administrative/overhead in nature and outside the selected XSGA component rows.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Potentially a broader amortization total, but it may overlap with more specific amortization component rows (brands/licenses/software/R&D), so including it risks double counting.",
+          "confidence": 0.34
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Brands, Patents, Trademarks, Marketing & Artistic Intangibles"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Licenses, Copyrights, Property Rights & Designs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "The selected XSGA bucket consists of non-D&A operating rows only, and explicit D&A lines appear separately above EBIT, so separate XSGA_DA additions are warranted. 'Amortization of Intangibles excluding Goodwill' is excluded because it may overlap with the more granular amortization rows, and the only available summary row includes impairment ('Depreciation, Amortization and Impairment'), which should not be used. Manual review is flagged because the statement taxonomy suggests some overlap/duplication among amortization labels in at least one period, so the conservative approach is to keep only the more specific non-impairment component rows."
+    }
+  ]
+}

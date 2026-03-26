@@ -1,0 +1,50 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in COR/COGS",
+          "why": "This is the only explicit COGS-related D&A row. It appears as a component of COGS because 'Cost of Goods' plus this row equals the selected 'Cost of Goods Sold' / 'Cost of revenues/COGS' in populated years, so adding it separately would double count.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization",
+          "why": "Generic D&A row with only one populated year and no indication it belongs to COGS. It is not a clear COGS-specific add-back row.",
+          "confidence": 0.16
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS reference bucket is [Income Statement] Cost of Goods Sold. The explicit 'Depreciation/Amortization in COR/COGS' is already embedded in that selected total, so no separate COGS D&A row should be added."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "Explicit SG&A-related D&A exists, but it appears to be a sub-component of the selected SG&A rows: one instance sits between the two 'Selling Expenses' rows and another between the two 'Administrative Expenses' rows, indicating the selected parent expense rows already include it. Adding it separately would double count.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in R&D",
+          "why": "Explicit R&D D&A row exists, but the selected XSGA bucket already includes the full R&D rows and XRD separately selected the same R&D rows. Per the R&D interaction rule, this component should not be added separately.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization",
+          "why": "Generic operating D&A row appears only once and is not clearly tied to Selling, Administrative, Other operating expenses, or R&D. It is not a clear same-level SG&A add-back row relative to the selected SG&A components, so conservative treatment is to exclude it.",
+          "confidence": 0.43
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected XSGA reference bucket is the combination of Selling Expenses, Administrative Expenses, Other operating expenses, Research and Development Expenses, and Research and Development Expense. The visible 'Depreciation/Amortization in SGA' rows appear embedded within selling/admin parent rows, and 'Depreciation/Amortization in R&D' should not be added separately because R&D is already included in both XSGA_COMPONENTS and XRD."
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization",
+          "why": "Separate operating D&A summary line above EBIT, but it is not identified as COGS/cost of sales related. Since the selected COGS bucket is only 'Materials and services', there is no explicit COGS-specific D&A row to add without risking misclassification.",
+          "confidence": 0.29
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Component of the separate operating D&A disclosure, but not labeled as COGS-related. Also subordinate to the broader 'Depreciation and Amortization' summary, so it would not be preferred even if selected.",
+          "confidence": 0.16
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Granular amortization component under the operating D&A block, but not tied to COGS and would risk double counting versus the D&A summary row.",
+          "confidence": 0.11
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit depreciation/amortisation row is identified as belonging to COGS/materials/cost of sales. The visible D&A rows are separate operating expense disclosures at a broad level, so conservatively do not add any row to COGS_DA."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization",
+          "why": "This is the top-level operating D&A summary line above EBIT and sits separately alongside the selected SG&A/other operating expense rows, indicating it is not embedded in those selected parent buckets. Per summary-vs-components rule, this is preferred over the granular depreciation/amortization lines.",
+          "confidence": 0.77
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate component of the operating D&A block, but inferior to the higher-level summary row 'Depreciation and Amortization' and would risk partial capture/double counting if used with other D&A components.",
+          "confidence": 0.34
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Granular component within the D&A block. It appears below the D&A summary and should not be selected when the summary row exists.",
+          "confidence": 0.22
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA_COMPONENTS bucket consists of 'Selling, General & Administrative Expenses' plus 'Other operating expenses'. 'Depreciation and Amortization' appears as a separate same-level operating line above EBIT rather than as a subcomponent nested under those selected rows, so it should be added separately later. No explicit R&D-specific amortization row is present."
+    }
+  ]
+}

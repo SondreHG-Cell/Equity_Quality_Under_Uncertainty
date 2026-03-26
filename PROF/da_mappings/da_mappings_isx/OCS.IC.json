@@ -6,31 +6,19 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Depreciation in Research & Development Expenses",
-          "why": "R&D-related depreciation, not COGS/cost of sales. No COGS final_choice rows were selected, so this should not be added to COGS.",
+          "why": "Not COGS-related; belongs to R&D operating expenses, and no COGS parent row was selected.",
           "confidence": 0.99
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Depreciation in Selling, General & Administrative Expenses",
-          "why": "SG&A-related depreciation, not COGS/cost of sales. No COGS final_choice rows were selected, so this should not be added to COGS.",
-          "confidence": 0.99
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation of Lease Right-of-Use Assets - Supplemental",
-          "why": "Supplemental total depreciation disclosure without a COGS bucket attribution; not appropriate for COGS_DA.",
-          "confidence": 0.95
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation - Total",
-          "why": "Company-wide total depreciation would span multiple buckets and would risk double counting if assigned to COGS.",
+          "why": "Not COGS-related; belongs to SG&A, and no COGS parent row was selected.",
           "confidence": 0.99
         }
       ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "No COGS/cost of sales row was selected in the prior mapping, and the excerpt shows no COGS-specific D&A line to add separately."
+      "notes": "No COGS final_choice row exists in the prior mapping, and the excerpt shows no cost of sales / cost of revenues bucket. Therefore no operating D&A row should be added to COGS."
     },
     {
       "variable": "XSGA_DA",
@@ -38,52 +26,19 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Depreciation in Research & Development Expenses",
-          "why": "This is an explicit R&D depreciation line shown separately from the selected XSGA R&D component rows (Labor, Stock-Based Compensation, External Expenses). It therefore appears outside the selected XSGA component bucket and should be added separately if reconstructing the R&D portion included in XSGA before XRD is netted out.",
-          "confidence": 0.82
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation of Financial Lease Right-of-Use Assets in Research & Development Expenses",
-          "why": "This is another explicit R&D depreciation component shown separately from the selected XSGA R&D component rows, so it also appears outside the selected XSGA component bucket and should be added separately.",
-          "confidence": 0.77
+          "why": "Explicit R&D depreciation row above operating loss. However, it appears to be a component of the separately reported 'Research and development expenses' total, so adding it separately could double count given the prior XRD selection and the stated XSGA/XRD interaction logic.",
+          "confidence": 0.62
         },
         {
           "sheet_name": "Income Statement",
           "row_label": "Depreciation in Selling, General & Administrative Expenses",
-          "why": "This looks like a sub-component of the selected parent row 'General and administrative expenses', so adding it separately would likely double count.",
-          "confidence": 0.95
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation of Financial Lease Right-of-Use Assets in Selling, General & Administrative Expenses",
-          "why": "This looks like a sub-component within the selected parent row 'General and administrative expenses', so it should not be added separately.",
-          "confidence": 0.94
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation of Lease Right-of-Use Assets - Supplemental",
-          "why": "Supplemental company-wide depreciation is not bucket-specific enough for XSGA_DA and could overlap with both R&D and SG&A depreciation rows.",
-          "confidence": 0.93
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation - Total",
-          "why": "Company-wide total depreciation spans multiple buckets and would double count against the explicit R&D/SG&A depreciation lines.",
-          "confidence": 0.98
+          "why": "Explicit SG&A depreciation row, but it appears to be a component within the selected parent row 'General and administrative expenses', so it should not be added separately.",
+          "confidence": 0.97
         }
       ],
-      "final_choice": [
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation in Research & Development Expenses"
-        },
-        {
-          "sheet_name": "Income Statement",
-          "row_label": "Depreciation of Financial Lease Right-of-Use Assets in Research & Development Expenses"
-        }
-      ],
+      "final_choice": [],
       "needs_manual_review": true,
-      "notes": "SG&A depreciation rows appear embedded in the selected parent row 'General and administrative expenses', so they are excluded. The selected XSGA R&D bucket consists of granular component rows rather than the total 'Research and development expenses' row, so the separate R&D depreciation lines appear to sit outside that selected bucket and should be added. Manual review is warranted because the earlier XSGA/XRD mapping notes reference the total R&D row, while the listed XSGA final_choice shows only R&D components."
+      "notes": "Conservative output is empty to avoid double counting. 'Depreciation in Selling, General & Administrative Expenses' looks embedded in the selected parent 'General and administrative expenses'. For R&D, the excerpt shows a dedicated 'Research and development expenses' row above operating loss and a separate 'Depreciation in Research & Development Expenses' component beneath it. The provided prior-mapping notes suggest R&D may already be handled through both XSGA_COMPONENTS logic and XRD, but the displayed XSGA_COMPONENTS final_choice list is inconsistent with that note, so manual review is warranted before separately adding any R&D D&A."
     }
   ]
 }

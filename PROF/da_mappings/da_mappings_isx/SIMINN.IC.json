@@ -6,27 +6,44 @@
         {
           "sheet_name": "Income Statement",
           "row_label": "Depreciation/Amortization in COR/COGS",
-          "why": "This is an explicit COGS-related D&A line, but it appears as a component beneath the already selected parent COGS row 'Cost of Goods and Services Sold', alongside other COGS components such as labor, capitalized own work, and remaining COGS. Adding it separately would likely double count relative to the selected COGS total bucket.",
-          "confidence": 0.96
+          "why": "Explicit operating D&A line for cost of revenues/COGS, shown as a separate same-level component beneath the selected COGS parent row 'Cost of Goods and Services Sold'. Because the selected COGS bucket uses the parent total row, this D&A appears embedded within that bucket rather than outside it, so it should not be added separately to avoid double counting.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "This is SG&A-related D&A, not COGS-related, so it is not relevant for the COGS_DA bucket.",
+          "confidence": 0.99
         }
       ],
       "final_choice": [],
       "needs_manual_review": false,
-      "notes": "Selected COGS reference bucket is the total row 'Cost of Goods and Services Sold'. The visible D&A row appears embedded within that total, not outside it."
+      "notes": "The selected COGS reference bucket is the parent total 'Cost of Goods and Services Sold'. The statement shows 'Depreciation/Amortization in COR/COGS' as a component within that total alongside other COGS components, so D&A is already included in the selected COGS row."
     },
     {
       "variable": "XSGA_DA",
       "candidates": [
         {
           "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "Explicit operating D&A line for SG&A, presented separately from the selected XSGA component rows 'Labor & Related Expenses in SGA', 'Advertising Expenses', and 'Other Operating Expenses - remaining'. Since the selected XSGA bucket is built from components and does not itself include this standalone D&A line, it should be added separately later.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
           "row_label": "Depreciation/Amortization in COR/COGS",
-          "why": "This is the only explicit D&A row visible in the excerpt, but it is clearly tagged to COR/COGS rather than SG&A. No SG&A-related D&A row is present in the provided excerpt, so there is nothing to add separately to the selected XSGA component bucket.",
+          "why": "This is COGS-related D&A, not SG&A-related, so it is not relevant for the XSGA_DA bucket.",
           "confidence": 0.99
         }
       ],
-      "final_choice": [],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA"
+        }
+      ],
       "needs_manual_review": false,
-      "notes": "No explicit SG&A D&A row appears in the provided income statement excerpt. The only visible D&A line belongs to COGS and should not be mapped to XSGA_DA."
+      "notes": "The selected XSGA_COMPONENTS bucket excludes the separate SG&A D&A line: it consists only of 'Labor & Related Expenses in SGA', 'Advertising Expenses', and 'Other Operating Expenses - remaining'. No R&D row is visible and XRD is empty, so there is no separate R&D interaction preventing inclusion."
     }
   ]
 }

@@ -1,0 +1,67 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "A D&A component exists, but it is not labelled as COGS/cost of sales and sits under the broader operating-expense section rather than as a clear COGS-specific line. Conservatively avoid adding it to the selected COGS bucket.",
+          "confidence": 0.32
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Patents and other intangibles assets",
+          "why": "Amortisation component exists, but there is no indication it belongs specifically to COGS or cost of sales. It appears as part of broader operating D&A disclosures.",
+          "confidence": 0.28
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation of Intangibles",
+          "why": "Label is present but unpopulated in the preview and not clearly tied to COGS.",
+          "confidence": 0.08
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit COGS-specific depreciation/amortisation row is shown. The visible D&A disclosure appears to be a separate operating-expense line, not clearly attributable to the selected COGS rows."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, amortization and impairment losses",
+          "why": "This is the explicit operating-level D&A summary line above EBIT, shown separately from the selected XSGA component rows. Per summary-vs-components rule, prefer this summary row over 'Depreciation' and amortisation component rows.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Component of the broader D&A summary. Do not use if the summary row is available, to avoid double counting.",
+          "confidence": 0.73
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Patents and other intangibles assets",
+          "why": "Component of the broader D&A summary. Inferior to the summary row for extraction purposes.",
+          "confidence": 0.71
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation of Intangibles",
+          "why": "Potential component/alternative label, but unpopulated and inferior to the summary row.",
+          "confidence": 0.12
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, amortization and impairment losses"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "The selected XSGA component rows explicitly excluded D&A, and this summary D&A row sits separately at the same operating level above EBIT, so it should be added separately rather than treated as embedded. Manual review is warranted because the summary also mentions impairment losses and the statement does not disclose a clean SG&A-vs-COGS functional split for D&A."
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization",
+          "why": "A separate operating D&A line appears above Operating profit and at the same level as the selected COGS rows, so it is not obviously embedded inside Voyage Expenses / Commissions / Vessel operating expenses. In this shipping statement, the separate D&A line most plausibly relates to operating vessel assets and should be added separately to the COGS bucket. There are also component-like rows below it, so the summary D&A row is preferred to avoid double counting.",
+          "confidence": 0.79
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Balancing value",
+          "why": "This appears to be a component/balancing line under the broader D&A presentation, not the preferred summary row.",
+          "confidence": 0.17
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and write-off of financing fees",
+          "why": "This is below the operating section and clearly financing-related, so it must be ignored for operating D&A mapping.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Selected the operating summary D&A row for later addition to COGS. Manual review is needed because the statement contains two separate rows with the exact same label 'Depreciation and amortization', while the schema cannot distinguish first vs second occurrence. The intended choice is the operating summary row, not financing amortization or balancing subcomponents."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization",
+          "why": "Although it is a separate operating D&A line, nothing in the excerpt ties it specifically to General and administrative expenses. To avoid double counting, it is more conservatively treated as outside SG&A and assigned to COGS_DA instead.",
+          "confidence": 0.33
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Balancing value",
+          "why": "This appears to be a component/balancing line, not a standalone SG&A D&A row.",
+          "confidence": 0.08
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and write-off of financing fees",
+          "why": "This is financing-related and below the operating section, so it is not relevant.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A-specific depreciation/amortisation row is shown. The separate operating D&A line is left out of XSGA_DA to avoid double counting with COGS_DA."
+    }
+  ]
+}
