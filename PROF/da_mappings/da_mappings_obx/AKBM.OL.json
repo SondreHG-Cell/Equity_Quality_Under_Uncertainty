@@ -1,0 +1,81 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit operating D&A row above financial lines, but it is a company-level line with no indication it belongs specifically to COGS rather than SG&A or mixed functions.",
+          "confidence": 0.31
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization with Impairment",
+          "why": "Summary operating line, but it includes impairment and is not bucket-specific to COGS; adding it to COGS would risk misclassification and double counting.",
+          "confidence": 0.17
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Operating depreciation line, but no clear evidence it is tied specifically to production/COGS rather than admin or mixed-use leases.",
+          "confidence": 0.26
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No COGS-specific depreciation/amortization row is explicitly identified. The visible D&A rows are group-level or mixed-function, so none should be added separately to the selected COGS bucket."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicit R&D amortization line, but the selected mapping already uses both SG&A and a separate Research & Development Expense row; per the R&D interaction rule, this should not be added separately.",
+          "confidence": 0.88
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Licenses, Copyrights, Property Rights & Designs",
+          "why": "Separate operating amortization line above financial items. This appears more consistent with SG&A/overhead intangible amortization than with COGS, and it sits outside the selected SG&A row.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Customer Relations",
+          "why": "Separate operating amortization line above financial items. Customer-relationship amortization is typically commercial/SG&A-related and appears outside the selected SG&A bucket, so it should be added separately.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Brands, Patents, Trademarks, Marketing & Artistic Intangibles",
+          "why": "Separate operating amortization line above financial items. The wording strongly suggests marketing/commercial intangibles, making it a good SG&A-related D&A add-back candidate.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating depreciation line, but it is generic and may include production or mixed-function depreciation, so assigning it wholly to SG&A would be risky.",
+          "confidence": 0.28
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Licenses, Copyrights, Property Rights & Designs"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Customer Relations"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Brands, Patents, Trademarks, Marketing & Artistic Intangibles"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected only the explicit SG&A-leaning amortization component rows that sit separately from the chosen SG&A bucket. Excluded the R&D amortization row because R&D is already handled separately in both XSGA_COMPONENTS and XRD, and excluded generic depreciation/mixed summaries to avoid misallocation or double counting."
+    }
+  ]
+}

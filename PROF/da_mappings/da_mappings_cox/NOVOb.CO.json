@@ -1,0 +1,62 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill in Cost of Revenues",
+          "why": "Explicit COGS-related amortization line, but it appears as a component beneath the selected parent row 'Cost of goods sold', so adding it separately would double count.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Cost of Goods Sold",
+          "why": "Explicit COGS-related depreciation line, but it is presented as a sub-component of the selected 'Cost of goods sold' total rather than a same-level separate expense line.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in COR/COGS",
+          "why": "This label suggests a COGS D&A summary, but it is blank in the excerpt and therefore not usable.",
+          "confidence": 0.91
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS reference bucket is [Income Statement] Cost of goods sold. The visible COGS D&A rows are nested components of that selected total, not separate same-level operating lines to add later. Conservative no-double-counting treatment is final_choice=[]."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill in Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A-related amortization appears under both 'Sales and distribution costs' and 'Administrative costs', indicating it is already embedded in the selected XSGA parent buckets rather than separate from them.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A-related depreciation appears as a component under selected SG&A rows, so separate addition would likely double count.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "R&D amortization is shown as a component under 'Research and development costs'. Because that R&D row is already selected in both XSGA_COMPONENTS and XRD, this should not be added separately per the R&D interaction rule.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Research & Development Expenses",
+          "why": "R&D depreciation is a sub-component of the selected 'Research and development costs' row and should not be separately added, especially since the same R&D parent is already used for both XSGA_COMPONENTS and XRD.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected XSGA reference bucket is the combined set of 'Sales and distribution costs', 'Research and development costs', 'Administrative costs', and 'Selling, General & Administrative Expenses - Other'. The visible SG&A/R&D D&A rows are presented as sub-components within those selected buckets, not as separate same-level operating rows. Also, 'Research and development costs' is already selected for both XSGA_COMPONENTS and XRD, so adding R&D D&A separately would distort the intended subtraction logic. Therefore final_choice=[] to avoid double counting."
+    }
+  ]
+}

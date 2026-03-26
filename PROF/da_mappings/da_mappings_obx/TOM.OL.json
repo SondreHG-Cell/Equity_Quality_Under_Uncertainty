@@ -1,0 +1,85 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, Write-Downs",
+          "why": "Header-like D&A line with no visible values and no indication it belongs specifically to COGS; selected COGS bucket is the explicit total row 'Cost of revenues/COGS', so conservative view is that any COGS-related D&A is already embedded unless separately labelled outside that bucket.",
+          "confidence": 0.31
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Ordinary depreciation",
+          "why": "Separate operating D&A line, but it appears at the same level as overhead lines after gross contribution and is not labelled as COGS/COR-related; more likely operating overhead D&A than COGS-specific D&A.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Component of operating D&A, not specifically tied to COGS and likely part of broader overhead depreciation rather than a separate add-on to the selected COGS total.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortizations",
+          "why": "Separate amortization line with no COGS linkage; more consistent with non-COGS operating overhead or general amortization.",
+          "confidence": 0.17
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected COGS reference bucket is the explicit total row 'Cost of revenues/COGS'. No D&A row is explicitly labelled as being in COGS/COR or shown as a same-level separate COGS-only addback. To avoid double counting, do not add any separate COGS D&A row."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Ordinary depreciation",
+          "why": "Best apparent summary D&A row above operating profit. It sits alongside the selected XSGA component rows rather than beneath them, and its value closely aligns with the sum of the more granular depreciation/amortization component rows, so it should be added separately to the selected XSGA bucket.",
+          "confidence": 0.81
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Granular component of the broader D&A block. Not preferred because 'Ordinary depreciation' appears to be the summary row and using both would double count.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Granular depreciation component within the operating D&A block. Should not be chosen if the broader summary row 'Ordinary depreciation' is used.",
+          "confidence": 0.62
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software",
+          "why": "Granular amortization component within the operating D&A block. Prefer the summary row instead.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortizations",
+          "why": "Granular amortization line that appears to roll into the broader D&A total. Not preferred if 'Ordinary depreciation' is selected.",
+          "confidence": 0.59
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicit R&D-related amortization line above operating profit. Because XRD was mapped separately outside the visible operating rows and was not included in XSGA_COMPONENTS, this row could matter for SG&A-related D&A logic; however it appears to be included within the broader operating D&A summary, so selecting only the summary row is safer.",
+          "confidence": 0.56
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Ordinary depreciation"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "XSGA_COMPONENTS previously selected only 'Employee benefit expenses' and 'Other operating expenses' and explicitly excluded depreciation/amortization. The statement shows a separate operating D&A block above operating profit, so D&A is not embedded in the selected XSGA rows. 'Ordinary depreciation' appears to be the best summary row for that block; choose it alone to avoid double counting the underlying depreciation and amortization components, including the explicit R&D amortization line."
+    }
+  ]
+}

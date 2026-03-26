@@ -1,0 +1,98 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic operating depreciation line appears later in the operating expense section and is not clearly tied to the selected COGS bucket ('Cost of goods sold' / 'Cost of revenues/COGS'). Adding it to COGS would risk misclassification and double counting.",
+          "confidence": 0.39
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Generic operating amortization line is not labelled as COGS-related and appears outside the selected COGS rows.",
+          "confidence": 0.34
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciations and write",
+          "why": "This looks like a broader operating D&A/write-down summary, not a COGS-specific D&A row alongside the selected COGS lines.",
+          "confidence": 0.31
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Generic amortization row is not identified as belonging to COGS and should not be added to the selected COGS bucket.",
+          "confidence": 0.33
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit depreciation/amortisation row is shown for cost of goods sold / cost of revenues. The visible D&A rows are SG&A-, R&D-, or generic operating-expense-related, so no separate COGS D&A row should be added."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization in Selling, General & Administrative Expenses",
+          "why": "Explicitly labelled as D&A within SG&A, but it appears directly under Selling expenses and Administrative Expenses with balancing rows, indicating it is a sub-component of those selected parent rows rather than a separate same-level expense to add.",
+          "confidence": 0.87
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in SGA",
+          "why": "Explicit SGA depreciation component, but the row placement with selling/admin sections and balancing values suggests it is embedded within the selected SG&A component rows, so adding separately would double count.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill in SGA",
+          "why": "Explicit SGA amortization component nested under selected SG&A parent rows; should not be added separately.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization Expense in Research & Development Expenses",
+          "why": "Explicit R&D D&A component under the selected 'Research and development costs' row. Because R&D is already selected in both XSGA_COMPONENTS and XRD, the special R&D rule says not to add this separately.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in R&D",
+          "why": "Explicit R&D depreciation component nested under the selected R&D row; with R&D already mapped in both XSGA_COMPONENTS and XRD, adding it separately would distort the intended construction.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic depreciation line later in the operating expense section is not clearly bucketed to the selected SG&A components and may overlap with broader operating expenses; too broad to add safely.",
+          "confidence": 0.42
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Generic amortization line is not clearly separate SG&A D&A relative to the selected SG&A component rows.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciations and write",
+          "why": "Broad operating D&A/write-down summary likely spans more than SG&A and is not a clean separate add-back for the selected SG&A bucket.",
+          "confidence": 0.36
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Generic amortization row is not clearly tied only to the selected SG&A bucket and may overlap with broader operating lines.",
+          "confidence": 0.39
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The explicit SG&A and R&D D&A rows appear as sub-components beneath selected parent rows ('Selling expenses', 'Administrative Expenses', 'Research and development costs') with balancing rows, so they are treated as already embedded in the selected XSGA bucket. The generic depreciation/amortization rows later in the operating section are broader operating lines and should not be added to XSGA separately. Also, 'Research and development costs' is already selected in both XSGA_COMPONENTS and XRD, so R&D D&A should not be added separately."
+    }
+  ]
+}

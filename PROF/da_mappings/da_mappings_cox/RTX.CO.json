@@ -1,0 +1,101 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A line, but nothing indicates it is specifically tied to Cost of goods sold; selected COGS row is the explicit total and absent a COGS-specific D&A breakout, D&A is assumed embedded in COGS rather than separately addable to the COGS bucket.",
+          "confidence": 0.81
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, amortization and impairment",
+          "why": "This is a same-level operating D&A summary, but it is not labelled as COGS-specific and also includes impairment, so it should not be added to COGS_DA.",
+          "confidence": 0.91
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit depreciation/amortisation row is identified as belonging to cost of goods sold/cost of revenues. The selected parent row is the explicit 'Cost of goods sold' total, so the conservative view is that any production-related D&A is already embedded there and should not be added separately."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Pure D&A component shown as a separate operating row outside the selected XSGA component rows; appears addable to the overhead bucket.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate operating depreciation row at the same level as other operating expenses; not embedded in selected staff/other external/R&D/share-based rows and should be added separately to XSGA_DA.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and impairment excluding Goodwill in Research & Development Expenses",
+          "why": "Although this is separate operating D&A, it is explicitly in R&D and also mixes amortization with impairment. Since 'Research and Development' is already selected in both XSGA_COMPONENTS and XRD, this R&D-specific row should not be added separately here.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Own development projects",
+          "why": "R&D/development-related amortization, and the dedicated R&D row is already selected in both XSGA_COMPONENTS and XRD; do not add separately.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software",
+          "why": "Separate amortization row outside the selected XSGA component rows; appears to be non-R&D operating amortization and should be added separately.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization - Balancing value",
+          "why": "Residual D&A component needed to reconcile the operating D&A breakdown; separate from selected XSGA component rows, so include to avoid understating separate D&A.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization - Balancing value",
+          "why": "Residual D&A component in the operating section that reconciles the D&A breakdown; separate from selected XSGA component rows, so include.",
+          "confidence": 0.78
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, amortization and impairment",
+          "why": "Useful summary row, but it includes impairment, which is out of scope for this task, so prefer pure D&A component rows instead.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and amortization - Balancing value"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization - Balancing value"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The operating statement shows D&A as separate same-level lines outside the selected XSGA component rows, so they should be added separately. The headline summary row is not used because it includes impairment. R&D-specific amortization is excluded because 'Research and Development' is already selected in both XSGA_COMPONENTS and XRD, and adding R&D D&A separately would risk distortion/double counting."
+    }
+  ]
+}

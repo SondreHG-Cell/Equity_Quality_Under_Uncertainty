@@ -1,0 +1,68 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation amortization of property,",
+          "why": "Explicit separate operating D&A line above operating profit, so it appears outside the selected COGS row 'and goods for resale'. However, it is a group-level operating D&A total and is not labelled as COGS/cost of sales specific, so assigning it to COGS would be speculative.",
+          "confidence": 0.4
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation amortization of property, - Balancing value",
+          "why": "Looks like a derived/component balancing line under the broader depreciation/amortization section rather than a clean COGS-specific D&A row. Not suitable to add separately to COGS without clear bucket attribution.",
+          "confidence": 0.25
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate operating depreciation line, but not labelled as COGS-related. Could span multiple functions, so adding it to COGS would risk misclassification.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation and impairment of intangible assets",
+          "why": "Separate operating amortisation total, but not identified as cost-of-sales related and also includes impairment, which is out of scope for D&A extraction. Not appropriate for COGS_DA.",
+          "confidence": 0.2
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": true,
+      "notes": "The selected COGS bucket is only 'and goods for resale'. Separate operating D&A rows are visible, which suggests D&A is not embedded in that selected row; however, none of the visible D&A rows is clearly labelled as COGS/cost of sales related. Using any of them for COGS_DA would require unsupported allocation of total operating D&A across functions. Conservative output is empty with manual review."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation amortization of property,",
+          "why": "Explicit separate operating D&A line above operating profit, so it appears outside the selected XSGA component rows ('Staff costs', 'Share-Based Payments', 'Research & Development'). But it is a total operating D&A line, not clearly SG&A-specific.",
+          "confidence": 0.45
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate operating depreciation row that could relate partly to overhead functions, but the statement does not identify it as SG&A/admin/R&D specific.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation and impairment of intangible assets",
+          "why": "Separate operating amortisation line, but it includes impairment and is not clearly tied to SG&A. Also there are lower-level amortisation components beneath it.",
+          "confidence": 0.3
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Development projects completed",
+          "why": "This could be R&D-related amortisation, but the statement already has a separate 'Research & Development' row that was selected in both XSGA_COMPONENTS and XRD. Per the R&D interaction rule, adding an R&D-type amortisation row separately would likely distort the construction unless clearly needed.",
+          "confidence": 0.25
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": true,
+      "notes": "The selected XSGA bucket is a set of component rows, and separate operating D&A lines exist outside those rows, so some overhead D&A may indeed sit outside the selected XSGA components. However, the excerpt does not provide a clean SG&A-only or admin-only D&A row. The visible D&A rows are group-level operating totals or mixed categories, and one possible R&D-related amortisation component should not be added given the separate above-EBIT R&D row already mapped to both XSGA and XRD. Conservative output is empty with manual review."
+    }
+  ]
+}

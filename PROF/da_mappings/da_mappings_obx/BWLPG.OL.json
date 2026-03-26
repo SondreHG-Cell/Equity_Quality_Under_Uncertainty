@@ -1,0 +1,53 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation of intangible assets",
+          "why": "Separate operating D&A line, but nothing indicates it belongs to the selected COGS bucket; it appears more like overhead/intangible amortisation than a sub-line of Cost of revenues/COGS.",
+          "confidence": 0.27
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Depreciation is presented as a separate operating line below Cost of revenues/COGS, but the statement does not clearly indicate that this depreciation belongs to the selected COGS bucket. Given the explicit COGS row already exists and conservative anti-double-counting guidance, do not add it to COGS.",
+          "confidence": 0.36
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS bucket is the explicit row 'Cost of revenues/COGS'. No D&A row is explicitly labelled as COGS/cost-of-sales depreciation or amortisation. The visible depreciation lines appear as separate operating expenses at statement level rather than clearly tied to the selected COGS bucket, so conservative output is to add nothing to COGS_DA."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation of intangible assets",
+          "why": "Explicit separate operating amortisation line above the non-operating/financial section. It sits alongside, not beneath, the selected XSGA rows ('General and administrative expenses' and 'Vessel operating expenses'), so it appears outside those selected buckets and should be added separately.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "There is an operating-level depreciation summary row separate from the selected XSGA rows. A second 'Depreciation' row plus 'Depreciation of Financial Lease Right-of-Use Assets' indicate components, and the first 'Depreciation' appears to be the summary total, so prefer that summary row only to avoid double counting.",
+          "confidence": 0.85
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation of intangible assets"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Relative to the selected XSGA bucket ('General and administrative expenses' plus 'Vessel operating expenses'), the explicit amortisation and depreciation lines are presented separately at the same operating level, so they should be added separately later. Only the summary 'Depreciation' row is chosen, not its components, to avoid double counting."
+    }
+  ]
+}

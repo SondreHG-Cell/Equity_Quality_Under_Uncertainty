@@ -1,0 +1,86 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in COR/COGS",
+          "why": "Explicit COGS-related D&A row, but it appears directly under the selected parent/header row 'Production Costs', so it looks like a component already contained within the selected COGS bucket.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation in COR/COGS",
+          "why": "Explicit COGS-related amortisation row, but it sits as a sub-line under 'Production Costs', which is already in the selected COGS bucket.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic operating depreciation line, but it is not clearly COGS-specific and could overlap broader operating buckets; conservative treatment is not to add it separately to COGS.",
+          "confidence": 0.64
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected COGS bucket is the combination of 'Purchase of goods and services' and 'Production Costs'. 'Depreciation in COR/COGS' and 'Amortisation in COR/COGS' appear as child/component rows beneath the selected parent/header 'Production Costs', so adding them separately would likely double count."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Sales Expenses",
+          "why": "SG&A-related D&A row, but it appears nested under the sales expense section and therefore looks embedded within the selected SG&A bucket rather than separate from it.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in Marketing Expenses",
+          "why": "Marketing D&A appears to be a component of marketing costs within SG&A, so it should not be added separately relative to the selected SG&A bucket.",
+          "confidence": 0.89
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Administration Expenses",
+          "why": "Administration D&A appears to be a sub-component of administrative expenses within SG&A, already covered by the selected SG&A bucket.",
+          "confidence": 0.91
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in Administration Expenses",
+          "why": "Administration amortisation appears as a child row within the admin section, suggesting it is already included in SG&A.",
+          "confidence": 0.91
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in R&D",
+          "why": "R&D-specific D&A exists, but 'Product Development Costs' is already selected in both XSGA_COMPONENTS and XRD, so adding this separately would risk distorting the intended XSGA minus XRD treatment.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in R&D",
+          "why": "R&D amortisation appears under the Product Development section; because 'Product Development Costs' is already selected in both XSGA_COMPONENTS and XRD, this should not be added separately.",
+          "confidence": 0.9
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization",
+          "why": "Generic amortization line could be a broader summary, but its scope is unclear and it is not clearly a separate add-on outside the selected SG&A bucket; conservative choice is to avoid adding it.",
+          "confidence": 0.58
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic depreciation line likely spans broader operating expenses and is not clearly a separate SG&A-only add-back outside selected parent rows.",
+          "confidence": 0.58
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA bucket already includes the parent/aggregate SG&A structure via 'Selling, General & Admin' plus operating overhead rows, and also includes 'Product Development Costs'. The visible D&A rows for sales, marketing, administration, and R&D appear to be nested sub-components of those selected buckets. In addition, R&D is already handled symmetrically through both XSGA_COMPONENTS and XRD using 'Product Development Costs', so R&D D&A should not be added separately."
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit separate operating D&A component, but it is not labelled as COGS/COR/cost-of-sales related, so there is no clear basis to attach it to the selected COGS bucket 'Materials and Services'.",
+          "confidence": 0.19
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Explicit separate operating amortization line, but not identified as belonging to cost of sales; more likely a general operating overhead/intangible charge than a COGS-specific sub-bucket.",
+          "confidence": 0.14
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "This is explicitly R&D-related, not COGS-related, so it should not be added to the selected COGS bucket.",
+          "confidence": 0.02
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, Amortization - Remaining",
+          "why": "Potential residual D&A line, but it is blank and not clearly tied to COGS.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS row is only 'Materials and Services'. The excerpt shows no explicit depreciation/amortization row labelled as COGS/cost of sales/cost of revenues. To avoid double counting and misallocation, no separate COGS D&A row should be added."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicit operating amortization line for R&D. Since XRD final_choice is empty and no separate above-EBIT R&D expense row was selected, this is the clearest SG&A/overhead-related D&A item that sits outside the selected XSGA component rows and can be added separately.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Explicit separate operating amortization line at the same level as the selected operating expense buckets, indicating it is not embedded in 'Employee Benefit Expenses' or 'Other operating expenses'. It should be added separately to XSGA rather than assumed inside the selected parent rows.",
+          "confidence": 0.82
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit separate operating depreciation line at the same level as the selected operating expense buckets, so it appears outside the selected XSGA rows and should be added separately.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate operating depreciation component beneath the D&A section. It appears to be part of operating overhead and is not embedded in the selected XSGA component rows. Included because the total D&A summary also contains impairment, which should not be used.",
+          "confidence": 0.77
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, Amortization and Impairment",
+          "why": "This is the summary D&A row, but it also includes impairment. Because impairment rows must be ignored for this task, using the summary would overstate pure D&A.",
+          "confidence": 0.28
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA bucket consists of 'Employee Benefit Expenses' plus 'Other operating expenses'. The excerpt presents D&A as separate operating lines at the same level, so they appear outside those selected rows and should be added separately. The summary row 'Depreciation, Amortization and Impairment' is not used because it includes impairment; component D&A rows are chosen instead. R&D amortization is included because XRD is empty and there is no separate R&D expense row already being handled symmetrically."
+    }
+  ]
+}

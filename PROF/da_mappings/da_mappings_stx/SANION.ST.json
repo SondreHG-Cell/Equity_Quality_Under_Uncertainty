@@ -1,0 +1,61 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and write",
+          "why": "Separate operating D&A summary row exists, but it is not identified as cost of sales / cost of revenues / COR / COGS-related. The selected COGS bucket is only 'Raw Materials and Consumables', and nothing in the excerpt ties this D&A specifically to that bucket.",
+          "confidence": 0.28
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Operating D&A component row, but not specifically linked to COGS. Also appears to be a component beneath the broader 'Depreciation and write' summary, so using it for COGS would risk misallocation and double counting.",
+          "confidence": 0.19
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Operating amortization component row, but not specifically linked to COGS. More likely part of the broader operating D&A line than a COGS-specific add-back.",
+          "confidence": 0.18
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit COGS-specific depreciation/amortisation row is shown. The visible D&A rows appear as separate operating expense lines at a broad operating level, not as cost-of-sales-specific items. To avoid misallocating generic D&A to COGS, do not add any row separately to COGS."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and write",
+          "why": "This is the broad operating D&A summary line shown separately alongside 'Other external costs' and 'Personnel costs' and before 'Total operating expenses'. Since earlier XSGA_COMPONENTS intentionally excluded D&A and no SG&A subtotal was selected, this separate same-level D&A line should be added later to the overhead bucket. Prefer the summary over components to avoid double counting.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "This looks like a component of the broader 'Depreciation and write' summary row. Because a summary row exists, this should not be chosen separately.",
+          "confidence": 0.77
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "This appears to be another component of the broader 'Depreciation and write' summary row. Because a summary row exists, this should not be chosen separately.",
+          "confidence": 0.74
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and write"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA bucket consists of 'Other external costs' and 'Personnel costs' only, and the notes explicitly excluded depreciation/amortization from that earlier selection. A separate operating D&A summary row is visible at the same level above total operating expenses, so it should be added separately. Use only the summary row to avoid double counting its components."
+    }
+  ]
+}

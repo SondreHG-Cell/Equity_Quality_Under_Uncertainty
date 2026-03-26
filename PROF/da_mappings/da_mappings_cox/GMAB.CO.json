@@ -1,0 +1,62 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Cost of product sales",
+          "why": "Selected COGS reference bucket is the parent total. No explicit depreciation/amortization row for cost of revenue / cost of product sales is shown as a separate same-level operating line; visible nearby rows are labor and balancing-value components only. Therefore there is no separate COGS D&A row to add later.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization",
+          "why": "This row appears below SG&A and near the operating-expense subtotal area, but all shown values are blank in the excerpt, so it cannot be used as an explicit separate operating D&A add-back row.",
+          "confidence": 0.86
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit COGS-related D&A row appears before financial lines. Conservatively assume any COGS D&A is already embedded in 'Cost of product sales' rather than separately disclosed."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in SG&A",
+          "why": "This is an explicit D&A line tied to SG&A, but it appears as a component beneath the selected parent row 'General and administrative expenses'. Since the selected XSGA_COMPONENTS bucket already includes that parent total, adding this separately would double count.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization in R&D",
+          "why": "This appears as a component within the selected parent row 'Research and development expenses'. Also, 'Research and development expenses' was already selected in both XSGA_COMPONENTS and XRD, so adding R&D D&A separately would conflict with the stated XSGA minus XRD logic.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Research & Development Expenses",
+          "why": "Explicit R&D depreciation component under the selected parent 'Research and development expenses'. Because that parent is already included in XSGA_COMPONENTS and also separately selected for XRD, this should not be added separately.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Licenses, Rights & Patents",
+          "why": "Potentially D&A-related, but values are blank in the excerpt and it sits among R&D-related rows without clear evidence that it is a separate same-level operating expense to add beyond the selected parent totals.",
+          "confidence": 0.74
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization",
+          "why": "This could be a summary D&A line in principle, but it has blank values in the excerpt and is not usable as a separate operating add-back row.",
+          "confidence": 0.85
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Visible SG&A and R&D D&A lines appear to be sub-components of the already selected parent totals 'General and administrative expenses' and 'Research and development expenses'. Adding them separately would double count. The R&D line is also already handled through both XSGA_COMPONENTS and XRD selections, reinforcing no separate XSGA_DA addition."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit D&A row exists, but there is no selected COGS bucket to which this can be tied; no separate cost of sales line is reported.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Explicit D&A row exists, but there is no selected COGS bucket to which this can be tied; no separate cost of sales line is reported.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization - Balancing value",
+          "why": "Candidate shortlist item, but it appears to be a balancing/helper row rather than a clean operating D&A line for COGS.",
+          "confidence": 0.93
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "COGS final_choice from the earlier step is empty, so no COGS-related D&A should be added separately. The visible D&A rows are not specifically tied to a reported COGS/cost of sales bucket."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/amortisation and impairment of fixed assets",
+          "why": "This is the main separate operating D&A-like line at the same level as the selected overhead rows, which suggests D&A is not embedded in the selected XSGA components. However, it also includes impairment, so selecting it would violate the instruction to avoid impairment rows.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Operating D&A component below the combined depreciation/amortisation/impairment line; could be part of SG&A-related D&A, but using components risks incompleteness and double counting versus the broader summary structure.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Operating D&A component below the combined depreciation/amortisation/impairment line; could be part of SG&A-related D&A, but using components risks incompleteness and double counting versus the broader summary structure.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Large operating depreciation component that likely belongs with overhead, but the label appears twice in the excerpt, creating ambiguity, and it sits under a broader line that also includes impairment.",
+          "confidence": 0.51
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization - Balancing value",
+          "why": "Balancing/helper row, not a clean operating D&A expense line to add separately.",
+          "confidence": 0.94
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": true,
+      "notes": "The selected XSGA_COMPONENTS rows excluded D&A, and a separate operating D&A section is visible, so some XSGA-related D&A may need separate treatment. However, the only clear summary row combines depreciation/amortisation with impairment, which should not be selected, while the component rows appear incomplete and include a duplicate row label for right-of-use depreciation. To avoid double counting and impairment contamination, no row is selected automatically."
+    }
+  ]
+}

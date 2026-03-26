@@ -1,0 +1,75 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic operating depreciation line, but nothing indicates it is specifically tied to the selected COGS bucket ('Materials and services' + 'Changes in Inventory'). Using it for COGS would risk misclassification.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Right of Use Assets",
+          "why": "Separate operating D&A component, but not specifically labelled as cost of revenues / COGS related.",
+          "confidence": 0.15
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Separate amortisation component, but not specifically identified as belonging to COGS.",
+          "confidence": 0.15
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit COGS-specific depreciation/amortisation row is shown. The visible D&A rows are generic operating lines rather than clearly attributable to the selected COGS components, so conservatively do not add any D&A separately to COGS."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Pure D&A component shown as a separate operating line at the same level as other operating expense rows and not embedded within the selected XSGA component rows.",
+          "confidence": 0.86
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Right of Use Assets",
+          "why": "Pure depreciation component presented separately above operating result; not clearly nested under the selected XSGA rows, so it should be added separately rather than assumed embedded.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles",
+          "why": "Pure amortisation component shown separately above operating result. Prefer including this component because the broader 'Depreciation, amortisation and impairment charges' row contains impairments and should not be used.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, amortisation and impairment charges",
+          "why": "This is a broader summary line, but it includes impairment charges, which are out of scope for this task; therefore it should not be selected despite being a higher-level row.",
+          "confidence": 0.35
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation - Right of Use Assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected only pure D&A rows that appear as separate operating lines outside the previously selected XSGA component rows. Excluded the combined 'Depreciation, amortisation and impairment charges' row because it includes impairment, which must not be added here. Also excluded any R&D-specific add-back because a dedicated R&D row is already selected in both XSGA_COMPONENTS and XRD."
+    }
+  ]
+}

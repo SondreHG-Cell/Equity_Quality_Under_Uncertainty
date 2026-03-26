@@ -1,0 +1,80 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in R&D",
+          "why": "R&D-related depreciation, not COGS-related, so it should not be added to the selected COGS bucket.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Selling, General & Administrative Expenses",
+          "why": "SG&A-related depreciation, not COGS-related, so it does not belong in COGS_DA.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software in Selling, General & Administrative Expenses",
+          "why": "SG&A amortization component, not related to the selected COGS row.",
+          "confidence": 0.99
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in SGA",
+          "why": "SG&A-related and blank in the preview; not applicable to COGS_DA.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Lease Right-of-Use Assets in Selling, General & Administrative Expenses",
+          "why": "SG&A lease depreciation, not COGS-related.",
+          "confidence": 0.99
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit depreciation/amortisation row tied to Cost of revenues/COGS appears above the financial section. The visible D&A rows are for R&D or SG&A, so nothing should be added separately to COGS."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in R&D",
+          "why": "This is explicitly a component of the selected parent row 'Research and development expenses'. Since that parent row is already included in XSGA_COMPONENTS and also selected as XRD, adding this separately would risk double counting and is disallowed by the R&D interaction rule.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Selling, General & Administrative Expenses",
+          "why": "This appears as a subcomponent beneath selected SG&A parent rows ('General and administrative expenses' / 'Sales and marketing expenses'), so it is already embedded in the selected XSGA_COMPONENTS bucket and should not be added separately.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Computer Software in Selling, General & Administrative Expenses",
+          "why": "This is an amortization subcomponent within the selected SG&A parent row 'General and administrative expenses', so adding it separately would double count.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in SGA",
+          "why": "Although the label suggests an SG&A summary D&A row, it is blank in the preview and there is no evidence it is a separate same-level operating line outside the selected SG&A totals.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Lease Right-of-Use Assets in Selling, General & Administrative Expenses",
+          "why": "This is a lease-depreciation subcomponent within the selected SG&A parent rows, so it appears already included and should not be added separately.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "All visible SG&A/R&D D&A rows appear to be nested components of already selected parent expense totals above operating result. Because 'Research and development expenses' is already selected in both XSGA_COMPONENTS and XRD, 'Depreciation in R&D' should not be added separately. For G&A and sales/marketing, the depreciation/amortization rows appear embedded within the selected expense totals, so separate addition would double count."
+    }
+  ]
+}

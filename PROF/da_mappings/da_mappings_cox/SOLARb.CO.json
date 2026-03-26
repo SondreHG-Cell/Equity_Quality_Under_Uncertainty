@@ -1,0 +1,69 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and write-down on property, plant and equipment",
+          "why": "This D&A row appears below gross profit alongside operating overhead lines, not within or adjacent to the selected COGS total rows ('Cost of sales' / 'Cost of revenues/COGS'). It therefore does not look like COGS-related D&A to add to the selected COGS bucket.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "This is a component of operating depreciation shown below gross profit and does not appear tied to the selected COGS rows. It should not be added to COGS separately.",
+          "confidence": 0.91
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected COGS reference bucket is the gross-margin cost line above gross profit. The visible depreciation/amortisation rows are presented later in operating expenses, so they appear outside COGS rather than as separate COGS-specific D&A disclosures. Conservative no-add approach avoids misclassifying Opex D&A as COGS D&A."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and write-down on property, plant and equipment",
+          "why": "This is a separate operating D&A line at the same level as the selected XSGA component rows ('External operating costs' and 'Staff costs'), so it appears outside those selected rows and should be added separately. It also acts as the summary row for 'Depreciation' and 'Depreciation of Financial Lease Right-of-Use Assets'.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortisation and impairment of intangible assets",
+          "why": "This is the natural amortisation summary line at the same operating-expense level as XSGA, but its label includes impairment, which should be excluded if possible.",
+          "confidence": 0.68
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Customer-related assets",
+          "why": "This appears to be an amortisation component of intangible assets. It can be used instead of the broader 'Amortisation and impairment of intangible assets' row to capture amortisation while excluding the separate impairment component.",
+          "confidence": 0.87
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Software",
+          "why": "This appears to be an amortisation component of intangible assets. Together with 'Customer-related assets', it sums to amortisation excluding the separate 'Impairment on intangible assets' row.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and write-down on property, plant and equipment"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Customer-related assets"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Software"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA bucket contains only 'External operating costs' and 'Staff costs', and the D&A rows are presented separately at the same operating level, so they should be added separately later. For depreciation, the summary row is preferred to avoid double counting its components. For amortisation, the summary row also includes impairment, which should be excluded; therefore the amortisation components 'Customer-related assets' and 'Software' are chosen instead of the mixed summary row."
+    }
+  ]
+}

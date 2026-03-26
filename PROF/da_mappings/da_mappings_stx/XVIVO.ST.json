@@ -1,0 +1,80 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Cost of Revenues",
+          "why": "Explicitly labelled as COGS-related D&A, but it appears as a component/detail of the selected total COGS bucket ('Cost of revenues/COGS'), not a separate same-level operating line to add on top. Adding it would likely double count.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Capitalized Research & Development in Cost of Revenues",
+          "why": "COGS-related amortization detail, but it appears nested within cost of revenues rather than outside the selected COGS total. It should be treated as already embedded in the selected parent row.",
+          "confidence": 0.89
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization and Depreciation Cost of Goods Sold",
+          "why": "This looks like a COGS D&A summary, but it still appears to be a component of the selected COGS total ('Cost of revenues/COGS' equals the higher COGS figure and nearby lower COGS rows/balancing structure imply decomposition). Conservative treatment is that it is already included.",
+          "confidence": 0.92
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS reference bucket is the explicit total row 'Cost of revenues/COGS'. The visible COGS D&A rows look like breakdown components of that total, not separate same-level operating expenses to add later. Therefore no separate COGS_DA row should be added."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization in Selling",
+          "why": "Selling-related D&A is explicitly shown, but 'Selling expenses - Balancing value' plus this D&A equals 'Selling expenses', indicating the selected parent row already includes it. Do not add separately.",
+          "confidence": 0.98
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Selling, General & Administrative Expenses",
+          "why": "This appears as a sub-component of the selected Selling and Administrative expense totals, not as a separate same-level operating row outside those buckets. Adding it would double count.",
+          "confidence": 0.94
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill in Selling, General & Administrative Expenses",
+          "why": "Amortization detail within SG&A. It appears to be embedded in the selected Selling/Administrative parent rows rather than separate from them.",
+          "confidence": 0.93
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation Administrative Expenses",
+          "why": "Administrative D&A detail, but it appears to be part of the selected 'Administrative expenses' total, not an add-on outside the bucket.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization including Goodwill in Research & Development Expenses",
+          "why": "R&D amortization detail sits under the explicitly selected 'Research and development expenses' row. Because that same R&D row is already selected for both XSGA_COMPONENTS and XRD, the special R&D rule says not to add R&D D&A separately here.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Research & Development Expenses",
+          "why": "R&D depreciation component under the selected R&D total. Since the above-operating R&D row is already selected in both XSGA_COMPONENTS and XRD, this should not be separately added.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Research and Development Expenses",
+          "why": "This is another R&D amortization component that appears included in the selected total 'Research and development expenses'. Under the explicit R&D row / XRD symmetry rule, it should not be separately added.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected XSGA reference bucket is the combination of 'Selling expenses', 'Administrative expenses', and 'Research and development expenses'. The D&A rows shown for selling, administrative, and R&D appear to be sub-components embedded in those selected totals. The selling section explicitly shows a balancing line confirming inclusion, and R&D is already handled symmetrically through both XSGA_COMPONENTS and XRD. Therefore no separate XSGA_DA row should be added."
+    }
+  ]
+}

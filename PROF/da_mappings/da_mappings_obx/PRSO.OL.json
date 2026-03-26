@@ -1,0 +1,55 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "A separate operating-level D&A summary line appears outside the selected COGS reference bucket 'Operating expenses'. The figures indicate the summary 'Depreciation' row is separate from 'Operating expenses' and rolls up the more granular depreciation rows beneath it, so the summary should be preferred to avoid double counting.",
+          "confidence": 0.92
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "A more granular depreciation component row exists beneath the depreciation summary, but it should not be selected because a same-label summary 'Depreciation' row is present and closely matches this component plus 'Depreciation of Financial Lease Right-of-Use Assets'.",
+          "confidence": 0.71
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "This appears to be a component of the depreciation summary rather than a standalone row to add separately. Since a summary 'Depreciation' row exists, selecting this would risk double counting.",
+          "confidence": 0.88
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Selected the operating-level depreciation summary because the chosen COGS bucket 'Operating expenses' excludes it, and the summary row appears separate and additive. Used the summary instead of its components to avoid double counting despite duplicate 'Depreciation' labels in the excerpt."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Although depreciation is shown separately, the row is a generic operating D&A total and is not specifically identified as SG&A/admin/R&D-related. Given the existing XSGA reference bucket is explicit overhead components, adding a generic total depreciation row to XSGA would risk misclassification and double counting.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "General and administrative expenses",
+          "why": "This is not a D&A row and therefore cannot be selected for XSGA_DA, though it indicates SG&A exists within operating expenses.",
+          "confidence": 0.97
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit SG&A-specific depreciation/amortisation row is shown above the financial section. The visible depreciation rows appear to be generic operating depreciation totals/components, so they should not be added to XSGA separately."
+    }
+  ]
+}

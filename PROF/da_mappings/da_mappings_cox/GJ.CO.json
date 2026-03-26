@@ -1,0 +1,68 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in COR/COGS",
+          "why": "Explicit COGS-related D&A line, but it appears to be a sub-component of the already selected parent row 'Production Costs'. The nearby 'Cost of Goods and Services Sold - Balancing value' is lower by roughly this amount, indicating the selected COGS row already includes this D&A.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Cost of Revenues",
+          "why": "Explicit COGS/cost of revenues D&A line, but it also appears embedded in the already selected 'Production Costs' bucket. The balancing-value presentation suggests this is a component within the selected parent rather than a separate same-level expense to add.",
+          "confidence": 0.96
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic row exists but has no values and no clear operating-bucket attribution in the excerpt, so it should not be used.",
+          "confidence": 0.78
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected COGS reference bucket is [Income Statement] Production Costs. The explicit COGS D&A rows appear to be components within that selected row, not separate same-level operating lines. Adding them separately would double count."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in SGA",
+          "why": "Explicit SG&A-related D&A line, but it appears under the already selected SG&A component rows ('Sales and Distribution Costs' and 'Administrative Expenses'). The corresponding balancing-value rows are lower by these amounts, indicating the selected rows already include this D&A.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Selling, General & Administrative Expenses",
+          "why": "Explicit SG&A D&A line, but it appears to be a sub-component of the already selected SG&A rows rather than a separate line to add. Using it separately would likely double count against the selected parent rows.",
+          "confidence": 0.95
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation/Amortization in R&D",
+          "why": "Explicit R&D D&A line sits under 'Development costs', which is already selected in both XSGA_COMPONENTS and XRD. Per the R&D interaction rule, this should not be added separately here.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation in Research & Development Expenses",
+          "why": "Explicit R&D depreciation line, but it appears to be a component of the already selected 'Development costs' row and should not be added separately, especially since 'Development costs' is already selected in both XSGA_COMPONENTS and XRD.",
+          "confidence": 0.97
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Generic row exists but has no usable values and no clear assignment to the selected SG&A bucket, so it should not be used.",
+          "confidence": 0.78
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "Selected XSGA reference bucket is the combination of [Income Statement] Sales and Distribution Costs, [Income Statement] Administrative Expenses, and [Income Statement] Development costs. The visible SG&A and R&D D&A rows look like embedded sub-components of those selected rows, as shown by the matching balancing-value structure. Therefore no separate XSGA D&A row should be added."
+    }
+  ]
+}

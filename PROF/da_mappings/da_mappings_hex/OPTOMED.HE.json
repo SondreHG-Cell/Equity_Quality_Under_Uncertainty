@@ -1,0 +1,73 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization",
+          "why": "Explicit separate operating D&A summary row above finance lines, but it appears to cover total company operating D&A rather than a COGS-specific amount tied to the selected COGS bucket 'Materials and services'. Adding it to COGS would risk misallocation and double counting across operating buckets.",
+          "confidence": 0.22
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A component, but not labelled as COGS/cost of sales related. Insufficient evidence that it belongs specifically to the selected COGS bucket.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicitly R&D-related, so not appropriate for COGS.",
+          "confidence": 0.01
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Separate D&A component, but not labelled as COGS-related. Likely part of broader operating D&A rather than directly tied to 'Materials and services'.",
+          "confidence": 0.14
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "No explicit depreciation/amortisation row is identified as belonging to cost of sales / materials and services. The visible D&A rows appear to be standalone operating D&A lines at a broader company level, not COGS-specific. Conservatively do not add any D&A separately to COGS."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization",
+          "why": "Standalone operating D&A summary row above finance lines and outside the selected XSGA component rows ('Employee Benefit Expenses', 'External Expenses', 'Sales and marketing', 'Research and development', 'General and administration'). Under the same-level separate-line rule, this suggests D&A is not embedded in those selected XSGA rows. Summary row is preferred over components to avoid double counting.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Component of the total D&A summary. Do not choose if the summary row is selected.",
+          "confidence": 0.2
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicit R&D-related amortization component. Because 'Research and development' is already selected in both XSGA_COMPONENTS and XRD, this specific R&D D&A component should not be added separately on its own under the R&D interaction rule.",
+          "confidence": 0.79
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Component of the total D&A summary. Do not choose if the summary row is selected.",
+          "confidence": 0.21
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and Amortization"
+        }
+      ],
+      "needs_manual_review": true,
+      "notes": "Selected the standalone operating summary row because it sits separately from the chosen XSGA component rows and therefore appears not to be embedded in them. Used the summary instead of components to avoid double counting. Manual review is warranted because the summary appears to include an R&D-specific amortization component while 'Research and development' is already handled symmetrically in both XSGA_COMPONENTS and XRD."
+    }
+  ]
+}
