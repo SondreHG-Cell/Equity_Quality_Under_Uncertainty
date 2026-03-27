@@ -1,0 +1,69 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Explicit D&A component, but nothing in the excerpt ties it specifically to 'Materials and Services' / COGS. It appears under a separate operating D&A section rather than as a COGS-specific line.",
+          "confidence": 0.21
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit D&A component, but it is presented as part of a separate operating D&A block and not labelled as cost of sales / cost of revenue related.",
+          "confidence": 0.24
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected COGS bucket is 'Materials and Services'. The excerpt shows no COGS-specific depreciation/amortisation row such as 'depreciation in COGS' or similar. The visible D&A lines are generic separate operating items, so there is not clear evidence they should be added specifically to COGS."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation, amortization and impairment",
+          "why": "Separate same-level operating line outside the selected XSGA rows, but it includes impairment, which must be ignored for this task, so using the summary row would overstate pure D&A.",
+          "confidence": 0.35
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill",
+          "why": "Explicit operating amortisation line shown separately from the selected XSGA rows. It should be added separately rather than assumed embedded in 'Employee Benefit Expenses' or 'Other Operating Expenses'.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Explicit operating depreciation line shown separately from the selected XSGA rows. It appears to sit outside the chosen XSGA bucket and should be added separately.",
+          "confidence": 0.85
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Also an explicit operating depreciation component in the same D&A block, separate from the selected XSGA rows. Since no clean D&A-only summary row exists, this component should be included to capture operating D&A without impairment.",
+          "confidence": 0.81
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Intangibles excluding Goodwill"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA bucket consists of 'Employee Benefit Expenses' and 'Other Operating Expenses', and earlier notes explicitly excluded D&A from those selections. A separate operating D&A block is visible above financial items, so D&A is not assumed embedded in the selected XSGA rows. The summary row 'Depreciation, amortization and impairment' is not used because it includes impairment; therefore the visible D&A-only component rows are chosen instead. XRD is empty, so there is no R&D-specific offset issue."
+    }
+  ]
+}
