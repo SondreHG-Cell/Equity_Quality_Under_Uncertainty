@@ -1,0 +1,91 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "A separate operating D&A component exists, but it is not labeled as related to COGS/cost of sales and appears as a general operating expense line rather than a sub-line of Materials and Services.",
+          "confidence": 0.29
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of customer base",
+          "why": "Separate amortization line in the operating section, but nothing indicates it belongs to COGS; it does not appear nested under Materials and Services.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Rights",
+          "why": "Separate amortization line in the operating section, but not identified as COGS-related.",
+          "confidence": 0.18
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate depreciation component in the operating section, but not labeled as cost of sales / COGS-related.",
+          "confidence": 0.24
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected COGS bucket is only 'Materials and Services'. The visible D&A rows are separate operating lines but are not identified as belonging to COGS. To avoid misallocating companywide/overhead D&A into COGS, no COGS-specific D&A row should be added separately."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and impairment losses",
+          "why": "This is the apparent D&A summary line at the same operating level as the selected SG&A component rows, but its label includes impairment, so using it risks violating the ignore-impairment rule.",
+          "confidence": 0.63
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating depreciation line outside the selected parent rows 'Personnel-Related Expenses' and 'Other Operating Expenses'; therefore it appears not already embedded in the selected XSGA bucket.",
+          "confidence": 0.83
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate operating depreciation component at the same level as other expense buckets, suggesting it should be added separately to SG&A rather than treated as included in Personnel-Related Expenses or Other Operating Expenses.",
+          "confidence": 0.87
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of customer base",
+          "why": "Separate operating amortization component outside the selected SG&A component rows; should be added separately if not using the mixed summary line.",
+          "confidence": 0.8
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Rights",
+          "why": "Separate operating amortization component outside the selected SG&A component rows; should be added separately if not using the mixed summary line.",
+          "confidence": 0.8
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of customer base"
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization of Rights"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "The selected XSGA bucket is the combination of 'Personnel-Related Expenses' and 'Other Operating Expenses'. The D&A rows appear as separate same-level operating lines, so they are not already embedded in those selected rows and should be added separately. Although 'Depreciation and impairment losses' looks like a summary, it explicitly includes impairment in the label, so the cleaner approach is to use the pure D&A component rows only. The below-EBIT 'Reserach and Development' row does not change this conclusion."
+    }
+  ]
+}
