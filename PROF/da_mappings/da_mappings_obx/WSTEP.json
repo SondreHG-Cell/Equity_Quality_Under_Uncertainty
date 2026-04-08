@@ -1,0 +1,61 @@
+{
+  "variables": [
+    {
+      "variable": "COGS_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating D&A line, but it is generic and not explicitly tied to COGS; no row indicates depreciation/amortisation in cost of goods/services specifically.",
+          "confidence": 0.33
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicitly tied to R&D, not to COGS, so it should not be added to the selected COGS bucket.",
+          "confidence": 0.01
+        }
+      ],
+      "final_choice": [],
+      "needs_manual_review": false,
+      "notes": "The selected COGS bucket is the exact row 'Cost of goods and services (COGS)'. No separate COGS-specific depreciation/amortisation row is shown above the financial section, so no COGS D&A should be added separately."
+    },
+    {
+      "variable": "XSGA_DA",
+      "candidates": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation",
+          "why": "Separate operating depreciation line at the same level as the selected SG&A component rows, so it appears outside the selected XSGA bucket and should be added separately.",
+          "confidence": 0.81
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation of Financial Lease Right-of-Use Assets",
+          "why": "Separate operating depreciation line above EBIT and outside the selected SG&A component rows; no parent SG&A total was selected that would already contain it explicitly.",
+          "confidence": 0.72
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Amortization excluding Goodwill in Research & Development Expenses",
+          "why": "Explicit operating amortization in R&D. XRD final_choice is empty and there is no separate R&D expense row above operating profit, so this is the special-case R&D D&A that may need to be added to XSGA_DA separately.",
+          "confidence": 0.84
+        },
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation and impairment",
+          "why": "Operating summary line, but it mixes depreciation with impairment. Because impairment rows must be ignored and separate pure depreciation component rows exist, this summary should not be selected to avoid contamination/double counting.",
+          "confidence": 0.9
+        }
+      ],
+      "final_choice": [
+        {
+          "sheet_name": "Income Statement",
+          "row_label": "Depreciation & Amortization - Total"
+        }
+      ],
+      "needs_manual_review": false,
+      "notes": "Manually Changed. Selected XSGA_COMPONENTS rows are 'Salaries and personnel expenses', 'Stock-Based Compensation in Selling, General & Administrative Expenses', and 'Other operating expenses'. The explicit D&A rows appear separately at the same operating level rather than as subcomponents of those selected rows, so they should be added separately. The mixed row 'Depreciation and impairment' is excluded because impairment is out of scope and separate pure D&A rows are available."
+    }
+  ]
+}
