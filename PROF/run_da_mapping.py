@@ -12,7 +12,7 @@ DA_MAPPINGS_BASE_DIR = BASE_DIR / "da_mappings"
 VALID_EXCHANGES = ["isx", "cox", "stx", "obx", "hex"]
 
 # Choose which exchanges to run
-EXCHANGES_TO_RUN = ["hex"]
+EXCHANGES_TO_RUN = ["obx"]
 # Example:
 # EXCHANGES_TO_RUN = ["isx"]
 # EXCHANGES_TO_RUN = ["isx", "stx", "obx"]
