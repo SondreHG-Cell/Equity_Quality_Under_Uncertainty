@@ -25,12 +25,10 @@ import pandas as pd
 # ============================================================
 # CONSTANTS
 # ============================================================
-WINSOR_COLS = ["WCA_scaled", "CFO_lag1_scaled", "CFO_scaled",
-               "dREV_scaled", "PPE_scaled"]
+WINSOR_COLS = ["WCA_scaled", "CFO_lag1_scaled", "CFO_scaled", "dREV_scaled", "PPE_scaled"]
 WINSOR_LOW, WINSOR_HIGH = 0.01, 0.99
 
-BASE_COLS_USABLE = ["WCA_scaled", "CFO_lag1_scaled", "CFO_scaled",
-                    "dREV_scaled", "PPE_scaled", "AvgAT"]
+BASE_COLS_USABLE = ["WCA_scaled", "CFO_lag1_scaled", "CFO_scaled", "dREV_scaled", "PPE_scaled", "AvgAT"]
 
 # ============================================================
 # DATA LOADING
