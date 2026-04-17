@@ -189,6 +189,7 @@ def run_pipeline(config: RunConfig) -> Path:
         latent_result = run_latent_prof_model(
             input_csv=uncertainty_csv,
             output_dir=step_dirs["latent_prof_model"],
+            uncertainty_method=config.uncertainty_method,
         )
 
         durations["latent_prof_model"] = perf_counter() - t0
