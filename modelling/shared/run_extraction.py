@@ -424,6 +424,16 @@ def extract_mapped_variables(
 # =============================================================================
 
 def extract_market_cap_from_valuation(xlsx_path: Path) -> pd.DataFrame:
+    """
+    Return DataFrame with columns: Year, MarketCap
+    from the 'Valuation' sheet.
+
+    Picks the row named 'Market Capitalization' that actually has values,
+    not the header/section row.
+
+    If duplicate year columns exist in the sheet, collapse them to one row
+    per Year by keeping the first non-null value from left to right.
+    """
     wb = load_workbook(xlsx_path, data_only=True, read_only=True)
 
     if "Valuation" not in wb.sheetnames:
@@ -434,6 +444,7 @@ def extract_market_cap_from_valuation(xlsx_path: Path) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=["Year", "MarketCap"])
 
+    # Find year header row
     year_row_idx = None
     year_cols = []
 
@@ -467,6 +478,7 @@ def extract_market_cap_from_valuation(xlsx_path: Path) -> pd.DataFrame:
     if not years:
         return pd.DataFrame(columns=["Year", "MarketCap"])
 
+    # Find correct Market Capitalization row
     chosen_row = None
     for row in rows:
         label = clean_label(row[0] if len(row) > 0 else "")
@@ -492,9 +504,28 @@ def extract_market_cap_from_valuation(xlsx_path: Path) -> pd.DataFrame:
         val = chosen_row[j] if j < len(chosen_row) else None
         num = to_number(val)
         if pd.notna(num):
-            out.append({"Year": int(yr), "MarketCap": float(num)})
+            out.append(
+                {
+                    "Year": int(yr),
+                    "MarketCap": float(num),
+                    "_col_order": int(j),   # preserve left-to-right order
+                }
+            )
 
-    return pd.DataFrame(out).sort_values("Year").reset_index(drop=True)
+    if not out:
+        return pd.DataFrame(columns=["Year", "MarketCap"])
+
+    mc_df = pd.DataFrame(out).sort_values(["Year", "_col_order"]).reset_index(drop=True)
+
+    # Collapse duplicate years by taking the first non-null value from left to right
+    mc_df = (
+        mc_df.groupby("Year", as_index=False)
+        .agg(MarketCap=("MarketCap", "first"))
+        .sort_values("Year")
+        .reset_index(drop=True)
+    )
+
+    return mc_df
 
 
 # =============================================================================
@@ -548,8 +579,14 @@ def build_prof_firm_output(
     prof_df["PROF"] = numer / denom
 
     mc_df = extract_market_cap_from_valuation(xlsx_path)
+
     if not mc_df.empty:
-        prof_df = prof_df.merge(mc_df, on="Year", how="left")
+        mc_df = (
+            mc_df.sort_values("Year")
+            .drop_duplicates(subset=["Year"], keep="first")
+            .reset_index(drop=True)
+        )
+        prof_df = prof_df.merge(mc_df, on="Year", how="left", validate="1:1")
     else:
         prof_df["MarketCap"] = np.nan
 
