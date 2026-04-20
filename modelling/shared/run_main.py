@@ -11,12 +11,6 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, Optional
 
-
-# --------------------------------------------------
-# ASSUMED IMPORTS
-# --------------------------------------------------
-# Adjust these imports to match your actual files/functions.
-
 from uncertainty_model import run_uncertainty_model
 from latent_prof_model import run_latent_prof_model
 from portfolio_formation import run_portfolio_formation
@@ -29,12 +23,12 @@ from portfolio_evaluation import run_portfolio_evaluation
 
 @dataclass
 class RunConfig:
-    extracted_input_csv: str
-    returns_csv: str
-    factors_csv: str
+    extracted_input_csv: str = "results/extraction_static/prepared_step2_input.csv"
+    returns_csv: str = "data/all_stock_prices.csv"
+    factors_csv: str = ""
     results_root: str = "results"
     run_name: Optional[str] = None
-    uncertainty_method: str = "HB"      # or "OLS"
+    uncertainty_method: str = "HB"
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
@@ -43,6 +37,29 @@ class RunConfig:
 # --------------------------------------------------
 # HELPERS
 # --------------------------------------------------
+
+def find_project_root() -> Path:
+    """
+    Find the project root as the first parent containing a 'data' folder.
+    """
+    here = Path(__file__).resolve().parent if "__file__" in globals() else Path(".").resolve()
+
+    for p in [here] + list(here.parents):
+        if (p / "data").exists():
+            return p
+
+    raise FileNotFoundError("Could not find project root containing a 'data' folder.")
+
+
+def resolve_path(path_like: str | Path, project_root: Path) -> Path:
+    """
+    Resolve a path relative to project_root unless already absolute.
+    """
+    p = Path(path_like)
+    if p.is_absolute():
+        return p
+    return project_root / p
+
 
 def now_timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -84,8 +101,7 @@ def append_log(log_path: Path, message: str) -> None:
         f.write(line + "\n")
 
 
-def ensure_file_exists(path: str | Path, label: str) -> Path:
-    path = Path(path)
+def ensure_file_exists(path: Path, label: str) -> Path:
     if not path.exists():
         raise FileNotFoundError(f"{label} not found: {path}")
     return path
@@ -117,7 +133,9 @@ def save_run_summary(
 # --------------------------------------------------
 
 def run_pipeline(config: RunConfig) -> Path:
-    results_root = Path(config.results_root)
+    project_root = find_project_root()
+
+    results_root = resolve_path(config.results_root, project_root)
     results_root.mkdir(parents=True, exist_ok=True)
 
     run_dir = make_run_dir(results_root=results_root, run_name=config.run_name)
@@ -138,9 +156,25 @@ def run_pipeline(config: RunConfig) -> Path:
         # ------------------------------------------
         # Validate inputs
         # ------------------------------------------
-        extracted_input_csv = ensure_file_exists(config.extracted_input_csv, "Extracted input CSV")
-        returns_csv = ensure_file_exists(config.returns_csv, "Returns CSV")
-        factors_csv = ensure_file_exists(config.factors_csv, "Factors CSV")
+        extracted_input_csv = ensure_file_exists(
+            resolve_path(config.extracted_input_csv, project_root),
+            "Extracted input CSV",
+        )
+        returns_csv = ensure_file_exists(
+            resolve_path(config.returns_csv, project_root),
+            "Returns CSV",
+        )
+        factors_csv = ensure_file_exists(
+            resolve_path(config.factors_csv, project_root),
+            "Factors CSV",
+        )
+
+        outputs["resolved_inputs"] = {
+            "project_root": str(project_root),
+            "extracted_input_csv": str(extracted_input_csv),
+            "returns_csv": str(returns_csv),
+            "factors_csv": str(factors_csv),
+        }
 
         append_log(log_path, "Input validation completed.")
 
@@ -150,16 +184,6 @@ def run_pipeline(config: RunConfig) -> Path:
         append_log(log_path, "Starting Step 1: uncertainty_model")
         t0 = perf_counter()
 
-        # Assumed behavior:
-        # - reads extracted_input_csv
-        # - writes outputs to step_dirs["uncertainty_model"]
-        # - returns either:
-        #   A) a DataFrame + saved files, or
-        #   B) a dict with output paths, or
-        #   C) nothing, but writes a known output file
-        #
-        # We assume here it returns a dict containing:
-        # {"firm_year_csv": "..."}
         uncertainty_result = run_uncertainty_model(
             input_csv=extracted_input_csv,
             output_dir=step_dirs["uncertainty_model"],
@@ -167,14 +191,9 @@ def run_pipeline(config: RunConfig) -> Path:
         )
 
         durations["uncertainty_model"] = perf_counter() - t0
-
-        # Adjust this line if your function returns something else
         uncertainty_csv = Path(uncertainty_result["firm_year_csv"])
 
-        outputs["uncertainty_model"] = {
-            "output_dir": str(step_dirs["uncertainty_model"]),
-            "firm_year_csv": str(uncertainty_csv),
-        }
+        outputs["uncertainty_model"] = uncertainty_result
 
         append_log(log_path, f"Finished Step 1 in {durations['uncertainty_model']:.2f}s")
 
@@ -184,8 +203,6 @@ def run_pipeline(config: RunConfig) -> Path:
         append_log(log_path, "Starting Step 2: latent_prof_model")
         t0 = perf_counter()
 
-        # Assumed return:
-        # {"firm_year_csv": "..."}
         latent_result = run_latent_prof_model(
             input_csv=uncertainty_csv,
             output_dir=step_dirs["latent_prof_model"],
@@ -193,14 +210,9 @@ def run_pipeline(config: RunConfig) -> Path:
         )
 
         durations["latent_prof_model"] = perf_counter() - t0
-
-        # Adjust if needed
         latent_csv = Path(latent_result["firm_year_csv"])
 
-        outputs["latent_prof_model"] = {
-            "output_dir": str(step_dirs["latent_prof_model"]),
-            "firm_year_csv": str(latent_csv),
-        }
+        outputs["latent_prof_model"] = latent_result
 
         append_log(log_path, f"Finished Step 2 in {durations['latent_prof_model']:.2f}s")
 
@@ -210,21 +222,14 @@ def run_pipeline(config: RunConfig) -> Path:
         append_log(log_path, "Starting Step 3: portfolio_formation")
         t0 = perf_counter()
 
-        # Assumed return from your portfolio_formation.py:
-        # long_df, wide_df, summary_df
-        # and that it saves:
-        # - portfolio_assignments_long.csv
-        # - portfolio_assignments_wide.csv
-        # - portfolio_formation_summary.csv
         portfolio_result = run_portfolio_formation(
             input_csv=latent_csv,
             output_dir=step_dirs["portfolio_formation"],
             n_portfolios=config.n_portfolios,
         )
 
+        durations["portfolio_formation"] = perf_counter() - t0
         portfolio_long_csv = Path(portfolio_result["portfolio_assignments_long_csv"])
-        portfolio_wide_csv = Path(portfolio_result["portfolio_assignments_wide_csv"])
-        portfolio_summary_csv = Path(portfolio_result["portfolio_summary_csv"])
 
         outputs["portfolio_formation"] = portfolio_result
 
@@ -236,11 +241,6 @@ def run_pipeline(config: RunConfig) -> Path:
         append_log(log_path, "Starting Step 4: portfolio_evaluation")
         t0 = perf_counter()
 
-        # Assumed behavior:
-        # - merges portfolio assignments with returns
-        # - evaluates raw and risk-adjusted performance
-        # - saves results in portfolio_evaluation folder
-        # - returns a dict with main output paths
         evaluation_result = run_portfolio_evaluation(
             assignments_csv=portfolio_long_csv,
             returns_csv=returns_csv,
@@ -251,11 +251,7 @@ def run_pipeline(config: RunConfig) -> Path:
         )
 
         durations["portfolio_evaluation"] = perf_counter() - t0
-
-        outputs["portfolio_evaluation"] = {
-            "output_dir": str(step_dirs["portfolio_evaluation"]),
-            **evaluation_result,
-        }
+        outputs["portfolio_evaluation"] = evaluation_result
 
         append_log(log_path, f"Finished Step 4 in {durations['portfolio_evaluation']:.2f}s")
 
@@ -311,25 +307,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--extracted_input_csv",
         type=str,
-        required=True,
-        help="CSV produced by the extraction pipeline, ready for step 2.",
+        default=RunConfig.extracted_input_csv,
+        help="Path to prepared_step2_input.csv.",
     )
     parser.add_argument(
         "--returns_csv",
         type=str,
-        required=True,
-        help="CSV containing stock return data used in portfolio evaluation.",
+        default=RunConfig.returns_csv,
+        help="CSV containing stock prices / returns used in portfolio evaluation.",
     )
     parser.add_argument(
         "--factors_csv",
         type=str,
         required=True,
-        help="CSV containing factor returns (e.g. CAPM/FF/Carhart inputs).",
+        help="CSV containing factor returns.",
     )
     parser.add_argument(
         "--results_root",
         type=str,
-        default="results",
+        default=RunConfig.results_root,
         help="Root folder for storing timestamped run folders.",
     )
     parser.add_argument(
@@ -341,20 +337,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--uncertainty_method",
         type=str,
-        default="HB",
+        default=RunConfig.uncertainty_method,
         choices=["HB", "OLS"],
         help="Which uncertainty model to run.",
     )
     parser.add_argument(
         "--n_portfolios",
         type=int,
-        default=5,
+        default=RunConfig.n_portfolios,
         help="Number of portfolios to form.",
     )
     parser.add_argument(
         "--nw_lags",
         type=int,
-        default=12,
+        default=RunConfig.nw_lags,
         help="Newey-West lags for evaluation regressions.",
     )
 
