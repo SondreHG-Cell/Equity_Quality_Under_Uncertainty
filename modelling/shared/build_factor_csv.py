@@ -550,7 +550,7 @@ def build_factor_csv(
     prepared_input_csv: str | Path = "results/extraction_static/prepared_step2_input.csv",
     stock_prices_csv: str | Path = "data/all_stock_prices.csv",
     market_cap_monthly_csv: str | Path = "data/market_cap_monthly.csv",
-    nibor_csv: str | Path = "data/nibor.csv",
+    nibor_csv: str | Path = "data/nibor_monthly.csv",
     output_dir: str | Path = "results/extraction_static",
     rf_method: str = "simple",
 ) -> dict:
