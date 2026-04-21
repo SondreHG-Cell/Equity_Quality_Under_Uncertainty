@@ -137,29 +137,6 @@ def assign_quantile_portfolios(
 
     return sub
 
-
-def compute_value_weights(sub: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes value weights within FormationYear x Portfolio.
-    Assumes MarketCap > 0 already.
-    """
-    sub = sub.copy()
-    sub["FormationWeight"] = np.nan
-
-    valid = sub["PortfolioNum"].notna()
-    if not valid.any():
-        return sub
-
-    denom = (
-        sub.loc[valid]
-        .groupby(["FormationYear", "PortfolioNum"])["MarketCap"]
-        .transform("sum")
-    )
-
-    sub.loc[valid, "FormationWeight"] = sub.loc[valid, "MarketCap"] / denom
-    return sub
-
-
 # --------------------------------------------------
 # Main formation logic
 # --------------------------------------------------
@@ -182,7 +159,6 @@ def form_portfolios_for_method(
             signal_col=signal_col,
             n_portfolios=n_portfolios,
         )
-        sub = compute_value_weights(sub)
 
         sub["Method"] = method_name
         sub["SignalUsed"] = signal_col
@@ -202,7 +178,6 @@ def form_portfolios_for_method(
         "SignalUsed",
         "PortfolioNum",
         "Portfolio",
-        "FormationWeight",
     ]
 
     return out[keep_cols].copy()
@@ -262,7 +237,6 @@ def build_wide_output(long_df: pd.DataFrame) -> pd.DataFrame:
             columns={
                 "PortfolioNum": f"{method_name}_PortfolioNum",
                 "Portfolio": f"{method_name}_Portfolio",
-                "FormationWeight": f"{method_name}_Weight",
             }
         )
 
@@ -271,7 +245,6 @@ def build_wide_output(long_df: pd.DataFrame) -> pd.DataFrame:
             "FormationYear",
             f"{method_name}_PortfolioNum",
             f"{method_name}_Portfolio",
-            f"{method_name}_Weight",
         ]
 
         wide = wide.merge(

@@ -20,10 +20,15 @@ def find_project_root() -> Path:
     here = Path(__file__).resolve().parent if "__file__" in globals() else Path(".").resolve()
 
     for p in [here] + list(here.parents):
-        if (p / "data").exists():
+        if (
+            (p / "data" / "processed_data_lseg").exists()
+            and (p / "results" / "extraction_static").exists()
+        ):
             return p
 
-    raise FileNotFoundError("Could not find project root containing a 'data' folder.")
+    raise FileNotFoundError(
+        "Could not find project root containing data/processed_data_lseg and results/extraction_static."
+    )
 
 
 def resolve_path(path_like: str | Path, project_root: Path) -> Path:
@@ -192,50 +197,76 @@ def load_prepared_panel(path: Path) -> pd.DataFrame:
 
 
 def load_market_cap_monthly(path: Path) -> pd.DataFrame:
+    """
+    Load wide monthly market cap file of the form:
+
+    Ticker,2003-03,2004-01,2004-02,...
+    AAB.CO,...
+
+    and convert it to long format:
+    Ticker, Date, MarketCap, LagMarketCap
+    """
     df = pd.read_csv(path)
 
-    required = ["Ticker", "Month", "MarketCap"]
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"market_cap_monthly.csv is missing required columns: {missing}")
+    if "Ticker" not in df.columns:
+        raise ValueError("market_cap_monthly.csv must contain a 'Ticker' column.")
 
-    df["Ticker"] = df["Ticker"].astype(str).str.strip()
-    df["Date"] = parse_month_series(df["Month"])
-    df["MarketCap"] = pd.to_numeric(df["MarketCap"], errors="coerce")
+    month_cols = [c for c in df.columns if re.fullmatch(r"\d{4}-\d{2}", str(c).strip())]
+    if not month_cols:
+        raise ValueError(
+            "Could not detect monthly columns like '2010-01' in market_cap_monthly.csv."
+        )
 
-    df = df.dropna(subset=["Ticker", "Date", "MarketCap"]).copy()
-    df = (
-        df[["Ticker", "Date", "MarketCap"]]
+    long_df = df.melt(
+        id_vars="Ticker",
+        value_vars=month_cols,
+        var_name="Month",
+        value_name="MarketCap",
+    ).copy()
+
+    long_df["Ticker"] = long_df["Ticker"].astype(str).str.strip()
+    long_df["Date"] = parse_month_series(long_df["Month"])
+    long_df["MarketCap"] = pd.to_numeric(long_df["MarketCap"], errors="coerce")
+
+    long_df = (
+        long_df.dropna(subset=["Ticker", "Date", "MarketCap"])
         .sort_values(["Ticker", "Date"])
         .drop_duplicates(subset=["Ticker", "Date"], keep="first")
         .reset_index(drop=True)
     )
 
-    # Lagged market cap for value weighting
-    df["LagMarketCap"] = df.groupby("Ticker")["MarketCap"].shift(1)
+    long_df["LagMarketCap"] = long_df.groupby("Ticker")["MarketCap"].shift(1)
 
-    return df
+    return long_df[["Ticker", "Date", "MarketCap", "LagMarketCap"]]
 
 
 def load_nibor(path: Path, method: str = "simple") -> pd.DataFrame:
+    """
+    Load NIBOR file of the form:
+
+    date,nibor_1m
+    2010-01,2.0365
+
+    Assumes nibor_1m is an annual percentage rate and converts it to a
+    monthly decimal RF.
+    """
     df = pd.read_csv(path)
 
-    required = ["month", "nibor"]
+    required = ["date", "nibor_1m"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        raise ValueError(f"nibor.csv is missing required columns: {missing}")
+        raise ValueError(f"nibor_monthly.csv is missing required columns: {missing}")
 
-    df["Date"] = parse_month_series(df["month"])
-    df["nibor"] = pd.to_numeric(df["nibor"], errors="coerce")
+    df["Date"] = parse_month_series(df["date"])
+    df["nibor_1m"] = pd.to_numeric(df["nibor_1m"], errors="coerce")
 
-    df = df.dropna(subset=["Date", "nibor"]).copy()
+    df = df.dropna(subset=["Date", "nibor_1m"]).copy()
     df = df.sort_values("Date").drop_duplicates(subset=["Date"], keep="first")
 
-    # Assume NIBOR is annual percent. Convert to monthly decimal.
     if method == "simple":
-        df["RF"] = df["nibor"] / 100.0 / 12.0
+        df["RF"] = df["nibor_1m"] / 100.0 / 12.0
     elif method == "compound":
-        df["RF"] = (1.0 + df["nibor"] / 100.0) ** (1.0 / 12.0) - 1.0
+        df["RF"] = (1.0 + df["nibor_1m"] / 100.0) ** (1.0 / 12.0) - 1.0
     else:
         raise ValueError("method must be 'simple' or 'compound'")
 
@@ -548,8 +579,8 @@ def build_momentum_factor(monthly_df: pd.DataFrame) -> pd.Series:
 
 def build_factor_csv(
     prepared_input_csv: str | Path = "results/extraction_static/prepared_step2_input.csv",
-    stock_prices_csv: str | Path = "data/all_stock_prices.csv",
-    market_cap_monthly_csv: str | Path = "data/market_cap_monthly.csv",
+    stock_prices_csv: str | Path = "data/processed_data_lseg/all_stock_prices_nok.csv",
+    market_cap_monthly_csv: str | Path = "data/processed_data_lseg/historical_market_cap_nok.csv",
     nibor_csv: str | Path = "data/nibor_monthly.csv",
     output_dir: str | Path = "results/extraction_static",
     rf_method: str = "simple",
@@ -612,6 +643,9 @@ def build_factor_csv(
     factor_df = factor_df.reset_index().rename(columns={"index": "Date"})
     factor_df = factor_df[["Date", "MKT", "SMB", "HML", "RMW", "CMA", "MOM", "RF", "RM"]].copy()
 
+    start_date = pd.Timestamp("2010-01-30")
+    factor_df = factor_df[factor_df["Date"] >= start_date].copy()
+
     factor_csv_path = output_dir / "factor_data.csv"
     factor_df.to_csv(factor_csv_path, index=False)
 
@@ -662,20 +696,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--stock_prices_csv",
         type=str,
-        default="data/all_stock_prices.csv",
-        help="Path to all_stock_prices.csv",
+        default="data/processed_data_lseg/all_stock_prices_nok.csv",
+        help="Path to monthly stock prices CSV",
     )
     parser.add_argument(
         "--market_cap_monthly_csv",
         type=str,
-        default="data/market_cap_monthly.csv",
-        help="Path to market_cap_monthly.csv",
+        default="data/processed_data_lseg/historical_market_cap_nok.csv",
+        help="Path to monthly market cap CSV",
     )
     parser.add_argument(
         "--nibor_csv",
         type=str,
-        default="data/nibor.csv",
-        help="Path to nibor.csv",
+        default="data/nibor_monthly.csv",
+        help="Path to monthly NIBOR CSV",
     )
     parser.add_argument(
         "--output_dir",
