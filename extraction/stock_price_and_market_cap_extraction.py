@@ -107,15 +107,40 @@ def get_fx_rates(start: str, end: str) -> pd.DataFrame:
     fx["NOK"] = 1.0
     return fx
 
-def convert_to_nok(prices: pd.DataFrame, fx: pd.DataFrame) -> pd.DataFrame:
-    converted = prices.copy()
-    for ticker in converted.columns:
-        ccy = get_currency(ticker)
-        if ccy == "NOK":
-            continue
-        fx_aligned = fx[ccy].reindex(converted.index, method="ffill")
-        converted[ticker] = converted[ticker] * fx_aligned
-    return converted
+# def convert_to_nok(prices: pd.DataFrame, fx: pd.DataFrame) -> pd.DataFrame:
+#     converted = prices.copy()
+#     for ticker in converted.columns:
+#         ccy = get_currency(ticker)
+#         if ccy == "NOK":
+#             continue
+#         fx_aligned = fx[ccy].reindex(converted.index, method="ffill")
+#         converted[ticker] = converted[ticker] * fx_aligned
+#     return converted
+
+def get_shares_outstanding(tickers: list[str], start: str, end: str) -> pd.DataFrame:
+    all_shares = {}
+
+    for i, ticker in enumerate(tickers):
+        print(f"  [{i+1}/{len(tickers)}] {ticker}")
+        try:
+            df = lseg.get_history(
+                universe=[ticker],
+                fields=["TR.SharesOutstanding"],  # replace with whatever works
+                interval="monthly",
+                start=start,
+                end=end,
+            )
+            if df is not None and not df.empty:
+                col = df.columns[0]
+                if df[col].notna().any():
+                    all_shares[ticker] = df[col]
+        except Exception:
+            pass
+
+        time.sleep(0.1)
+
+    print(f"\nShares outstanding retrieved for {len(all_shares)}/{len(tickers)} tickers.")
+    return pd.DataFrame(all_shares)
 
 def save_transposed(df: pd.DataFrame, path: Path, label: str):
     df_T = df.T
@@ -133,30 +158,29 @@ def main():
 
     tickers = get_tickers_from_folder(FOLDER)
 
-    print(f"Fetching monthly prices ({START} → {END})...")
-    prices = get_historical_prices(tickers, START, END)
+    # print(f"Fetching monthly prices ({START} → {END})...")
+    # prices = get_historical_prices(tickers, START, END)
 
-    print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
-    mktcap = get_historical_market_cap(tickers, START, END)
+    # print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
+    # mktcap = get_historical_market_cap(tickers, START, END)
 
-    print("Fetching FX rates from LSEG...")
-    fx = get_fx_rates(START, END)
+    print(f"\n--- Fetching monthly shares outstanding ({START} → {END}) ---")
+    shares_outstanding = get_shares_outstanding(tickers, START, END)
+    # print("Fetching FX rates from LSEG...")
+    # fx = get_fx_rates(START, END)
 
-    fx.to_csv(OUTPUT / "fx_rates.csv")
+    # fx.to_csv(OUTPUT / "fx_rates.csv")
 
-    print("Converting all prices to NOK...")
-    prices_nok = convert_to_nok(prices, fx)
+    # print("Converting all prices to NOK...")
+    # prices_nok = convert_to_nok(prices, fx)
 
-    mktcap_nok = convert_to_nok(mktcap, fx)
+    # mktcap_nok = convert_to_nok(mktcap, fx)
 
     # Transpose: tickers as rows, dates as columns
-    prices_T = prices_nok.T
-    prices_T.index.name = "Ticker"
-    prices_T.columns = [d.strftime("%Y-%m") for d in prices_T.columns]
-    prices_T = prices_T.dropna(how="all")
 
-    save_transposed(prices_nok, OUTPUT / "all_stock_prices.csv", "prices")
-    save_transposed(mktcap_nok, OUTPUT / "historical_market_cap.csv", "market cap")
+    # save_transposed(prices, OUTPUT / "all_stock_prices.csv", "prices")
+    # save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
+    save_transposed(shares_outstanding, OUTPUT / "shares_outstanding.csv", "shares outstanding")
 
     lseg.close_session()
 
