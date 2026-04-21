@@ -17,7 +17,6 @@ from step5_probabilistic import (
     sharpness_plot,
 )
 
-# assumed helper functions already available
 from helper_functions import (
     load_factor_data,
     build_monthly_portfolio_returns,
@@ -30,6 +29,7 @@ def run_portfolio_evaluation(
     stock_prices_csv: str | Path,
     factors_csv: str | Path,
     output_dir: str | Path,
+    market_cap_csv: str | Path = "data/processed_data_lseg/historical_market_cap_nok.csv",
     n_portfolios: int = 5,
     nw_lags: int = 12,
 ) -> dict:
@@ -41,27 +41,25 @@ def run_portfolio_evaluation(
 
     assignments_csv = Path(assignments_csv)
     stock_prices_csv = Path(stock_prices_csv)
+    market_cap_csv = Path(market_cap_csv)
     factors_csv = Path(factors_csv)
 
     # --------------------------------------------------
     # Load inputs
     # --------------------------------------------------
     assignments = pd.read_csv(assignments_csv)
-    returns = pd.read_csv(stock_prices_csv)
     factors = load_factor_data(factors_csv)
 
     # --------------------------------------------------
-    # Build monthly portfolio return objects
-    # helper should return:
-    # returns_wide: DataFrame with MultiIndex columns (Method, Portfolio)
-    # ls_returns: dict {method: Series}
-    # q5_returns: dict {method: Series}
-    # rf: Series
-    # monthly_holdings: optional long file
+    # Build monthly portfolio returns using:
+    # - fixed annual membership from assignments
+    # - monthly returns from stock prices
+    # - monthly value weights from lagged monthly market cap
     # --------------------------------------------------
     prepared = build_monthly_portfolio_returns(
         assignments=assignments,
-        returns=returns,
+        stock_prices_csv=stock_prices_csv,
+        market_cap_csv=market_cap_csv,
         factors=factors,
         n_portfolios=n_portfolios,
     )
@@ -72,9 +70,9 @@ def run_portfolio_evaluation(
     rf = prepared["rf"]
     monthly_holdings = prepared.get("monthly_holdings")
 
-    # Save portfolio return panel
-    portfolio_stock_prices_csv = output_dir / "monthly_portfolio_returns.csv"
-    returns_wide.to_csv(portfolio_stock_prices_csv)
+    # Save monthly portfolio returns
+    monthly_portfolio_returns_csv = output_dir / "monthly_portfolio_returns.csv"
+    returns_wide.to_csv(monthly_portfolio_returns_csv)
 
     if monthly_holdings is not None:
         monthly_holdings_csv = output_dir / "monthly_holdings.csv"
@@ -108,7 +106,9 @@ def run_portfolio_evaluation(
             risk_frames.append(res)
 
     risk_df = pd.concat(risk_frames, ignore_index=True)
-    risk_df = risk_df[["Method", "Portfolio", "FactorModel", "alpha", "t_stat", "p_value", "r_squared", "n_obs"]]
+    risk_df = risk_df[
+        ["Method", "Portfolio", "FactorModel", "alpha", "t_stat", "p_value", "r_squared", "n_obs"]
+    ]
     risk_csv = output_dir / "risk_adjusted_performance.csv"
     risk_df.to_csv(risk_csv, index=False)
 
@@ -141,10 +141,11 @@ def run_portfolio_evaluation(
 
     # --------------------------------------------------
     # 5.5 Probabilistic evaluation
-    # helper should return:
-    # y_true, y_prob
     # --------------------------------------------------
-    y_true, y_prob = build_probabilistic_targets(assignments=assignments, returns=returns)
+    y_true, y_prob = build_probabilistic_targets(
+        assignments=assignments,
+        stock_prices_csv=stock_prices_csv,
+    )
 
     prob_metrics = probabilistic_evaluation(y_true=y_true, y_prob=y_prob)
     prob_df = pd.DataFrame([prob_metrics])
@@ -168,7 +169,7 @@ def run_portfolio_evaluation(
 
     return {
         "output_dir": str(output_dir),
-        "monthly_portfolio_stock_prices_csv": str(portfolio_stock_prices_csv),
+        "monthly_portfolio_returns_csv": str(monthly_portfolio_returns_csv),
         "monthly_holdings_csv": str(monthly_holdings_csv) if monthly_holdings_csv else None,
         "raw_performance_csv": str(raw_csv),
         "risk_adjusted_performance_csv": str(risk_csv),
