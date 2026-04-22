@@ -737,6 +737,7 @@ def run_uncertainty_model_hb(
         "save_plots": save_plots,
         "n_portfolio_years_completed": len(all_results),
         "n_sigma_rows": int(len(sigma_summary)),
+        "full_posteriors_parquet": str(full_post_path) if full_post_path is not None else None,
     }
 
     config_path = output_dir / "uncertainty_model_hb_config.json"
@@ -748,7 +749,7 @@ def run_uncertainty_model_hb(
         "firm_year_csv": str(merged_output_path),
         "sigma_summary_csv": str(sigma_summary_path),
         "all_results_pkl": str(all_results_path),
-        "full_posteriors_parquet": str(full_post_path) if full_post_path is not None else None,
+        "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
         "config_json": str(config_path),
         "plots_dir": str(plot_dir) if save_plots else None,
         "ppc_plot_png": ppc_plot_path,
