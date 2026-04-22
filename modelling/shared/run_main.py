@@ -34,6 +34,11 @@ class RunConfig:
     nw_lags: int = 12
     save_intermediate: bool = True
 
+    # Full propagation settings
+    latent_use_full_propagation: bool = False
+    latent_n_sigma_draws: Optional[int] = None
+    latent_checkpoint_every_draws: int = 25
+
 
 # --------------------------------------------------
 # HELPERS
@@ -199,6 +204,10 @@ def run_pipeline(config: RunConfig) -> Path:
         durations["uncertainty_model"] = perf_counter() - t0
         uncertainty_csv = Path(uncertainty_result["firm_year_csv"])
 
+        hb_full_posterior_parquet = None
+        if config.uncertainty_method.upper() == "HB":
+            hb_full_posterior_parquet = uncertainty_result.get("full_posterior_parquet")
+
         outputs["uncertainty_model"] = uncertainty_result
 
         append_log(log_path, f"Finished Step 1 in {durations['uncertainty_model']:.2f}s")
@@ -209,12 +218,21 @@ def run_pipeline(config: RunConfig) -> Path:
         append_log(log_path, "Starting Step 2: latent_prof_model")
         t0 = perf_counter()
 
+        if config.latent_use_full_propagation:
+            if config.uncertainty_method.upper() != "HB":
+                raise ValueError("Full propagation in Step 3 requires uncertainty_method='HB'.")
+            if hb_full_posterior_parquet is None:
+                raise ValueError("HB full propagation requested, but Step 2 did not return full_posterior_parquet.")
+
         latent_result = run_latent_prof_model(
             input_csv=uncertainty_csv,
             output_dir=step_dirs["latent_prof_model"],
             uncertainty_method=config.uncertainty_method,
+            use_full_propagation=config.latent_use_full_propagation,
+            hb_full_posterior_parquet=hb_full_posterior_parquet,
+            n_sigma_draws=config.latent_n_sigma_draws,
+            checkpoint_every_draws=config.latent_checkpoint_every_draws,
         )
-
         durations["latent_prof_model"] = perf_counter() - t0
         latent_csv = Path(latent_result["firm_year_csv"])
 
@@ -366,6 +384,23 @@ def parse_args() -> argparse.Namespace:
         default=RunConfig.nw_lags,
         help="Newey-West lags for evaluation regressions.",
     )
+    parser.add_argument(
+        "--latent_use_full_propagation",
+        action="store_true",
+        help="If set, Step 3 uses HB full propagation from sigma_posteriors_full.parquet.",
+    )
+    parser.add_argument(
+        "--latent_n_sigma_draws",
+        type=int,
+        default=None,
+        help="Number of HB sigma draws to use in Step 3 full propagation. Default: all available.",
+    )
+    parser.add_argument(
+        "--latent_checkpoint_every_draws",
+        type=int,
+        default=25,
+        help="How often Step 3 full propagation reports progress.",
+    )
 
     return parser.parse_args()
 
@@ -383,6 +418,9 @@ def main() -> None:
         uncertainty_method=args.uncertainty_method,
         n_portfolios=args.n_portfolios,
         nw_lags=args.nw_lags,
+        latent_use_full_propagation=args.latent_use_full_propagation,
+        latent_n_sigma_draws=args.latent_n_sigma_draws,
+        latent_checkpoint_every_draws=args.latent_checkpoint_every_draws,
     )
 
     run_dir = run_pipeline(config)
