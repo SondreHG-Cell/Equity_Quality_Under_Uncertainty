@@ -59,7 +59,7 @@ def get_historical_prices(tickers: list[str], start: str, end: str) -> pd.DataFr
             except Exception:
                 continue
         
-        time.sleep(0.2)
+        time.sleep(0.1)
 
     primary = sum(1 for v in field_used.values() if v == "OFF_CLOSE")
     fallback = sum(1 for v in field_used.values() if v == "TRDPRC_1")
@@ -158,18 +158,19 @@ def main():
 
     tickers = get_tickers_from_folder(FOLDER)
 
-    # print(f"Fetching monthly prices ({START} → {END})...")
-    # prices = get_historical_prices(tickers, START, END)
+    print(f"Fetching monthly prices ({START} → {END})...")
+    prices = get_historical_prices(tickers, START, END)
 
-    # print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
-    # mktcap = get_historical_market_cap(tickers, START, END)
+    print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
+    mktcap = get_historical_market_cap(tickers, START, END)
 
     print(f"\n--- Fetching monthly shares outstanding ({START} → {END}) ---")
     shares_outstanding = get_shares_outstanding(tickers, START, END)
-    # print("Fetching FX rates from LSEG...")
-    # fx = get_fx_rates(START, END)
 
-    # fx.to_csv(OUTPUT / "fx_rates.csv")
+    print("Fetching FX rates from LSEG...")
+    fx = get_fx_rates(START, END)
+
+    fx.to_csv(OUTPUT / "fx_rates.csv")
 
     # print("Converting all prices to NOK...")
     # prices_nok = convert_to_nok(prices, fx)
@@ -178,8 +179,8 @@ def main():
 
     # Transpose: tickers as rows, dates as columns
 
-    # save_transposed(prices, OUTPUT / "all_stock_prices.csv", "prices")
-    # save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
+    save_transposed(prices, OUTPUT / "all_stock_prices.csv", "prices")
+    save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
     save_transposed(shares_outstanding, OUTPUT / "shares_outstanding.csv", "shares outstanding")
 
     lseg.close_session()
