@@ -22,7 +22,7 @@ def find_project_root() -> Path:
 
 
 PROJECT_ROOT = find_project_root()
-RUN_DIR = PROJECT_ROOT / "results" / "first_hb_run"
+RUN_DIR = PROJECT_ROOT / "results" / "full_prop_hb"
 PORT_EVAL_DIR = RUN_DIR / "portfolio_evaluation"
 OUTPUT_DIR = RUN_DIR / "main_results_extract"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
