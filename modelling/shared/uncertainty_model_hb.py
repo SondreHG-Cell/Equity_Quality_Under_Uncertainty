@@ -1,4 +1,8 @@
 # uncertainty_model_hb.py
+# Two-stage version:
+# 1) fit CFO_{t+1} AR(1) model outside the accrual model, using training rows only
+# 2) predict CFO_{t+1} for portfolio-year rows
+# 3) fit accrual HB model with predicted CFO_{t+1} fixed in the WCA equation
 
 from __future__ import annotations
 
@@ -13,7 +17,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pymc as pm
-import pytensor.tensor as pt
 
 from hb_shared_utils import (
     compute_wca,
@@ -31,18 +34,215 @@ np.random.seed(42)
 
 
 # =============================================================================
-# Bayesian accrual model
+# Stage 1: external CFO_{t+1} forecast model
 # =============================================================================
 
-def build_hb_accrual_model_ar1(window_df: pd.DataFrame, firm_sector_map) -> tuple[pm.Model, dict]:
+def fit_external_cfo_ar1_model(
+    window_df: pd.DataFrame,
+    random_seed: int,
+    draws: int = 1000,
+    tune: int = 1500,
+    chains: int = 4,
+    target_accept: float = 0.95,
+) -> tuple[dict, az.InferenceData]:
     """
-    AR(1) extension: joint accrual model + CFO forecast model with
-    latent CFO_{t+1} for portfolio-year rows.
+    Fit the AR(1) CFO model ONLY on observed training transitions.
 
     Returns
     -------
-    model : pm.Model
-    trace_info : dict with index mappings and sanity counts
+    cfo_info : dict
+        Contains remapped arrays and indices needed for prediction.
+    trace : InferenceData
+        Posterior draws of the CFO model parameters.
+    """
+    wdf = window_df.copy()
+
+    # --- Remap firm indices contiguously ---
+    window_firms = sorted(wdf["firm_idx"].unique())
+    firm_remap = {old: new for new, old in enumerate(window_firms)}
+    wdf["w_firm"] = wdf["firm_idx"].map(firm_remap)
+
+    # --- Build sector map for window firms ---
+    firm_sector_map = (
+        wdf.groupby("w_firm")["sector_idx"]
+        .first()
+        .astype(int)
+        .sort_index()
+    )
+    firm_to_sector_orig = np.array([firm_sector_map[i] for i in range(len(window_firms))], dtype=int)
+
+    window_sectors = sorted(set(firm_to_sector_orig))
+    sector_remap = {old: new for new, old in enumerate(window_sectors)}
+    firm_to_sector = np.array([sector_remap[s] for s in firm_to_sector_orig], dtype=int)
+
+    # sector for each row
+    firm_idx = wdf["w_firm"].values.astype(int)
+    sector_of_obs = firm_to_sector[firm_idx]
+
+    cfo_curr = wdf["CFO_scaled"].values
+    cfo_lead = wdf["CFO_lead1_scaled"].values
+    is_port = wdf["is_portfolio_year"].values
+
+    # observed consecutive transitions for training only
+    wdf_sorted = wdf.sort_values(["Ticker", "Year"]).copy()
+    wdf_sorted["year_next_firm"] = wdf_sorted.groupby("Ticker")["Year"].shift(-1)
+    wdf_sorted["consecutive"] = (
+        wdf_sorted["CFO_lead1_scaled"].notna()
+        & (wdf_sorted["year_next_firm"] == wdf_sorted["Year"] + 1)
+    )
+    wdf["consecutive"] = wdf_sorted.sort_index()["consecutive"].values
+    ar1_obs_mask = (~is_port) & wdf["consecutive"].values
+
+    latent_idx = np.where(is_port)[0]
+
+    cfo_t_for_ar1 = cfo_curr[ar1_obs_mask]
+    cfo_next_for_ar1 = cfo_lead[ar1_obs_mask]
+    sector_for_ar1 = sector_of_obs[ar1_obs_mask]
+
+    coords = {
+        "sector": window_sectors,
+        "ar1_obs": np.arange(int(ar1_obs_mask.sum())),
+        "latent": np.arange(len(latent_idx)),
+    }
+
+    with pm.Model(coords=coords) as model:
+        mu_cfo_market = pm.Normal("mu_cfo_market", mu=0, sigma=0.2)
+        rho_cfo_market = pm.Normal("rho_cfo_market", mu=0.5, sigma=0.3)
+        psi_cfo_market = pm.HalfNormal("psi_cfo_market", sigma=0.2)
+
+        sigma_mu_cfo = pm.HalfNormal("sigma_mu_cfo", sigma=0.1)
+        sigma_rho_cfo = pm.HalfNormal("sigma_rho_cfo", sigma=0.1)
+
+        mu_cfo_sector_raw = pm.Normal("mu_cfo_sector_raw", mu=0, sigma=1, dims="sector")
+        rho_cfo_sector_raw = pm.Normal("rho_cfo_sector_raw", mu=0, sigma=1, dims="sector")
+        psi_cfo_sector_raw = pm.HalfNormal("psi_cfo_sector_raw", sigma=1, dims="sector")
+
+        mu_cfo_sector = pm.Deterministic(
+            "mu_cfo_sector",
+            mu_cfo_market + sigma_mu_cfo * mu_cfo_sector_raw,
+            dims="sector",
+        )
+        rho_cfo_sector = pm.Deterministic(
+            "rho_cfo_sector",
+            rho_cfo_market + sigma_rho_cfo * rho_cfo_sector_raw,
+            dims="sector",
+        )
+        psi_cfo_sector = pm.Deterministic(
+            "psi_cfo_sector",
+            psi_cfo_market * psi_cfo_sector_raw,
+            dims="sector",
+        )
+
+        mu_next = (
+            mu_cfo_sector[sector_for_ar1]
+            + rho_cfo_sector[sector_for_ar1] * cfo_t_for_ar1
+        )
+        sigma_next = psi_cfo_sector[sector_for_ar1]
+
+        pm.Normal(
+            "cfo_next_obs",
+            mu=mu_next,
+            sigma=sigma_next,
+            observed=cfo_next_for_ar1,
+            dims="ar1_obs",
+        )
+
+        trace = pm.sample(
+            draws=draws,
+            tune=tune,
+            chains=chains,
+            target_accept=target_accept,
+            random_seed=random_seed,
+            return_inferencedata=True,
+            progressbar=True,
+        )
+
+    cfo_info = {
+        "window_firms": window_firms,
+        "window_sectors": window_sectors,
+        "firm_to_sector": firm_to_sector,
+        "latent_idx": latent_idx,
+        "sector_of_obs": sector_of_obs,
+        "cfo_curr": cfo_curr,
+        "ar1_obs_mask": ar1_obs_mask,
+        "n_ar1_obs": int(ar1_obs_mask.sum()),
+        "n_latent": int(len(latent_idx)),
+        "sector_remap": sector_remap,
+    }
+    return cfo_info, trace
+
+
+def predict_cfo_lead_for_portfolio_rows(
+    window_df: pd.DataFrame,
+    cfo_info: dict,
+    cfo_trace: az.InferenceData,
+    prediction_mode: str = "mean",
+) -> pd.DataFrame:
+    """
+    Predict CFO_{t+1} for portfolio-year rows using the external CFO model.
+
+    prediction_mode
+    ---------------
+    "mean"  : posterior predictive mean
+    "draw"  : one posterior predictive draw per row
+    """
+    wdf = window_df.copy()
+
+    latent_idx = cfo_info["latent_idx"]
+    sector_of_obs = cfo_info["sector_of_obs"]
+    cfo_curr = cfo_info["cfo_curr"]
+
+    if len(latent_idx) == 0:
+        wdf["CFO_lead1_pred_scaled"] = wdf["CFO_lead1_scaled"]
+        return wdf
+
+    sector_for_latent = sector_of_obs[latent_idx]
+    cfo_t_for_latent = cfo_curr[latent_idx]
+
+    mu_cfo_sector = cfo_trace.posterior["mu_cfo_sector"].values.reshape(-1, cfo_trace.posterior["mu_cfo_sector"].shape[-1])
+    rho_cfo_sector = cfo_trace.posterior["rho_cfo_sector"].values.reshape(-1, cfo_trace.posterior["rho_cfo_sector"].shape[-1])
+    psi_cfo_sector = cfo_trace.posterior["psi_cfo_sector"].values.reshape(-1, cfo_trace.posterior["psi_cfo_sector"].shape[-1])
+
+    n_post = mu_cfo_sector.shape[0]
+
+    pred_mean = np.zeros(len(latent_idx), dtype=float)
+
+    if prediction_mode == "mean":
+        for j in range(len(latent_idx)):
+            s = sector_for_latent[j]
+            mu_draw = mu_cfo_sector[:, s] + rho_cfo_sector[:, s] * cfo_t_for_latent[j]
+            pred_mean[j] = mu_draw.mean()
+
+    elif prediction_mode == "draw":
+        draw_ids = np.random.randint(0, n_post, size=len(latent_idx))
+        for j in range(len(latent_idx)):
+            s = sector_for_latent[j]
+            d = draw_ids[j]
+            mu_draw = mu_cfo_sector[d, s] + rho_cfo_sector[d, s] * cfo_t_for_latent[j]
+            sd_draw = psi_cfo_sector[d, s]
+            pred_mean[j] = np.random.normal(mu_draw, sd_draw)
+
+    else:
+        raise ValueError("prediction_mode must be 'mean' or 'draw'")
+
+    wdf["CFO_lead1_pred_scaled"] = wdf["CFO_lead1_scaled"]
+    wdf.loc[wdf.index[latent_idx], "CFO_lead1_pred_scaled"] = pred_mean
+
+    return wdf
+
+
+# =============================================================================
+# Stage 2: accrual model with fixed predicted CFO_{t+1}
+# =============================================================================
+
+def build_hb_accrual_model_fixed_lead(
+    window_df: pd.DataFrame,
+    firm_sector_map,
+) -> tuple[pm.Model, dict]:
+    """
+    Accrual model only.
+    CFO_{t+1} is FIXED at externally predicted values and is not jointly updated
+    by the WCA likelihood.
     """
     wdf = window_df.copy()
 
@@ -56,50 +256,22 @@ def build_hb_accrual_model_ar1(window_df: pd.DataFrame, firm_sector_map) -> tupl
     sector_remap = {old: new for new, old in enumerate(window_sectors)}
     firm_to_sector = np.array([sector_remap[s] for s in firm_to_sector], dtype=int)
 
-    # Sector for each observation (via its firm)
     firm_idx = wdf["w_firm"].values.astype(int)
-    sector_of_obs = firm_to_sector[firm_idx]
 
-    # --- Extract arrays ---
     y = wdf["WCA_scaled"].values
     cfo_lag1 = wdf["CFO_lag1_scaled"].values
     cfo_curr = wdf["CFO_scaled"].values
-    cfo_lead = wdf["CFO_lead1_scaled"].values
+    cfo_lead_fixed = wdf["CFO_lead1_pred_scaled"].values
     drev = wdf["dREV_scaled"].values
     ppe = wdf["PPE_scaled"].values
-
-    is_port = wdf["is_portfolio_year"].values
-
-    # --- AR(1) training likelihood mask ---
-    # Only consecutive-year transitions, and only on training rows.
-    wdf_sorted = wdf.sort_values(["Ticker", "Year"]).copy()
-    wdf_sorted["year_next_firm"] = wdf_sorted.groupby("Ticker")["Year"].shift(-1)
-    wdf_sorted["consecutive"] = (
-        wdf_sorted["CFO_lead1_scaled"].notna()
-        & (wdf_sorted["year_next_firm"] == wdf_sorted["Year"] + 1)
-    )
-    wdf["consecutive"] = wdf_sorted.sort_index()["consecutive"].values
-    ar1_obs_mask = (~is_port) & wdf["consecutive"].values
-
-    ar1_sector_counts = pd.Series(sector_of_obs[ar1_obs_mask]).value_counts().sort_index()
-
-    # --- Latent CFO_{t+1} indices: portfolio rows only ---
-    latent_idx = np.where(is_port)[0]
-    n_latent = len(latent_idx)
-
-    # Placeholder overwritten inside model for latent rows
-    cfo_lead_placeholder = np.where(np.isnan(cfo_lead), 0.0, cfo_lead)
 
     coords = {
         "firm": window_firms,
         "sector": window_sectors,
         "obs": np.arange(len(wdf)),
-        "latent": np.arange(n_latent),
-        "ar1_obs": np.arange(int(ar1_obs_mask.sum())),
     }
 
     with pm.Model(coords=coords) as model:
-        # ═══ Accrual intercept and noise hierarchy ═══
         mu_0 = pm.Normal("mu_0", mu=0, sigma=0.1)
         omega = pm.HalfNormal("omega", sigma=0.05)
         tau = pm.HalfNormal("tau", sigma=0.05)
@@ -133,91 +305,19 @@ def build_hb_accrual_model_ar1(window_df: pd.DataFrame, firm_sector_map) -> tupl
             dims="firm",
         )
 
-        # ═══ Global regression coefficients ═══
         b_lag = pm.Normal("beta_CFO_lag1", mu=0, sigma=0.3)
         b_cur = pm.Normal("beta_CFO_curr", mu=0, sigma=0.3)
         b_lead = pm.Normal("beta_CFO_lead1", mu=0, sigma=0.3)
         b_rev = pm.Normal("beta_dREV", mu=0, sigma=0.3)
         b_ppe = pm.Normal("beta_PPE", mu=0, sigma=0.3)
 
-        # ═══ AR(1) CFO forecast — market level ═══
-        mu_cfo_market = pm.Normal("mu_cfo_market", mu=0, sigma=0.2)
-        rho_cfo_market = pm.Normal("rho_cfo_market", mu=0.5, sigma=0.3)
-        psi_cfo_market = pm.HalfNormal("psi_cfo_market", sigma=0.2)
-
-        # ═══ AR(1) sector-level spreads ═══
-        sigma_mu_cfo = pm.HalfNormal("sigma_mu_cfo", sigma=0.1)
-        sigma_rho_cfo = pm.HalfNormal("sigma_rho_cfo", sigma=0.1)
-
-        mu_cfo_sector_raw = pm.Normal("mu_cfo_sector_raw", mu=0, sigma=1, dims="sector")
-        rho_cfo_sector_raw = pm.Normal("rho_cfo_sector_raw", mu=0, sigma=1, dims="sector")
-        psi_cfo_sector_raw = pm.HalfNormal("psi_cfo_sector_raw", sigma=1, dims="sector")
-
-        mu_cfo_sector = pm.Deterministic(
-            "mu_cfo_sector",
-            mu_cfo_market + sigma_mu_cfo * mu_cfo_sector_raw,
-            dims="sector",
-        )
-        rho_cfo_sector = pm.Deterministic(
-            "rho_cfo_sector",
-            rho_cfo_market + sigma_rho_cfo * rho_cfo_sector_raw,
-            dims="sector",
-        )
-        psi_cfo_sector = pm.Deterministic(
-            "psi_cfo_sector",
-            psi_cfo_market * psi_cfo_sector_raw,
-            dims="sector",
-        )
-
-        # ═══ AR(1) likelihood on observed transitions ═══
-        cfo_t_for_ar1 = cfo_curr[ar1_obs_mask]
-        cfo_next_for_ar1 = cfo_lead[ar1_obs_mask]
-        sector_for_ar1 = sector_of_obs[ar1_obs_mask]
-
-        mu_next = (
-            mu_cfo_sector[sector_for_ar1]
-            + rho_cfo_sector[sector_for_ar1] * cfo_t_for_ar1
-        )
-        sigma_next = psi_cfo_sector[sector_for_ar1]
-
-        pm.Normal(
-            "cfo_next_obs",
-            mu=mu_next,
-            sigma=sigma_next,
-            observed=cfo_next_for_ar1,
-            dims="ar1_obs",
-        )
-
-        # ═══ Latent CFO_{t+1} for portfolio rows ═══
-        cfo_t_for_latent = cfo_curr[latent_idx]
-        sector_for_latent = sector_of_obs[latent_idx]
-
-        mu_latent = (
-            mu_cfo_sector[sector_for_latent]
-            + rho_cfo_sector[sector_for_latent] * cfo_t_for_latent
-        )
-        sigma_latent = psi_cfo_sector[sector_for_latent]
-
-        cfo_lead_latent = pm.Normal(
-            "cfo_lead_latent",
-            mu=mu_latent,
-            sigma=sigma_latent,
-            dims="latent",
-        )
-
-        # ═══ Heavy tails for accrual likelihood ═══
         nu = pm.Gamma("nu", alpha=2, beta=0.1)
 
-        # ═══ Splice observed + latent into full CFO_{t+1} vector ═══
-        cfo_lead_full = pt.as_tensor_variable(cfo_lead_placeholder)
-        cfo_lead_full = pt.set_subtensor(cfo_lead_full[latent_idx], cfo_lead_latent)
-
-        # ═══ Accrual likelihood ═══
         mu_wca = (
             alpha_firm[firm_idx]
             + b_lag * cfo_lag1
             + b_cur * cfo_curr
-            + b_lead * cfo_lead_full
+            + b_lead * cfo_lead_fixed
             + b_rev * drev
             + b_ppe * ppe
         )
@@ -235,14 +335,9 @@ def build_hb_accrual_model_ar1(window_df: pd.DataFrame, firm_sector_map) -> tupl
         "window_firms": window_firms,
         "window_sectors": window_sectors,
         "firm_to_sector": firm_to_sector,
-        "n_train": int((~is_port).sum()),
-        "n_portfolio": int(is_port.sum()),
-        "n_ar1_obs": int(ar1_obs_mask.sum()),
-        "n_latent": n_latent,
-        "ar1_counts_by_sector": ar1_sector_counts.to_dict(),
+        "n_obs": int(len(wdf)),
         "sector_remap": sector_remap,
     }
-
     return model, trace_info
 
 
@@ -262,7 +357,6 @@ def _save_sigma_diagnostic_plots(
     sector_info = data[["Ticker", "Sector"]].drop_duplicates(subset="Ticker")
     sigma_with_sector = sigma_summary.merge(sector_info, on="Ticker", how="left")
 
-    # 1. Distribution of sigma + posterior uncertainty
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
 
     axes[0].hist(
@@ -301,7 +395,6 @@ def _save_sigma_diagnostic_plots(
     plt.savefig(plot_dir / "sigma_distribution.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-    # 2. sigma by sector
     sector_order = (
         sigma_with_sector.groupby("Sector")["sigma_mean"]
         .median()
@@ -326,7 +419,6 @@ def _save_sigma_diagnostic_plots(
     plt.savefig(plot_dir / "sigma_by_sector.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-    # 3. sigma over time by sector
     fig, ax = plt.subplots(figsize=(11, 5.5))
 
     overall_median = sigma_summary.groupby("Year")["sigma_mean"].median()
@@ -355,7 +447,6 @@ def _save_sigma_diagnostic_plots(
     plt.savefig(plot_dir / "sigma_over_time.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-    # 4. Example firm posteriors
     if all_results:
         latest_year = max(all_results.keys())
         latest_results = all_results[latest_year]
@@ -468,7 +559,7 @@ def _save_last_ppc_plot(
 def run_uncertainty_model_hb(
     input_csv: str | Path,
     output_dir: str | Path,
-    model_name: str = "ar1",
+    model_name: str = "two_stage_ar1",
     year_start: int = 2009,
     year_end: int = 2025,
     n_draws: int = 2000,
@@ -480,24 +571,10 @@ def run_uncertainty_model_hb(
     random_seed: int = 42,
     save_full_posteriors: bool = True,
     save_plots: bool = True,
+    cfo_draws: int = 1000,
+    cfo_tune: int = 1500,
+    cfo_prediction_mode: str = "mean",
 ) -> dict:
-    """
-    Step 2 HB uncertainty model.
-
-    Expected input_csv
-    ------------------
-    A prepared firm-year panel from the extraction step containing the columns
-    needed by:
-      - compute_wca(...)
-      - build_regressors(..., include_lead=True)
-      - mark_usable(...)
-      - assign_indices(...)
-      - build_estimation_window(...)
-
-    Returns
-    -------
-    dict of saved output paths for run_main.py
-    """
     input_csv = Path(input_csv)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -511,9 +588,6 @@ def run_uncertainty_model_hb(
 
     print(f"PyMC {pm.__version__} | ArviZ {az.__version__} | Model: {model_name}")
 
-    # --------------------------------------------------
-    # Load prepared panel
-    # --------------------------------------------------
     data = pd.read_csv(input_csv)
 
     data = compute_wca(data)
@@ -562,28 +636,56 @@ def run_uncertainty_model_hb(
             print("SKIPPED — insufficient training data")
             continue
 
-        n_train = len(window_df)
+        n_obs = len(window_df)
         n_firms = window_df["Ticker"].nunique()
-        train_years = sorted(int(y) for y in window_df["Year"].unique())
+        years_in_window = sorted(int(y) for y in window_df["Year"].unique())
 
-        print(f"Training years:  {train_years} ({n_train} obs)")
+        print(f"Window years:    {years_in_window} ({n_obs} obs)")
         print(f"Firms in window: {n_firms}")
 
+        # --------------------------------------------------
+        # Stage 1: external CFO model
+        # --------------------------------------------------
         try:
-            model, trace_info = build_hb_accrual_model_ar1(window_df, firm_sector)
+            cfo_info, cfo_trace = fit_external_cfo_ar1_model(
+                window_df=window_df,
+                random_seed=random_seed + 10_000 + int(port_year),
+                draws=cfo_draws,
+                tune=cfo_tune,
+                chains=n_chains,
+                target_accept=target_accept,
+            )
         except Exception as e:
-            print(f"ERROR building model: {e}")
+            print(f"ERROR fitting external CFO model: {e}")
             continue
 
-        print(f"Model built: {trace_info['n_train']} train obs")
+        print(
+            f"External CFO model fitted: "
+            f"{cfo_info['n_ar1_obs']} observed transitions, "
+            f"{cfo_info['n_latent']} portfolio-year predictions"
+        )
 
-        if "ar1_counts_by_sector" in trace_info:
-            sector_remap_inv = {v: k for k, v in trace_info["sector_remap"].items()}
-            sector_map_inv = {v: k for k, v in sector_map.items()}
-            for s_idx, count in trace_info["ar1_counts_by_sector"].items():
-                orig_idx = sector_remap_inv[s_idx]
-                s_name = sector_map_inv.get(orig_idx, f"sector_{orig_idx}")
-                print(f"  AR(1) pairs — {s_name}: {count}")
+        try:
+            window_df_fixed = predict_cfo_lead_for_portfolio_rows(
+                window_df=window_df,
+                cfo_info=cfo_info,
+                cfo_trace=cfo_trace,
+                prediction_mode=cfo_prediction_mode,
+            )
+        except Exception as e:
+            print(f"ERROR predicting CFO_t+1 externally: {e}")
+            continue
+
+        # --------------------------------------------------
+        # Stage 2: accrual model with fixed predicted CFO lead
+        # --------------------------------------------------
+        try:
+            model, trace_info = build_hb_accrual_model_fixed_lead(window_df_fixed, firm_sector)
+        except Exception as e:
+            print(f"ERROR building accrual model: {e}")
+            continue
+
+        print(f"Accrual model built: {trace_info['n_obs']} obs")
 
         try:
             with model:
@@ -597,7 +699,7 @@ def run_uncertainty_model_hb(
                     progressbar=True,
                 )
         except Exception as e:
-            print(f"ERROR sampling: {e}")
+            print(f"ERROR sampling accrual model: {e}")
             continue
 
         sigma_conv = summarize_convergence(trace, var_name="sigma_firm")
@@ -636,13 +738,10 @@ def run_uncertainty_model_hb(
 
         last_model = model
         last_trace = trace
-        last_window_df = window_df.copy()
+        last_window_df = window_df_fixed.copy()
 
     print(f"\nDone! Estimated {len(all_results)} portfolio years.")
 
-    # --------------------------------------------------
-    # Save consolidated outputs
-    # --------------------------------------------------
     all_results_path = output_dir / "hb_all_results.pkl"
     with open(all_results_path, "wb") as f:
         pickle.dump(all_results, f)
@@ -679,9 +778,6 @@ def run_uncertainty_model_hb(
         print(f"Saved full posteriors: {full_post_path}")
         print(f"Shape: {sigma_full.shape} ({sigma_full.shape[1] - 3} draws per firm-year)")
 
-    # --------------------------------------------------
-    # Merge summary back to firm-year panel for Step 3
-    # --------------------------------------------------
     sigma_merged = data.merge(
         sigma_summary,
         on=["Ticker", "Year"],
@@ -689,16 +785,12 @@ def run_uncertainty_model_hb(
         validate="1:1",
     ).copy()
 
-    # Standardized downstream sigma column
     sigma_merged["sigma_acc"] = sigma_merged["sigma_mean"]
 
     merged_output_path = output_dir / "uncertainty_firm_year.csv"
     sigma_merged.to_csv(merged_output_path, index=False)
     print(f"Saved merged firm-year output: {merged_output_path}")
 
-    # --------------------------------------------------
-    # Optional plots
-    # --------------------------------------------------
     ppc_plot_path = None
     if save_plots and not sigma_summary.empty:
         _save_sigma_diagnostic_plots(
@@ -717,9 +809,6 @@ def run_uncertainty_model_hb(
         )
         print(f"Diagnostic plots saved to {plot_dir}")
 
-    # --------------------------------------------------
-    # Save config
-    # --------------------------------------------------
     config = {
         "model_name": model_name,
         "input_csv": str(input_csv),
@@ -735,9 +824,12 @@ def run_uncertainty_model_hb(
         "random_seed": random_seed,
         "save_full_posteriors": save_full_posteriors,
         "save_plots": save_plots,
+        "cfo_draws": cfo_draws,
+        "cfo_tune": cfo_tune,
+        "cfo_prediction_mode": cfo_prediction_mode,
         "n_portfolio_years_completed": len(all_results),
         "n_sigma_rows": int(len(sigma_summary)),
-        "full_posteriors_parquet": str(full_post_path) if full_post_path is not None else None,
+        "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
     }
 
     config_path = output_dir / "uncertainty_model_hb_config.json"
@@ -761,10 +853,10 @@ def run_uncertainty_model_hb(
 # =============================================================================
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run HB uncertainty model.")
+    parser = argparse.ArgumentParser(description="Run two-stage HB uncertainty model.")
     parser.add_argument("--input_csv", type=str, required=True, help="Prepared firm-year panel for Step 2.")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save HB outputs.")
-    parser.add_argument("--model_name", type=str, default="ar1")
+    parser.add_argument("--model_name", type=str, default="two_stage_ar1")
     parser.add_argument("--year_start", type=int, default=2009)
     parser.add_argument("--year_end", type=int, default=2025)
     parser.add_argument("--n_draws", type=int, default=2000)
@@ -774,6 +866,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min_train_years", type=int, default=3)
     parser.add_argument("--max_train_years", type=int, default=5)
     parser.add_argument("--random_seed", type=int, default=42)
+    parser.add_argument("--cfo_draws", type=int, default=1000)
+    parser.add_argument("--cfo_tune", type=int, default=1500)
+    parser.add_argument("--cfo_prediction_mode", type=str, default="mean", choices=["mean", "draw"])
     parser.add_argument("--no_full_posteriors", action="store_true")
     parser.add_argument("--no_plots", action="store_true")
     return parser.parse_args()
@@ -797,4 +892,7 @@ if __name__ == "__main__":
         random_seed=args.random_seed,
         save_full_posteriors=not args.no_full_posteriors,
         save_plots=not args.no_plots,
+        cfo_draws=args.cfo_draws,
+        cfo_tune=args.cfo_tune,
+        cfo_prediction_mode=args.cfo_prediction_mode,
     )
