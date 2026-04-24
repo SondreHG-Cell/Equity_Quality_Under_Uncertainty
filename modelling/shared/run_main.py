@@ -33,10 +33,11 @@ class RunConfig:
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
+
+    # HB CFO handling
     hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
 
-
-    # Full propagation settings
+    # Step 3 full propagation settings
     latent_use_full_propagation: bool = False
     latent_n_sigma_draws: Optional[int] = None
     latent_checkpoint_every_draws: int = 25
@@ -225,9 +226,11 @@ def run_pipeline(config: RunConfig) -> Path:
             if config.uncertainty_method.upper() != "HB":
                 raise ValueError("Full propagation in Step 3 requires uncertainty_method='HB'.")
             if hb_full_posterior_parquet is None:
-                raise ValueError("HB full propagation requested, but Step 2 did not return full_posterior_parquet.")
+                raise ValueError(
+                    "HB full propagation requested, but Step 2 did not return full_posterior_parquet."
+                )
 
-        latent_result = run_latent_prof_model(
+        latent_results = run_latent_prof_model(
             input_csv=uncertainty_csv,
             output_dir=step_dirs["latent_prof_model"],
             uncertainty_method=config.uncertainty_method,
@@ -236,52 +239,92 @@ def run_pipeline(config: RunConfig) -> Path:
             n_sigma_draws=config.latent_n_sigma_draws,
             checkpoint_every_draws=config.latent_checkpoint_every_draws,
         )
-        durations["latent_prof_model"] = perf_counter() - t0
-        latent_csv = Path(latent_result["firm_year_csv"])
 
-        outputs["latent_prof_model"] = latent_result
+        durations["latent_prof_model"] = perf_counter() - t0
+        outputs["latent_prof_model"] = latent_results
 
         append_log(log_path, f"Finished Step 2 in {durations['latent_prof_model']:.2f}s")
+        append_log(log_path, f"Latent variants produced: {', '.join(latent_results.keys())}")
 
         # ------------------------------------------
-        # Step 3: portfolio_formation
+        # Steps 3-4: portfolio_formation + portfolio_evaluation
+        # for each latent variant
         # ------------------------------------------
-        append_log(log_path, "Starting Step 3: portfolio_formation")
-        t0 = perf_counter()
+        append_log(log_path, "Starting Steps 3-4 for all latent variants")
 
-        portfolio_result = run_portfolio_formation(
-            input_csv=latent_csv,
-            output_dir=step_dirs["portfolio_formation"],
-            n_portfolios=config.n_portfolios,
+        portfolio_results: Dict[str, Any] = {}
+        evaluation_results: Dict[str, Any] = {}
+        variant_durations: Dict[str, Dict[str, float]] = {}
+
+        t0_pf_total = perf_counter()
+
+        for variant_name, latent_variant_result in latent_results.items():
+            append_log(log_path, f"Starting downstream pipeline for variant: {variant_name}")
+
+            variant_pf_dir = step_dirs["portfolio_formation"] / variant_name
+            variant_eval_dir = step_dirs["portfolio_evaluation"] / variant_name
+
+            # --------------------------------------
+            # Step 3: portfolio_formation
+            # --------------------------------------
+            t_pf = perf_counter()
+
+            portfolio_result = run_portfolio_formation(
+                input_csv=latent_variant_result["firm_year_csv"],
+                output_dir=variant_pf_dir,
+                n_portfolios=config.n_portfolios,
+            )
+
+            pf_seconds = perf_counter() - t_pf
+            portfolio_results[variant_name] = portfolio_result
+
+            append_log(
+                log_path,
+                f"Finished Step 3 for {variant_name} in {pf_seconds:.2f}s"
+            )
+
+            # --------------------------------------
+            # Step 4: portfolio_evaluation
+            # --------------------------------------
+            t_eval = perf_counter()
+
+            portfolio_long_csv = Path(portfolio_result["portfolio_assignments_long_csv"])
+
+            evaluation_result = run_portfolio_evaluation(
+                assignments_csv=portfolio_long_csv,
+                stock_prices_csv=returns_csv,
+                market_cap_csv=market_cap_csv,
+                factors_csv=factors_csv,
+                output_dir=variant_eval_dir,
+                n_portfolios=config.n_portfolios,
+                nw_lags=config.nw_lags,
+            )
+
+            eval_seconds = perf_counter() - t_eval
+            evaluation_results[variant_name] = evaluation_result
+
+            variant_durations[variant_name] = {
+                "portfolio_formation": pf_seconds,
+                "portfolio_evaluation": eval_seconds,
+                "downstream_total": pf_seconds + eval_seconds,
+            }
+
+            append_log(
+                log_path,
+                f"Finished Step 4 for {variant_name} in {eval_seconds:.2f}s"
+            )
+
+        downstream_total = perf_counter() - t0_pf_total
+        durations["portfolio_formation_and_evaluation_total"] = downstream_total
+
+        outputs["portfolio_formation"] = portfolio_results
+        outputs["portfolio_evaluation"] = evaluation_results
+        outputs["variant_durations_seconds"] = variant_durations
+
+        append_log(
+            log_path,
+            f"Finished downstream steps for all variants in {downstream_total:.2f}s"
         )
-
-        durations["portfolio_formation"] = perf_counter() - t0
-        portfolio_long_csv = Path(portfolio_result["portfolio_assignments_long_csv"])
-
-        outputs["portfolio_formation"] = portfolio_result
-
-        append_log(log_path, f"Finished Step 3 in {durations['portfolio_formation']:.2f}s")
-
-        # ------------------------------------------
-        # Step 4: portfolio_evaluation
-        # ------------------------------------------
-        append_log(log_path, "Starting Step 4: portfolio_evaluation")
-        t0 = perf_counter()
-
-        evaluation_result = run_portfolio_evaluation(
-            assignments_csv=portfolio_long_csv,
-            stock_prices_csv=returns_csv,
-            market_cap_csv=market_cap_csv,
-            factors_csv=factors_csv,
-            output_dir=step_dirs["portfolio_evaluation"],
-            n_portfolios=config.n_portfolios,
-            nw_lags=config.nw_lags,
-        )
-
-        durations["portfolio_evaluation"] = perf_counter() - t0
-        outputs["portfolio_evaluation"] = evaluation_result
-
-        append_log(log_path, f"Finished Step 4 in {durations['portfolio_evaluation']:.2f}s")
 
         # ------------------------------------------
         # Done
@@ -329,7 +372,10 @@ def run_pipeline(config: RunConfig) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the full post-extraction pipeline: uncertainty_model -> latent_prof_model -> portfolio_formation -> portfolio_evaluation"
+        description=(
+            "Run the full post-extraction pipeline: "
+            "uncertainty_model -> latent_prof_model -> portfolio_formation -> portfolio_evaluation"
+        )
     )
 
     parser.add_argument(
@@ -374,6 +420,13 @@ def parse_args() -> argparse.Namespace:
         default=RunConfig.uncertainty_method,
         choices=["HB", "OLS"],
         help="Which uncertainty model to run.",
+    )
+    parser.add_argument(
+        "--hb_cfo_lead_mode",
+        type=str,
+        default=RunConfig.hb_cfo_lead_mode,
+        choices=["best_external", "none"],
+        help="How HB Step 2 should handle CFO_{t+1}.",
     )
     parser.add_argument(
         "--n_portfolios",
@@ -421,6 +474,7 @@ def main() -> None:
         uncertainty_method=args.uncertainty_method,
         n_portfolios=args.n_portfolios,
         nw_lags=args.nw_lags,
+        hb_cfo_lead_mode=args.hb_cfo_lead_mode,
         latent_use_full_propagation=args.latent_use_full_propagation,
         latent_n_sigma_draws=args.latent_n_sigma_draws,
         latent_checkpoint_every_draws=args.latent_checkpoint_every_draws,
