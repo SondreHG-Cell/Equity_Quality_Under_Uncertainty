@@ -716,7 +716,7 @@ def run_uncertainty_model_hb(
         try:
             model, trace_info = build_hb_accrual_model_fixed_lead(
                 window_df_fixed,
-                firm_sector=firm_sector,
+                firm_sector_map=firm_sector,
                 include_cfo_lead=include_cfo_lead,
             )
         except Exception as e:
