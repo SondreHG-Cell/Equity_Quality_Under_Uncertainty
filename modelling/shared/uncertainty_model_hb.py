@@ -93,7 +93,7 @@ def fit_external_cfo_ar1_model(
     wdf["consecutive"] = wdf_sorted.sort_index()["consecutive"].values
     ar1_obs_mask = (~is_port) & wdf["consecutive"].values
 
-    latent_idx = np.where(is_port)[0]
+    latent_idx = np.where(is_port | np.isnan(cfo_lead))[0]
 
     cfo_t_for_ar1 = cfo_curr[ar1_obs_mask]
     cfo_next_for_ar1 = cfo_lead[ar1_obs_mask]
