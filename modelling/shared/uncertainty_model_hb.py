@@ -46,14 +46,7 @@ def fit_external_cfo_ar1_model(
     target_accept: float = 0.95,
 ) -> tuple[dict, az.InferenceData]:
     """
-    Fit the AR(1) CFO model ONLY on observed training transitions.
-
-    Returns
-    -------
-    cfo_info : dict
-        Contains remapped arrays and indices needed for prediction.
-    trace : InferenceData
-        Posterior draws of the CFO model parameters.
+    Fit the external Student-t AR(1) CFO model on observed training transitions only.
     """
     wdf = window_df.copy()
 
@@ -93,7 +86,8 @@ def fit_external_cfo_ar1_model(
     wdf["consecutive"] = wdf_sorted.sort_index()["consecutive"].values
     ar1_obs_mask = (~is_port) & wdf["consecutive"].values
 
-    latent_idx = np.where(is_port | np.isnan(cfo_lead))[0]
+    # predict for portfolio-year rows and any row with missing lead CFO
+    predict_idx = np.where(is_port | np.isnan(cfo_lead))[0]
 
     cfo_t_for_ar1 = cfo_curr[ar1_obs_mask]
     cfo_next_for_ar1 = cfo_lead[ar1_obs_mask]
@@ -102,7 +96,7 @@ def fit_external_cfo_ar1_model(
     coords = {
         "sector": window_sectors,
         "ar1_obs": np.arange(int(ar1_obs_mask.sum())),
-        "latent": np.arange(len(latent_idx)),
+        "predict_obs": np.arange(len(predict_idx)),
     }
 
     with pm.Model(coords=coords) as model:
@@ -133,7 +127,7 @@ def fit_external_cfo_ar1_model(
             dims="sector",
         )
 
-        nu = pm.Gamma("nu_cfo", alpha=2, beta=0.1)
+        nu_cfo = pm.Gamma("nu_cfo", alpha=2, beta=0.1)
 
         mu_next = (
             mu_cfo_sector[sector_for_ar1]
@@ -143,12 +137,12 @@ def fit_external_cfo_ar1_model(
 
         pm.StudentT(
             "cfo_next_obs",
-            nu=nu,
+            nu=nu_cfo,
             mu=mu_next,
             sigma=sigma_next,
             observed=cfo_next_for_ar1,
             dims="ar1_obs",
-        )  
+        )
 
         trace = pm.sample(
             draws=draws,
@@ -164,12 +158,12 @@ def fit_external_cfo_ar1_model(
         "window_firms": window_firms,
         "window_sectors": window_sectors,
         "firm_to_sector": firm_to_sector,
-        "latent_idx": latent_idx,
+        "predict_idx": predict_idx,
         "sector_of_obs": sector_of_obs,
         "cfo_curr": cfo_curr,
         "ar1_obs_mask": ar1_obs_mask,
         "n_ar1_obs": int(ar1_obs_mask.sum()),
-        "n_latent": int(len(latent_idx)),
+        "n_predict": int(len(predict_idx)),
         "sector_remap": sector_remap,
     }
     return cfo_info, trace
@@ -182,54 +176,61 @@ def predict_cfo_lead_for_portfolio_rows(
     prediction_mode: str = "mean",
 ) -> pd.DataFrame:
     """
-    Predict CFO_{t+1} for portfolio-year rows using the external CFO model.
+    Predict CFO_{t+1} using the external Student-t CFO model.
 
     prediction_mode
     ---------------
-    "mean"  : posterior predictive mean
-    "draw"  : one posterior predictive draw per row
+    "mean"  : posterior mean of the conditional location
+    "draw"  : one posterior predictive Student-t draw per row
     """
     wdf = window_df.copy()
 
-    latent_idx = cfo_info["latent_idx"]
+    predict_idx = cfo_info["predict_idx"]
     sector_of_obs = cfo_info["sector_of_obs"]
     cfo_curr = cfo_info["cfo_curr"]
 
-    if len(latent_idx) == 0:
+    if len(predict_idx) == 0:
         wdf["CFO_lead1_pred_scaled"] = wdf["CFO_lead1_scaled"]
         return wdf
 
-    sector_for_latent = sector_of_obs[latent_idx]
-    cfo_t_for_latent = cfo_curr[latent_idx]
+    sector_for_pred = sector_of_obs[predict_idx]
+    cfo_t_for_pred = cfo_curr[predict_idx]
 
-    mu_cfo_sector = cfo_trace.posterior["mu_cfo_sector"].values.reshape(-1, cfo_trace.posterior["mu_cfo_sector"].shape[-1])
-    rho_cfo_sector = cfo_trace.posterior["rho_cfo_sector"].values.reshape(-1, cfo_trace.posterior["rho_cfo_sector"].shape[-1])
-    psi_cfo_sector = cfo_trace.posterior["psi_cfo_sector"].values.reshape(-1, cfo_trace.posterior["psi_cfo_sector"].shape[-1])
+    mu_cfo_sector = cfo_trace.posterior["mu_cfo_sector"].values.reshape(
+        -1, cfo_trace.posterior["mu_cfo_sector"].shape[-1]
+    )
+    rho_cfo_sector = cfo_trace.posterior["rho_cfo_sector"].values.reshape(
+        -1, cfo_trace.posterior["rho_cfo_sector"].shape[-1]
+    )
+    psi_cfo_sector = cfo_trace.posterior["psi_cfo_sector"].values.reshape(
+        -1, cfo_trace.posterior["psi_cfo_sector"].shape[-1]
+    )
+    nu_cfo = cfo_trace.posterior["nu_cfo"].values.reshape(-1)
 
     n_post = mu_cfo_sector.shape[0]
-
-    pred_mean = np.zeros(len(latent_idx), dtype=float)
+    pred = np.zeros(len(predict_idx), dtype=float)
 
     if prediction_mode == "mean":
-        for j in range(len(latent_idx)):
-            s = sector_for_latent[j]
-            mu_draw = mu_cfo_sector[:, s] + rho_cfo_sector[:, s] * cfo_t_for_latent[j]
-            pred_mean[j] = mu_draw.mean()
+        for j in range(len(predict_idx)):
+            s = sector_for_pred[j]
+            mu_draw = mu_cfo_sector[:, s] + rho_cfo_sector[:, s] * cfo_t_for_pred[j]
+            pred[j] = mu_draw.mean()
 
     elif prediction_mode == "draw":
-        draw_ids = np.random.randint(0, n_post, size=len(latent_idx))
-        for j in range(len(latent_idx)):
-            s = sector_for_latent[j]
+        draw_ids = np.random.randint(0, n_post, size=len(predict_idx))
+        for j in range(len(predict_idx)):
+            s = sector_for_pred[j]
             d = draw_ids[j]
-            mu_draw = mu_cfo_sector[d, s] + rho_cfo_sector[d, s] * cfo_t_for_latent[j]
-            sd_draw = psi_cfo_sector[d, s]
-            pred_mean[j] = np.random.normal(mu_draw, sd_draw)
+            mu_draw = mu_cfo_sector[d, s] + rho_cfo_sector[d, s] * cfo_t_for_pred[j]
+            sigma_draw = psi_cfo_sector[d, s]
+            nu_draw = nu_cfo[d]
+            pred[j] = mu_draw + sigma_draw * np.random.standard_t(df=nu_draw)
 
     else:
         raise ValueError("prediction_mode must be 'mean' or 'draw'")
 
     wdf["CFO_lead1_pred_scaled"] = wdf["CFO_lead1_scaled"]
-    wdf.loc[wdf.index[latent_idx], "CFO_lead1_pred_scaled"] = pred_mean
+    wdf.loc[wdf.index[predict_idx], "CFO_lead1_pred_scaled"] = pred
 
     return wdf
 
@@ -241,11 +242,16 @@ def predict_cfo_lead_for_portfolio_rows(
 def build_hb_accrual_model_fixed_lead(
     window_df: pd.DataFrame,
     firm_sector_map,
+    include_cfo_lead: bool = True,
 ) -> tuple[pm.Model, dict]:
     """
     Accrual model only.
-    CFO_{t+1} is FIXED at externally predicted values and is not jointly updated
-    by the WCA likelihood.
+
+    include_cfo_lead=True:
+        use fixed externally predicted CFO_{t+1} in the WCA equation
+
+    include_cfo_lead=False:
+        drop CFO_{t+1} entirely from the WCA equation
     """
     wdf = window_df.copy()
 
@@ -264,9 +270,13 @@ def build_hb_accrual_model_fixed_lead(
     y = wdf["WCA_scaled"].values
     cfo_lag1 = wdf["CFO_lag1_scaled"].values
     cfo_curr = wdf["CFO_scaled"].values
-    cfo_lead_fixed = wdf["CFO_lead1_pred_scaled"].values
     drev = wdf["dREV_scaled"].values
     ppe = wdf["PPE_scaled"].values
+
+    if include_cfo_lead:
+        if "CFO_lead1_pred_scaled" not in wdf.columns:
+            raise ValueError("CFO_lead1_pred_scaled is required when include_cfo_lead=True")
+        cfo_lead_fixed = wdf["CFO_lead1_pred_scaled"].values
 
     coords = {
         "firm": window_firms,
@@ -310,9 +320,11 @@ def build_hb_accrual_model_fixed_lead(
 
         b_lag = pm.Normal("beta_CFO_lag1", mu=0, sigma=0.3)
         b_cur = pm.Normal("beta_CFO_curr", mu=0, sigma=0.3)
-        b_lead = pm.Normal("beta_CFO_lead1", mu=0, sigma=0.3)
         b_rev = pm.Normal("beta_dREV", mu=0, sigma=0.3)
         b_ppe = pm.Normal("beta_PPE", mu=0, sigma=0.3)
+
+        if include_cfo_lead:
+            b_lead = pm.Normal("beta_CFO_lead1", mu=0, sigma=0.3)
 
         nu = pm.Gamma("nu", alpha=2, beta=0.1)
 
@@ -320,10 +332,12 @@ def build_hb_accrual_model_fixed_lead(
             alpha_firm[firm_idx]
             + b_lag * cfo_lag1
             + b_cur * cfo_curr
-            + b_lead * cfo_lead_fixed
             + b_rev * drev
             + b_ppe * ppe
         )
+
+        if include_cfo_lead:
+            mu_wca = mu_wca + b_lead * cfo_lead_fixed
 
         pm.StudentT(
             "WCA_obs",
@@ -340,6 +354,7 @@ def build_hb_accrual_model_fixed_lead(
         "firm_to_sector": firm_to_sector,
         "n_obs": int(len(wdf)),
         "sector_remap": sector_remap,
+        "include_cfo_lead": include_cfo_lead,
     }
     return model, trace_info
 
@@ -577,6 +592,7 @@ def run_uncertainty_model_hb(
     cfo_draws: int = 1000,
     cfo_tune: int = 1500,
     cfo_prediction_mode: str = "mean",
+    cfo_lead_mode: str = "best_external"
 ) -> dict:
     input_csv = Path(input_csv)
     output_dir = Path(output_dir)
@@ -590,6 +606,10 @@ def run_uncertainty_model_hb(
         plot_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"PyMC {pm.__version__} | ArviZ {az.__version__} | Model: {model_name}")
+    
+    cfo_lead_mode = cfo_lead_mode.lower()
+    if cfo_lead_mode not in {"best_external", "none"}:
+        raise ValueError("cfo_lead_mode must be one of: 'best_external', 'none'")
 
     data = pd.read_csv(input_csv)
 
@@ -647,43 +667,58 @@ def run_uncertainty_model_hb(
         print(f"Firms in window: {n_firms}")
 
         # --------------------------------------------------
-        # Stage 1: external CFO model
+        # Stage 1: CFO_{t+1} handling
         # --------------------------------------------------
-        try:
-            cfo_info, cfo_trace = fit_external_cfo_ar1_model(
-                window_df=window_df,
-                random_seed=random_seed + 10_000 + int(port_year),
-                draws=cfo_draws,
-                tune=cfo_tune,
-                chains=n_chains,
-                target_accept=target_accept,
+        if cfo_lead_mode == "best_external":
+            try:
+                cfo_info, cfo_trace = fit_external_cfo_ar1_model(
+                    window_df=window_df,
+                    random_seed=random_seed + 10_000 + int(port_year),
+                    draws=cfo_draws,
+                    tune=cfo_tune,
+                    chains=n_chains,
+                    target_accept=target_accept,
+                )
+            except Exception as e:
+                print(f"ERROR fitting external CFO model: {e}")
+                continue
+
+            print(
+                f"External CFO model fitted: "
+                f"{cfo_info['n_ar1_obs']} observed transitions, "
+                f"{cfo_info['n_predict']} rows predicted"
             )
-        except Exception as e:
-            print(f"ERROR fitting external CFO model: {e}")
-            continue
 
-        print(
-            f"External CFO model fitted: "
-            f"{cfo_info['n_ar1_obs']} observed transitions, "
-            f"{cfo_info['n_latent']} portfolio-year predictions"
-        )
+            try:
+                window_df_fixed = predict_cfo_lead_for_portfolio_rows(
+                    window_df=window_df,
+                    cfo_info=cfo_info,
+                    cfo_trace=cfo_trace,
+                    prediction_mode=cfo_prediction_mode,
+                )
+            except Exception as e:
+                print(f"ERROR predicting CFO_t+1 externally: {e}")
+                continue
 
+            include_cfo_lead = True
+
+        elif cfo_lead_mode == "none":
+            print("Skipping CFO_{t+1}: cfo_lead_mode='none'")
+            window_df_fixed = window_df.copy()
+            include_cfo_lead = False
+
+        else:
+            raise ValueError(f"Unknown cfo_lead_mode: {cfo_lead_mode}")
+
+        # --------------------------------------------------
+        # Stage 2: accrual model
+        # --------------------------------------------------
         try:
-            window_df_fixed = predict_cfo_lead_for_portfolio_rows(
-                window_df=window_df,
-                cfo_info=cfo_info,
-                cfo_trace=cfo_trace,
-                prediction_mode=cfo_prediction_mode,
+            model, trace_info = build_hb_accrual_model_fixed_lead(
+                window_df_fixed,
+                firm_sector=firm_sector,
+                include_cfo_lead=include_cfo_lead,
             )
-        except Exception as e:
-            print(f"ERROR predicting CFO_t+1 externally: {e}")
-            continue
-
-        # --------------------------------------------------
-        # Stage 2: accrual model with fixed predicted CFO lead
-        # --------------------------------------------------
-        try:
-            model, trace_info = build_hb_accrual_model_fixed_lead(window_df_fixed, firm_sector)
         except Exception as e:
             print(f"ERROR building accrual model: {e}")
             continue
@@ -830,6 +865,7 @@ def run_uncertainty_model_hb(
         "cfo_draws": cfo_draws,
         "cfo_tune": cfo_tune,
         "cfo_prediction_mode": cfo_prediction_mode,
+        "cfo_lead_mode": cfo_lead_mode,
         "n_portfolio_years_completed": len(all_results),
         "n_sigma_rows": int(len(sigma_summary)),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
@@ -872,6 +908,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cfo_draws", type=int, default=1000)
     parser.add_argument("--cfo_tune", type=int, default=1500)
     parser.add_argument("--cfo_prediction_mode", type=str, default="mean", choices=["mean", "draw"])
+    parser.add_argument(
+        "--cfo_lead_mode",
+        type=str,
+        default="best_external",
+        choices=["best_external", "none"],
+        help="How to handle CFO_{t+1} in the accrual model.",
+    )
     parser.add_argument("--no_full_posteriors", action="store_true")
     parser.add_argument("--no_plots", action="store_true")
     return parser.parse_args()
@@ -898,4 +941,5 @@ if __name__ == "__main__":
         cfo_draws=args.cfo_draws,
         cfo_tune=args.cfo_tune,
         cfo_prediction_mode=args.cfo_prediction_mode,
+        cfo_lead_mode=args.cfo_lead_mode,
     )

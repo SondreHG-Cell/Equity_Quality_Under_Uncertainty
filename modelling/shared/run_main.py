@@ -33,6 +33,8 @@ class RunConfig:
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
+    hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
+
 
     # Full propagation settings
     latent_use_full_propagation: bool = False
@@ -199,6 +201,7 @@ def run_pipeline(config: RunConfig) -> Path:
             input_csv=extracted_input_csv,
             output_dir=step_dirs["uncertainty_model"],
             method=config.uncertainty_method,
+            cfo_lead_mode=config.hb_cfo_lead_mode,
         )
 
         durations["uncertainty_model"] = perf_counter() - t0

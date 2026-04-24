@@ -77,6 +77,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--no_full_posteriors", action="store_true")
     parser.add_argument("--no_plots", action="store_true")
+    parser.add_argument(
+        "--cfo_lead_mode",
+        type=str,
+        default="best_external",
+        choices=["best_external", "none"],
+    )
 
     # OLS-specific passthrough arguments
     parser.add_argument("--min_obs_per_year", type=int, default=20)
@@ -105,6 +111,10 @@ if __name__ == "__main__":
             "random_seed": args.random_seed,
             "save_full_posteriors": not args.no_full_posteriors,
             "save_plots": not args.no_plots,
+            "cfo_draws": args.cfo_draws,
+            "cfo_tune": args.cfo_tune,
+            "cfo_prediction_mode": args.cfo_prediction_mode,
+            "cfo_lead_mode": args.cfo_lead_mode,
         }
 
     elif args.method.upper() == "OLS":
