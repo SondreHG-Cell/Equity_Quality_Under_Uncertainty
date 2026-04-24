@@ -133,19 +133,22 @@ def fit_external_cfo_ar1_model(
             dims="sector",
         )
 
+        nu = pm.Gamma("nu_cfo", alpha=2, beta=0.1)
+
         mu_next = (
             mu_cfo_sector[sector_for_ar1]
             + rho_cfo_sector[sector_for_ar1] * cfo_t_for_ar1
         )
         sigma_next = psi_cfo_sector[sector_for_ar1]
 
-        pm.Normal(
+        pm.StudentT(
             "cfo_next_obs",
+            nu=nu,
             mu=mu_next,
             sigma=sigma_next,
             observed=cfo_next_for_ar1,
             dims="ar1_obs",
-        )
+        )  
 
         trace = pm.sample(
             draws=draws,
