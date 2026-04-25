@@ -2,6 +2,7 @@ import lseg.data as lseg
 import pandas as pd
 import os
 import time
+import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -94,6 +95,67 @@ def get_historical_market_cap(tickers: list[str], start: str, end: str) -> pd.Da
     print(f"\nMarket cap retrieved for {len(all_mktcap)}/{len(tickers)} tickers.")
     return pd.DataFrame(all_mktcap)
 
+def get_monthly_cfo_forecasts(tickers: list[str], start: str = "2010-01-01", end: str = "2025-12-31",) -> pd.DataFrame:
+    """
+    Fetch raw monthly analyst CFO forecast snapshots per ticker.
+    Returns long-format DataFrame: Ticker, snapshot_date, cfo_forecast.
+    
+    Downstream you can collapse to annual however you want (mean per year,
+    specific month, firma-specific timing based on FY-end, etc.).
+    """
+    rows = []
+
+    for i, ticker in enumerate(tickers):
+        print(f"  [{i+1}/{len(tickers)}] {ticker}")
+
+        try:
+            hist = lseg.get_history(
+                universe=[ticker],
+                fields=["TR.CashFlowFromOperationsMeanEstimate(Period=FY1,Scale=6)"],
+                interval="monthly",
+                start=start,
+                end=end,
+            )
+        except Exception as e:
+            print(f"    error: {type(e).__name__}: {e}")
+            time.sleep(0.2)
+            continue
+
+        if hist is None or hist.empty:
+            time.sleep(0.1)
+            continue
+
+        col = next((c for c in hist.columns if "mean estimate" in c.lower()), None)
+        if col is None:
+            print(f"    WARN: no mean-estimate column. Got: {hist.columns.tolist()}")
+            time.sleep(0.1)
+            continue
+
+        series = hist[col].dropna()
+        if series.empty:
+            time.sleep(0.1)
+            continue
+
+        for dt, val in series.items():
+            rows.append({
+                "Ticker": ticker,
+                "snapshot_date": pd.to_datetime(dt),
+                "cfo_forecast": float(val),
+            })
+
+        time.sleep(0.1)
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        print("\nWARNING: no CFO forecasts retrieved.")
+        return out
+
+    out = out.sort_values(["Ticker", "snapshot_date"]).reset_index(drop=True)
+    print(f"\nCFO forecasts retrieved: {len(out)} monthly snapshots across {out['Ticker'].nunique()} tickers.")
+    print(f"  Date range: {out['snapshot_date'].min().date()} to {out['snapshot_date'].max().date()}")
+    print(f"  Median observations per ticker: {out.groupby('Ticker').size().median():.0f}")
+    return out
+
 def get_fx_rates(start: str, end: str) -> pd.DataFrame:
     pairs = ["SEKNOK=X", "DKKNOK=X", "EURNOK=X", "ISKNOK=X"]
     fx = lseg.get_history(
@@ -158,19 +220,22 @@ def main():
 
     tickers = get_tickers_from_folder(FOLDER)
 
-    print(f"Fetching monthly prices ({START} → {END})...")
-    prices = get_historical_prices(tickers, START, END)
+    # print(f"Fetching monthly prices ({START} → {END})...")
+    # prices = get_historical_prices(tickers, START, END)
 
-    print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
-    mktcap = get_historical_market_cap(tickers, START, END)
+    # print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
+    # mktcap = get_historical_market_cap(tickers, START, END)
 
-    print(f"\n--- Fetching monthly shares outstanding ({START} → {END}) ---")
-    shares_outstanding = get_shares_outstanding(tickers, START, END)
+    # print(f"\n--- Fetching monthly shares outstanding ({START} → {END}) ---")
+    # shares_outstanding = get_shares_outstanding(tickers, START, END)
 
-    print("Fetching FX rates from LSEG...")
-    fx = get_fx_rates(START, END)
+    print(f"\n--- Fetching analyst OCF forecasts via get_history ---")
+    ocf_forecasts = get_monthly_cfo_forecasts(tickers, start="2010-01-01", end="2025-12-31")
 
-    fx.to_csv(OUTPUT / "fx_rates.csv")
+    # print("Fetching FX rates from LSEG...")
+    # fx = get_fx_rates(START, END)
+
+    # fx.to_csv(OUTPUT / "fx_rates.csv")
 
     # print("Converting all prices to NOK...")
     # prices_nok = convert_to_nok(prices, fx)
@@ -179,10 +244,10 @@ def main():
 
     # Transpose: tickers as rows, dates as columns
 
-    save_transposed(prices, OUTPUT / "all_stock_prices.csv", "prices")
-    save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
-    save_transposed(shares_outstanding, OUTPUT / "shares_outstanding.csv", "shares outstanding")
-
+    # save_transposed(prices, OUTPUT / "all_stock_prices.csv", "prices")
+    # save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
+    # save_transposed(shares_outstanding, OUTPUT / "shares_outstanding.csv", "shares outstanding")
+    ocf_forecasts.to_csv(OUTPUT / "cfo_forecasts_monthly_raw.csv", index=False)
     lseg.close_session()
 
 if __name__ == "__main__":
