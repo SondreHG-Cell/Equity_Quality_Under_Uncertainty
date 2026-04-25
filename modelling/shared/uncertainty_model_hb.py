@@ -326,7 +326,7 @@ def build_hb_accrual_model_fixed_lead(
         if include_cfo_lead:
             b_lead = pm.Normal("beta_CFO_lead1", mu=0, sigma=0.3)
 
-        nu = pm.Gamma("nu", alpha=2, beta=0.1)
+        nu = pm.Gamma("nu", alpha=4, beta=1)
 
         mu_wca = (
             alpha_firm[firm_idx]
