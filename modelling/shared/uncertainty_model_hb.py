@@ -285,11 +285,18 @@ def build_hb_accrual_model_fixed_lead(
     }
 
     with pm.Model(coords=coords) as model:
+        # -------------------------
+        # Market-level priors
+        # -------------------------
         mu_0 = pm.Normal("mu_0", mu=0, sigma=0.1)
+
         omega = pm.HalfNormal("omega", sigma=0.05)
         tau = pm.HalfNormal("tau", sigma=0.05)
         sigma_0 = pm.HalfNormal("sigma_0", sigma=0.05)
 
+        # -------------------------
+        # Sector intercepts
+        # -------------------------
         alpha_sector_raw = pm.Normal("alpha_sector_raw", mu=0, sigma=1, dims="sector")
         alpha_sector = pm.Deterministic(
             "alpha_sector",
@@ -297,6 +304,9 @@ def build_hb_accrual_model_fixed_lead(
             dims="sector",
         )
 
+        # -------------------------
+        # Firm intercepts
+        # -------------------------
         alpha_firm_raw = pm.Normal("alpha_firm_raw", mu=0, sigma=1, dims="firm")
         alpha_firm = pm.Deterministic(
             "alpha_firm",
@@ -304,6 +314,9 @@ def build_hb_accrual_model_fixed_lead(
             dims="firm",
         )
 
+        # -------------------------
+        # Sector noise
+        # -------------------------
         sigma_sector_raw = pm.HalfNormal("sigma_sector_raw", sigma=1, dims="sector")
         sigma_sector = pm.Deterministic(
             "sigma_sector",
@@ -311,6 +324,9 @@ def build_hb_accrual_model_fixed_lead(
             dims="sector",
         )
 
+        # -------------------------
+        # Firm noise
+        # -------------------------
         sigma_firm_raw = pm.HalfNormal("sigma_firm_raw", sigma=1, dims="firm")
         sigma_firm = pm.Deterministic(
             "sigma_firm",
@@ -318,6 +334,9 @@ def build_hb_accrual_model_fixed_lead(
             dims="firm",
         )
 
+        # -------------------------
+        # Shared slopes
+        # -------------------------
         b_lag = pm.Normal("beta_CFO_lag1", mu=0, sigma=0.3)
         b_cur = pm.Normal("beta_CFO_curr", mu=0, sigma=0.3)
         b_rev = pm.Normal("beta_dREV", mu=0, sigma=0.3)
@@ -325,8 +344,6 @@ def build_hb_accrual_model_fixed_lead(
 
         if include_cfo_lead:
             b_lead = pm.Normal("beta_CFO_lead1", mu=0, sigma=0.3)
-
-        nu = pm.Gamma("nu", alpha=4, beta=1)
 
         mu_wca = (
             alpha_firm[firm_idx]
@@ -339,6 +356,12 @@ def build_hb_accrual_model_fixed_lead(
         if include_cfo_lead:
             mu_wca = mu_wca + b_lead * cfo_lead_fixed
 
+        # -------------------------
+        # Student-t likelihood
+        # -------------------------
+        nu_minus_two = pm.Exponential("nu_minus_two", lam=1 / 10)
+        nu = pm.Deterministic("nu", 2 + nu_minus_two)
+
         pm.StudentT(
             "WCA_obs",
             nu=nu,
@@ -346,6 +369,12 @@ def build_hb_accrual_model_fixed_lead(
             sigma=sigma_firm[firm_idx],
             observed=y,
             dims="obs",
+        )
+
+        sigma_firm_sd = pm.Deterministic(
+            "sigma_firm_sd",
+            sigma_firm * pm.math.sqrt(nu / (nu - 2)),
+            dims="firm",
         )
 
     trace_info = {
