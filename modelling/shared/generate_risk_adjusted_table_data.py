@@ -2,9 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
+Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
 
@@ -36,6 +45,12 @@ COMPARISON_LABELS = {
     "Method3_ProbQ5 vs Method1_Raw": "Method3_ProbQ5 minus Method1_Raw",
 }
 COMPARISONS = list(COMPARISON_LABELS.values())
+
+METHOD_COLORS = {
+    "Method1_Raw": "#4C78A8",
+    "Method2_PostMean": "#F2A65A",
+    "Method3_ProbQ5": "#72B7B2",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -490,6 +505,70 @@ def build_preview(levels: pd.DataFrame, differences: pd.DataFrame) -> pd.DataFra
     return level_wide.merge(diff_wide, on=["PortfolioStrategy", "FactorModel"], how="left")
 
 
+def build_cumulative_returns(monthly_used: pd.DataFrame) -> pd.DataFrame:
+    cumulative = monthly_used.copy()
+    cumulative["Date"] = pd.to_datetime(cumulative["Date"], errors="coerce")
+    cumulative["Return"] = pd.to_numeric(cumulative["Return"], errors="coerce")
+    cumulative = cumulative.dropna(subset=["Date", "Method", "PortfolioStrategy", "Return"])
+    cumulative = cumulative.sort_values(["PortfolioStrategy", "Method", "Date"])
+    cumulative["CumulativeReturn"] = (
+        cumulative.groupby(["PortfolioStrategy", "Method"])["Return"]
+        .transform(lambda s: (1.0 + s).cumprod() - 1.0)
+    )
+    return cumulative.reset_index(drop=True)
+
+
+def save_cumulative_return_plots(monthly_used: pd.DataFrame, output_dir: Path) -> dict[str, Path]:
+    plot_dir = output_dir / "plots"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
+    cumulative = build_cumulative_returns(monthly_used)
+    outputs: dict[str, Path] = {}
+
+    strategy_titles = {
+        "LongShort": "Cumulative Returns: Long-Short Q5 - Q1",
+        "Q5": "Cumulative Returns: Pure Q5",
+    }
+
+    for strategy, title in strategy_titles.items():
+        sub = cumulative.loc[cumulative["PortfolioStrategy"] == strategy].copy()
+        if sub.empty:
+            continue
+
+        fig, ax = plt.subplots(figsize=(10.5, 5.8))
+        ax.axhline(0.0, color="#2f3b4a", linewidth=0.9, linestyle="--", alpha=0.75)
+
+        for method in METHODS:
+            method_sub = sub.loc[sub["Method"] == method].sort_values("Date")
+            if method_sub.empty:
+                continue
+            ax.plot(
+                method_sub["Date"],
+                method_sub["CumulativeReturn"],
+                label=method,
+                color=METHOD_COLORS.get(method),
+                linewidth=2.1,
+            )
+
+        ax.set_title(title)
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Cumulative return")
+        ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+        ax.grid(True, linestyle="--", alpha=0.35)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.legend(frameon=False)
+        fig.tight_layout()
+
+        filename = f"cumulative_returns_{strategy.lower()}.png"
+        path = plot_dir / filename
+        fig.savefig(path, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        outputs[f"cumulative_returns_{strategy.lower()}"] = path
+
+    return outputs
+
+
 def save_outputs(
     output_dir: Path,
     ls_levels: pd.DataFrame,
@@ -638,8 +717,9 @@ def main() -> None:
         monthly_used=monthly_used,
         preview=preview,
     )
+    plot_outputs = save_cumulative_return_plots(monthly_used=monthly_used, output_dir=output_dir)
 
-    print("\nCreated files")
+    print("\nCreated CSV files")
     row_counts = {
         "table_ls_alpha_levels": len(ls_levels),
         "table_ls_alpha_differences": len(ls_diffs),
@@ -650,6 +730,10 @@ def main() -> None:
     }
     for key, path in outputs.items():
         print(f"  {path} ({row_counts[key]} rows)")
+
+    print("\nCreated plot files")
+    for path in plot_outputs.values():
+        print(f"  {path}")
 
 
 if __name__ == "__main__":
