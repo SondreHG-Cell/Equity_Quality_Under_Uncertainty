@@ -46,18 +46,17 @@ import pymc as pm
 # the correct prior variance. Supported distributions:
 #   "Normal"     : keys mu, sigma
 #   "HalfNormal" : key  sigma
-#   "Gamma"      : keys alpha (shape), beta (rate)
 # ---------------------------------------------------------------------------
 DEFAULT_ACCRUAL_PRIORS: dict[str, dict] = {
-    "mu_0":           {"dist": "Normal",     "mu": 0.0, "sigma": 0.1},
-    "omega":          {"dist": "HalfNormal", "sigma": 0.05},
-    "tau":            {"dist": "HalfNormal", "sigma": 0.05},
-    "sigma_0":        {"dist": "HalfNormal", "sigma": 0.05},
-    "beta_CFO_lag1":  {"dist": "Normal",     "mu": 0.0, "sigma": 0.3},
-    "beta_CFO_curr":  {"dist": "Normal",     "mu": 0.0, "sigma": 0.3},
-    "beta_dREV":      {"dist": "Normal",     "mu": 0.0, "sigma": 0.3},
-    "beta_PPE":       {"dist": "Normal",     "mu": 0.0, "sigma": 0.3},
-    "nu":             {"dist": "Gamma",      "alpha": 4.0, "beta": 1.0},
+    "mu_0":           {"dist": "Normal",      "mu": 0.0, "sigma": 0.1},
+    "omega":          {"dist": "HalfNormal",  "sigma": 0.05},
+    "tau":            {"dist": "HalfNormal",  "sigma": 0.05},
+    "sigma_0":        {"dist": "HalfNormal",  "sigma": 0.05},
+    "beta_CFO_lag1":  {"dist": "Normal",      "mu": 0.0, "sigma": 0.3},
+    "beta_CFO_curr":  {"dist": "Normal",      "mu": 0.0, "sigma": 0.3},
+    "beta_dREV":      {"dist": "Normal",      "mu": 0.0, "sigma": 0.3},
+    "beta_PPE":       {"dist": "Normal",      "mu": 0.0, "sigma": 0.3},
+    "nu_minus_two":   {"dist": "Exponential", "lam": 0.1},
 }
 
 
@@ -71,15 +70,15 @@ def prior_variance(prior_spec: dict) -> float:
 
       Normal(mu, sigma)        : Var = sigma**2
       HalfNormal(sigma)        : Var = sigma**2 * (1 - 2/pi)
-      Gamma(alpha, beta) [rate]: Var = alpha / beta**2
+      Exponential(lam)         : Var = 1 / lam**2
     """
     dist = prior_spec["dist"]
     if dist == "Normal":
         return float(prior_spec["sigma"]) ** 2
     if dist == "HalfNormal":
         return float(prior_spec["sigma"]) ** 2 * (1.0 - 2.0 / np.pi)
-    if dist == "Gamma":
-        return float(prior_spec["alpha"]) / float(prior_spec["beta"]) ** 2
+    if dist == "Exponential":
+        return 1.0 / (float(prior_spec["lam"]) ** 2)
     raise ValueError(f"Unsupported prior distribution: {dist}")
 
 
@@ -98,8 +97,8 @@ def make_scaled_variant(
     >>> make_scaled_variant(DEFAULT_ACCRUAL_PRIORS, "sigma_0", 2.0)
         Doubles the HalfNormal prior SD on sigma_0.
 
-    >>> make_scaled_variant(DEFAULT_ACCRUAL_PRIORS, "nu", 0.5, field="alpha")
-        Halves the Gamma shape on nu.
+    >>> make_scaled_variant(DEFAULT_ACCRUAL_PRIORS, "nu_minus_two", 0.5, field="lam")
+        Halves the Exponential rate, doubling E[nu - 2] (heavier tails).
     """
     if parameter not in baseline:
         raise KeyError(f"Parameter {parameter!r} not in baseline priors")
@@ -194,7 +193,7 @@ def build_basic_variants(baseline: dict) -> dict[str, dict]:
         "sigma0_half":    make_scaled_variant(baseline, "sigma_0", 0.5),
         "sigma0_double":  make_scaled_variant(baseline, "sigma_0", 2.0),
         "tau_double":     make_scaled_variant(baseline, "tau", 2.0),
-        "nu_loose":       make_scaled_variant(baseline, "nu", 0.5, field="alpha"),
+        "nu_loose":       make_scaled_variant(baseline, "nu_minus_two", 0.5, field="lam"),
         "betas_3x_wider": widen_priors(baseline, 3.0, prefix="beta_"),
     }
 
@@ -220,10 +219,10 @@ def build_extended_variants(baseline: dict) -> dict[str, dict]:
     for s in (0.5, 2.0):
         v[f"mu0_{_scale_label(s)}"] = make_scaled_variant(baseline, "mu_0", s)
 
-    # nu — Student-t degrees of freedom (Gamma shape)
+    # nu — Student-t degrees of freedom
     for s in (0.25, 0.5, 2.0, 4.0):
         v[f"nu_{_scale_label(s)}"] = make_scaled_variant(
-            baseline, "nu", s, field="alpha"
+            baseline, "nu_minus_two", s, field="lam"
         )
 
     # All betas at once
@@ -255,16 +254,16 @@ def build_combined_variants(baseline: dict) -> dict[str, dict]:
         }),
         # Heaviest-tail scenario: noise scale up + tails heavier
         "sigma0_2x_nu_loose": compose_variant(baseline, {
-            "sigma_0": {"sigma": 2.0},
-            "nu":      {"alpha": 0.5},
+            "sigma_0":      {"sigma": 2.0},
+            "nu_minus_two": {"lam": 0.5},
         }),
         # Adversarial-max: every uncertainty source amplified
         "stress_max": compose_variant(baseline, {
-            "sigma_0": {"sigma": 4.0},
-            "omega":   {"sigma": 2.0},
-            "tau":     {"sigma": 2.0},
-            "mu_0":    {"sigma": 2.0},
-            "nu":      {"alpha": 0.5},
+            "sigma_0":      {"sigma": 4.0},
+            "omega":        {"sigma": 2.0},
+            "tau":          {"sigma": 2.0},
+            "mu_0":         {"sigma": 2.0},
+            "nu_minus_two": {"lam": 0.5},
         }),
         # Adversarial-min: minimise variance allowances
         "stress_min": compose_variant(baseline, {
@@ -402,9 +401,11 @@ def make_diagnostic_model(
             sigma=p["beta_PPE"]["sigma"],
         )
 
-        nu = pm.Gamma(
-            "nu", alpha=p["nu"]["alpha"], beta=p["nu"]["beta"]
+        nu_minus_two = pm.Exponential(
+            "nu_minus_two",
+            lam=p["nu_minus_two"]["lam"],
         )
+        nu = pm.Deterministic("nu", 2.0 + nu_minus_two)
 
         mu_wca = (
             alpha_firm[firm_idx]
@@ -421,6 +422,12 @@ def make_diagnostic_model(
             sigma=sigma_firm[firm_idx],
             observed=y,
             dims="obs",
+        )
+
+        sigma_firm_sd = pm.Deterministic(
+            "sigma_firm_sd",
+            sigma_firm * pm.math.sqrt(nu / (nu - 2.0)),
+            dims="firm",
         )
 
     info = {
@@ -719,7 +726,7 @@ _DEFAULT_CONTRACTION_PARAMS = [
     "mu_0", "omega", "tau", "sigma_0",
     "beta_CFO_lag1", "beta_CFO_curr",
     "beta_dREV", "beta_PPE",
-    "nu",
+    "nu_minus_two",
 ]
 
 
