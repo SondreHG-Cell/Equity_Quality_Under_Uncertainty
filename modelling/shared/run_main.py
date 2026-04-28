@@ -33,14 +33,14 @@ class RunConfig:
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
-
+    
     # HB CFO handling
     hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
 
     # Step 3 full propagation settings
-    latent_use_full_propagation: bool = False
+    latent_use_full_propagation: bool = True
     latent_n_sigma_draws: Optional[int] = None
-    latent_checkpoint_every_draws: int = 25
+    latent_checkpoint_every_draws: int = 50
 
 
 # --------------------------------------------------
