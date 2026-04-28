@@ -443,6 +443,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--latent_use_full_propagation",
         action="store_true",
+        default=RunConfig.latent_use_full_propagation,
         help="If set, Step 3 uses HB full propagation from sigma_posteriors_full.parquet.",
     )
     parser.add_argument(
