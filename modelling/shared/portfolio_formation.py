@@ -20,6 +20,7 @@ REQUIRED_COLUMNS = [
     "theta_obs",
     "theta_post_mean",
     "p_q5",
+    "p_median",       # ← NEW
     "sigma_acc",
     "MarketCap",
 ]
@@ -36,6 +37,10 @@ METHOD_SPECS = {
     "Method3_ProbQ5": {
         "signal_col": "p_q5",
         "method_label": "Probabilistic Q5",
+    },
+    "Method4_ProbMedian": {             # ← NEW
+        "signal_col": "p_median",
+        "method_label": "P(>Median)",
     },
 }
 
@@ -63,7 +68,7 @@ def clean_input(df: pd.DataFrame) -> pd.DataFrame:
     df["FormationYear"] = pd.to_numeric(df["FormationYear"], errors="coerce").astype("Int64")
     df["MarketCap"] = pd.to_numeric(df["MarketCap"], errors="coerce")
 
-    for col in ["theta_obs", "theta_post_mean", "p_q5", "sigma_acc"]:
+    for col in ["theta_obs", "theta_post_mean", "p_q5", "p_median", "sigma_acc"]:  # ← p_median NEW
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = df[df["Ticker"].notna() & (df["Ticker"] != "")]
@@ -172,6 +177,7 @@ def form_portfolios_for_method(
         "theta_obs",
         "theta_post_mean",
         "p_q5",
+        "p_median",       # ← NEW
         "sigma_acc",
         "MarketCap",
         "Method",
@@ -188,7 +194,7 @@ def build_long_output(
     n_portfolios: int = 5,
 ) -> pd.DataFrame:
     """
-    Builds one long file with all three sorting methods.
+    Builds one long file with all four sorting methods.
     """
     method_frames = []
 
@@ -220,6 +226,7 @@ def build_wide_output(long_df: pd.DataFrame) -> pd.DataFrame:
         "theta_obs",
         "theta_post_mean",
         "p_q5",
+        "p_median",       # ← NEW
         "sigma_acc",
         "MarketCap",
     ]
@@ -275,6 +282,7 @@ def build_summary_output(long_df: pd.DataFrame) -> pd.DataFrame:
                 "avg_theta_obs",
                 "avg_theta_post_mean",
                 "avg_p_q5",
+                "avg_p_median",       # ← NEW
                 "avg_sigma_acc",
             ]
         )
@@ -287,6 +295,7 @@ def build_summary_output(long_df: pd.DataFrame) -> pd.DataFrame:
             avg_theta_obs=("theta_obs", "mean"),
             avg_theta_post_mean=("theta_post_mean", "mean"),
             avg_p_q5=("p_q5", "mean"),
+            avg_p_median=("p_median", "mean"),    # ← NEW
             avg_sigma_acc=("sigma_acc", "mean"),
         )
         .sort_values(["FormationYear", "Method", "PortfolioNum"])

@@ -217,8 +217,9 @@ def reorder_columns(df: pd.DataFrame, sigma_source_col: str) -> pd.DataFrame:
         "sigma_acc", sigma_source_col, "sigma_raw", "MarketCap",
         "theta_obs", "theta_post_mean", "theta_post_sd", "theta_post_sd_between",
         "p_q5", "p_q5_sd_mc",
+        "p_median", "p_median_sd_mc",                           # ← NEW
         "lambda_i", "mu_t", "var_obs_t", "obs_var_i", "tau2_t",
-        "q5_cutoff_obs", "n_sigma_draws_used",
+        "q5_cutoff_obs", "median_cutoff_obs", "n_sigma_draws_used",  # ← median_cutoff_obs NEW
     ]
     existing_first, seen = [], set()
     for c in first_cols:
@@ -313,7 +314,8 @@ def prepare_static_panel(
             continue
 
         mu_t = theta_obs.mean()
-        q5_cutoff_obs = theta_obs.quantile(0.80)
+        q5_cutoff_obs    = theta_obs.quantile(0.80)
+        median_cutoff_obs = theta_obs.quantile(0.50)          # ← NEW
         median_sigma_raw = sub["sigma_raw"].median()
 
         valid_years.append(fy)
@@ -323,6 +325,7 @@ def prepare_static_panel(
             "mu_t": float(mu_t),
             "var_obs_t": float(var_obs_t),
             "q5_cutoff_obs": float(q5_cutoff_obs),
+            "median_cutoff_obs": float(median_cutoff_obs),    # ← NEW
             "median_sigma_raw": float(median_sigma_raw),
             "sigma_input_col": sigma_input_col,
         })
@@ -344,7 +347,8 @@ def prepare_static_panel(
         theta_obs = sub["theta_obs"].to_numpy(dtype=float)
         mu_t = float(theta_obs.mean())
         var_obs_t = float(theta_obs.var(ddof=1))
-        q5_cutoff_obs = float(np.quantile(theta_obs, 0.80))
+        q5_cutoff_obs     = float(np.quantile(theta_obs, 0.80))
+        median_cutoff_obs = float(np.quantile(theta_obs, 0.50))  # ← NEW
 
         year_info[int(fy)] = {
             "positions": pos,
@@ -352,6 +356,7 @@ def prepare_static_panel(
             "mu_t": mu_t,
             "var_obs_t": var_obs_t,
             "q5_cutoff_obs": q5_cutoff_obs,
+            "median_cutoff_obs": median_cutoff_obs,              # ← NEW
             "n_firms": int(len(sub)),
         }
 
@@ -383,10 +388,11 @@ def run_empirical_bayes_by_year_plugin(
     for fy, info in year_info.items():
         sub = df[df["FormationYear"] == fy].copy()
 
-        theta_obs = info["theta_obs"]
-        mu_t = info["mu_t"]
-        var_obs_t = info["var_obs_t"]
-        q5_cutoff_obs = info["q5_cutoff_obs"]
+        theta_obs         = info["theta_obs"]
+        mu_t              = info["mu_t"]
+        var_obs_t         = info["var_obs_t"]
+        q5_cutoff_obs     = info["q5_cutoff_obs"]
+        median_cutoff_obs = info["median_cutoff_obs"]          # ← NEW
 
         sigma_vec = sub["sigma_acc"].to_numpy(dtype=float)
         if winsorize_sigma:
@@ -424,21 +430,27 @@ def run_empirical_bayes_by_year_plugin(
             shrinkage_method=shrinkage_method,
         )
 
-        z = (q5_cutoff_obs - theta_post_mean) / theta_post_sd
-        p_q5 = 1.0 - norm.cdf(z)
+        z     = (q5_cutoff_obs - theta_post_mean) / theta_post_sd
+        p_q5  = 1.0 - norm.cdf(z)
+
+        z_med    = (median_cutoff_obs - theta_post_mean) / theta_post_sd  # ← NEW
+        p_median = 1.0 - norm.cdf(z_med)                                  # ← NEW
 
         out = sub.loc[sigma_valid].copy()
-        out["mu_t"] = mu_t
-        out["var_obs_t"] = var_obs_t
-        out["obs_var_i"] = obs_var_i
-        out["tau2_t"] = tau2_t
-        out["lambda_i"] = lambda_i
-        out["theta_post_mean"] = theta_post_mean
-        out["theta_post_sd"] = theta_post_sd
+        out["mu_t"]               = mu_t
+        out["var_obs_t"]          = var_obs_t
+        out["obs_var_i"]          = obs_var_i
+        out["tau2_t"]             = tau2_t
+        out["lambda_i"]           = lambda_i
+        out["theta_post_mean"]    = theta_post_mean
+        out["theta_post_sd"]      = theta_post_sd
         out["theta_post_sd_between"] = 0.0
-        out["q5_cutoff_obs"] = q5_cutoff_obs
-        out["p_q5"] = p_q5
-        out["p_q5_sd_mc"] = 0.0
+        out["q5_cutoff_obs"]      = q5_cutoff_obs
+        out["median_cutoff_obs"]  = median_cutoff_obs   # ← NEW
+        out["p_q5"]               = p_q5
+        out["p_q5_sd_mc"]         = 0.0
+        out["p_median"]           = p_median            # ← NEW
+        out["p_median_sd_mc"]     = 0.0                 # ← NEW
         out["n_sigma_draws_used"] = 1
 
         frames.append(out)
@@ -450,6 +462,7 @@ def run_empirical_bayes_by_year_plugin(
             "avg_obs_var_i": float(avg_obs_var_i),
             "tau2_t": float(tau2_t),
             "q5_cutoff_obs": float(q5_cutoff_obs),
+            "median_cutoff_obs": float(median_cutoff_obs),  # ← NEW
             "median_sigma_raw": float(sigma_median),
             "sigma_input_col": sigma_input_col,
             "n_sigma_draws_used": 1,
@@ -602,14 +615,16 @@ def run_empirical_bayes_full_propagation(
     draw_matrix = merged[selected_draw_cols].to_numpy(dtype=float)
     n_rows, total_draws = draw_matrix.shape
 
-    count_i           = np.zeros(n_rows, dtype=np.int32)
-    sum_theta_post    = np.zeros(n_rows, dtype=float)
-    sum_theta_post_sq = np.zeros(n_rows, dtype=float)
-    sum_p_q5          = np.zeros(n_rows, dtype=float)
-    sum_p_q5_sq       = np.zeros(n_rows, dtype=float)
-    sum_lambda        = np.zeros(n_rows, dtype=float)
-    sum_obs_var       = np.zeros(n_rows, dtype=float)
-    sum_post_var      = np.zeros(n_rows, dtype=float)
+    count_i              = np.zeros(n_rows, dtype=np.int32)
+    sum_theta_post       = np.zeros(n_rows, dtype=float)
+    sum_theta_post_sq    = np.zeros(n_rows, dtype=float)
+    sum_p_q5             = np.zeros(n_rows, dtype=float)
+    sum_p_q5_sq          = np.zeros(n_rows, dtype=float)
+    sum_p_median         = np.zeros(n_rows, dtype=float)   # ← NEW
+    sum_p_median_sq      = np.zeros(n_rows, dtype=float)   # ← NEW
+    sum_lambda           = np.zeros(n_rows, dtype=float)
+    sum_obs_var          = np.zeros(n_rows, dtype=float)
+    sum_post_var         = np.zeros(n_rows, dtype=float)
 
     year_order  = static_year_df["FormationYear"].tolist()
     year_to_idx = {fy: i for i, fy in enumerate(year_order)}
@@ -632,9 +647,10 @@ def run_empirical_bayes_full_propagation(
         sigma_draw_all = draw_matrix[:, j]
 
         for fy, info in year_info.items():
-            year_idx  = year_to_idx[fy]
-            pos       = info["positions"]
-            theta_obs = info["theta_obs"]
+            year_idx          = year_to_idx[fy]
+            pos               = info["positions"]
+            theta_obs         = info["theta_obs"]
+            median_cutoff_obs = info["median_cutoff_obs"]    # ← NEW
 
             sigma_sub = sigma_draw_all[pos].astype(float)
             if winsorize_sigma:
@@ -681,14 +697,19 @@ def run_empirical_bayes_full_propagation(
             z    = (q5_cutoff_obs - theta_post_mean) / post_sd_i
             p_q5 = 1.0 - norm.cdf(z)
 
-            count_i[pos_v]           += 1
-            sum_theta_post[pos_v]    += theta_post_mean
-            sum_theta_post_sq[pos_v] += theta_post_mean ** 2
-            sum_p_q5[pos_v]          += p_q5
-            sum_p_q5_sq[pos_v]       += p_q5 ** 2
-            sum_lambda[pos_v]        += lambda_i
-            sum_obs_var[pos_v]       += obs_var_i
-            sum_post_var[pos_v]      += post_var_i
+            z_med    = (median_cutoff_obs - theta_post_mean) / post_sd_i  # ← NEW
+            p_median = 1.0 - norm.cdf(z_med)                              # ← NEW
+
+            count_i[pos_v]              += 1
+            sum_theta_post[pos_v]       += theta_post_mean
+            sum_theta_post_sq[pos_v]    += theta_post_mean ** 2
+            sum_p_q5[pos_v]             += p_q5
+            sum_p_q5_sq[pos_v]          += p_q5 ** 2
+            sum_p_median[pos_v]         += p_median       # ← NEW
+            sum_p_median_sq[pos_v]      += p_median ** 2  # ← NEW
+            sum_lambda[pos_v]           += lambda_i
+            sum_obs_var[pos_v]          += obs_var_i
+            sum_post_var[pos_v]         += post_var_i
 
             year_sum_avg_obs_var[year_idx]  += avg_obs_var_i
             year_sum_tau2[year_idx]         += tau2_t
@@ -725,25 +746,29 @@ def run_empirical_bayes_full_propagation(
 
     theta_post_mean_mc = sum_theta_post / count_i
     p_q5_mc            = sum_p_q5 / count_i
+    p_median_mc        = sum_p_median / count_i              # ← NEW
     lambda_mc          = sum_lambda / count_i
     obs_var_mc         = sum_obs_var / count_i
     mean_post_var_mc   = sum_post_var / count_i
 
-    theta_between_var = np.maximum(sum_theta_post_sq / count_i - theta_post_mean_mc ** 2, 0.0)
-    p_q5_between_var  = np.maximum(sum_p_q5_sq / count_i - p_q5_mc ** 2, 0.0)
-    theta_total_var   = np.maximum(mean_post_var_mc + theta_between_var, min_post_var)
+    theta_between_var  = np.maximum(sum_theta_post_sq / count_i - theta_post_mean_mc ** 2, 0.0)
+    p_q5_between_var   = np.maximum(sum_p_q5_sq / count_i - p_q5_mc ** 2, 0.0)
+    p_median_between_var = np.maximum(sum_p_median_sq / count_i - p_median_mc ** 2, 0.0)  # ← NEW
+    theta_total_var    = np.maximum(mean_post_var_mc + theta_between_var, min_post_var)
 
     out["theta_post_mean"]       = theta_post_mean_mc
     out["theta_post_sd"]         = np.sqrt(theta_total_var)
     out["theta_post_sd_between"] = np.sqrt(theta_between_var)
     out["p_q5"]                  = p_q5_mc
     out["p_q5_sd_mc"]            = np.sqrt(p_q5_between_var)
+    out["p_median"]              = p_median_mc                         # ← NEW
+    out["p_median_sd_mc"]        = np.sqrt(p_median_between_var)       # ← NEW
     out["lambda_i"]              = lambda_mc
     out["obs_var_i"]             = obs_var_mc
     out["n_sigma_draws_used"]    = count_i.astype(int)
 
     out = out.merge(
-        static_year_df[["FormationYear", "mu_t", "var_obs_t", "q5_cutoff_obs"]],
+        static_year_df[["FormationYear", "mu_t", "var_obs_t", "q5_cutoff_obs", "median_cutoff_obs"]],  # ← median_cutoff_obs NEW
         on="FormationYear", how="left", validate="many_to_one",
     )
 

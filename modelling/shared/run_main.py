@@ -33,7 +33,7 @@ class RunConfig:
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
-
+    
     # HB CFO handling
     hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
 
