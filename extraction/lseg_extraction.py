@@ -100,7 +100,7 @@ def get_monthly_cfo_forecasts(tickers: list[str], start: str = "2010-01-01", end
         try:
             hist = lseg.get_history(
                 universe=[ticker],
-                fields=["TR.CashFlowFromOperationsMeanEstimate(Period=FY1,Scale=6)"],
+                fields=["TR.CashFlowFromOperationsMeanEstimate(Period=FY1,Scale=6, Curn=NOK)"],
                 interval="monthly",
                 start=start,
                 end=end,
@@ -215,14 +215,14 @@ def main():
     # print(f"Fetching monthly prices ({START} → {END})...")
     # prices = get_historical_prices(tickers, START, END)
 
-    print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
-    mktcap = get_historical_market_cap(tickers, START, END)
+    # print(f"\n--- Fetching monthly market cap ({START} → {END}) ---")
+    # mktcap = get_historical_market_cap(tickers, START, END)
 
     # print(f"\n--- Fetching monthly shares outstanding ({START} → {END}) ---")
     # shares_outstanding = get_shares_outstanding(tickers, START, END)
 
-    # print(f"\n--- Fetching analyst OCF forecasts via get_history ---")
-    # ocf_forecasts = get_monthly_cfo_forecasts(tickers, start="2010-01-01", end="2025-12-31")
+    print(f"\n--- Fetching analyst OCF forecasts via get_history ---")
+    ocf_forecasts = get_monthly_cfo_forecasts(tickers, start="2010-01-01", end="2025-12-31")
 
     # print("Fetching FX rates from LSEG...")
     # fx = get_fx_rates(START, END)
@@ -238,9 +238,9 @@ def main():
 
     # save_transposed(prices, OUTPUT / "all_stock_prices.csv", "prices")
     # save_transposed(prices_nok, OUTPUT / "all_stock_prices_nok.csv", "prices (NOK)")
-    save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
+    # save_transposed(mktcap, OUTPUT / "historical_market_cap.csv", "market cap")
     # save_transposed(shares_outstanding, OUTPUT / "shares_outstanding.csv", "shares outstanding")
-    # ocf_forecasts.to_csv(OUTPUT / "cfo_forecasts_monthly_raw.csv", index=False)
+    ocf_forecasts.to_csv(OUTPUT / "cfo_forecasts_monthly_raw.csv", index=False)
     lseg.close_session()
 
 if __name__ == "__main__":
