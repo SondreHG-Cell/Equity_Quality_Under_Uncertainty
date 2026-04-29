@@ -22,6 +22,7 @@ for path in [SCRIPT_DIR, PROJECT_ROOT]:
         sys.path.insert(0, str(path))
 
 import generate_risk_adjusted_table_data as vw
+import generate_capped_weight_risk_adjusted_table_data as ucits
 from helper_functions import find_project_root, load_factor_data, resolve_path
 
 
@@ -32,7 +33,7 @@ SHORT_PORTFOLIO = "Q2"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate thesis table data for value-weighted risk-adjusted performance "
+            "Generate thesis table data for UCITS 5/10/40 weighted risk-adjusted performance "
             "using Q4 and Q2 instead of Q5 and Q1."
         )
     )
@@ -46,7 +47,7 @@ def parse_args() -> argparse.Namespace:
         "--portfolio-source",
         type=Path,
         default=None,
-        help="Optional portfolio source CSV. Prefer monthly_holdings.csv with WeightedReturn.",
+        help="Optional constituent CSV. Must contain Method, Portfolio, Date, Return, and LagMarketCap.",
     )
     parser.add_argument(
         "--factors-csv",
@@ -60,7 +61,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Optional output directory. Defaults to "
-            "<portfolio_evaluation_dir>/thesis_risk_adjusted_tables_q4_q2."
+            "<portfolio_evaluation_dir>/thesis_risk_adjusted_tables_q4_q2_ucits_5_10_40."
         ),
     )
     parser.add_argument(
@@ -249,7 +250,6 @@ def print_identification(
     run_dir: Path,
     portfolio_eval_dir: Path,
     portfolio_source: Path,
-    source_type: str,
     factors_csv: Path,
     output_dir: Path,
     nw_lags: int,
@@ -257,10 +257,14 @@ def print_identification(
     print("\nIdentified inputs and reused helpers")
     print(f"  run_dir: {run_dir}")
     print(f"  portfolio_evaluation_dir: {portfolio_eval_dir}")
-    print(f"  portfolio constituent / weighted-return data: {portfolio_source}")
-    print(f"  portfolio source type: {source_type}")
+    print(f"  constituent holdings source: {portfolio_source}")
     print(f"  strategy construction: {LONG_PORTFOLIO} and {SHORT_PORTFOLIO}")
+    print("  weighting rule: UCITS-style 5/10/40")
+    print(f"    single issuer cap: {ucits.UCITS_SINGLE_ISSUER_CAP:.2%}")
+    print(f"    large position threshold: {ucits.UCITS_LARGE_POSITION_THRESHOLD:.2%}")
+    print(f"    aggregate cap for positions above threshold: {ucits.UCITS_LARGE_POSITION_AGGREGATE_CAP:.2%}")
     print(f"  monthly factor returns: {factors_csv}")
+    print("  UCITS weighting helper: modelling/shared/generate_capped_weight_risk_adjusted_table_data.py")
     print("  risk-adjusted regression helper: modelling/shared/step5_evaluation.py::risk_adjusted_performance")
     print("  Newey-West/HAC helper: modelling/shared/step5_evaluation.py::_ols_newey_west_full")
     print("  alpha-difference helper: modelling/shared/step5_evaluation.py::alpha_differences")
@@ -274,7 +278,7 @@ def main() -> None:
     project_root = find_project_root()
 
     run_dir = vw.choose_run_dir(project_root, resolve_cli_path(args.run_dir, project_root))
-    portfolio_source, source_type, portfolio_eval_dir = vw.choose_portfolio_source(
+    portfolio_source, portfolio_eval_dir = ucits.choose_constituent_source(
         run_dir=run_dir,
         requested_source=resolve_cli_path(args.portfolio_source, project_root),
     )
@@ -285,19 +289,23 @@ def main() -> None:
     )
     output_dir = resolve_cli_path(args.output_dir, project_root)
     if output_dir is None:
-        output_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_q4_q2"
+        output_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_q4_q2_ucits_5_10_40"
 
     print_identification(
         run_dir=run_dir,
         portfolio_eval_dir=portfolio_eval_dir,
         portfolio_source=portfolio_source,
-        source_type=source_type,
         factors_csv=factors_csv,
         output_dir=output_dir,
         nw_lags=args.nw_lags,
     )
 
-    monthly_returns = vw.load_monthly_portfolio_returns(portfolio_source, source_type)
+    monthly_returns, ucits_holdings, diagnostics = ucits.load_ucits_weight_monthly_returns(
+        path=portfolio_source,
+        single_issuer_cap=ucits.UCITS_SINGLE_ISSUER_CAP,
+        large_position_threshold=ucits.UCITS_LARGE_POSITION_THRESHOLD,
+        large_position_aggregate_cap=ucits.UCITS_LARGE_POSITION_AGGREGATE_CAP,
+    )
     factors = load_factor_data(factors_csv)
     rf = factors["RF"].copy()
     zero_rf = pd.Series(0.0, index=rf.index, name="RF")
@@ -347,7 +355,19 @@ def main() -> None:
         monthly_used=monthly_used,
         preview=preview,
     )
+    audit_outputs = ucits.save_ucits_audit_outputs(
+        output_dir=output_dir,
+        ucits_holdings=ucits_holdings,
+        diagnostics=diagnostics,
+    )
     plot_outputs = save_cumulative_return_plots(monthly_used=monthly_used, output_dir=output_dir)
+
+    print("\nUCITS-weight diagnostics")
+    print(f"  UCITS holdings rows: {len(ucits_holdings)}")
+    print(f"  monthly portfolio groups: {len(diagnostics)}")
+    print(f"  largest UCITS weight: {diagnostics['max_ucits_weight'].max():.4%}")
+    print(f"  largest aggregate weight above threshold: {diagnostics['large_position_weight'].max():.4%}")
+    print(f"  groups where aggregate cap was relaxed: {int(diagnostics['aggregate_cap_relaxed'].sum())}")
 
     print("\nCreated CSV files")
     row_counts = {
@@ -360,6 +380,14 @@ def main() -> None:
     }
     for key, path in outputs.items():
         print(f"  {path} ({row_counts[key]} rows)")
+
+    print("\nCreated audit CSV files")
+    audit_counts = {
+        "ucits_weight_monthly_holdings": len(ucits_holdings),
+        "ucits_weight_diagnostics": len(diagnostics),
+    }
+    for key, path in audit_outputs.items():
+        print(f"  {path} ({audit_counts[key]} rows)")
 
     print("\nCreated plot files")
     for path in plot_outputs.values():
