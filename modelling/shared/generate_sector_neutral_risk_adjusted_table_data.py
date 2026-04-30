@@ -21,6 +21,7 @@ for path in [SCRIPT_DIR, PROJECT_ROOT]:
         sys.path.insert(0, str(path))
 
 import generate_risk_adjusted_table_data as vw
+import generate_capped_weight_risk_adjusted_table_data as ucits
 from helper_functions import build_monthly_portfolio_returns, find_project_root, load_factor_data, resolve_path
 from portfolio_formation import METHOD_SPECS, assign_quantile_portfolios, clean_input
 
@@ -32,7 +33,7 @@ N_PORTFOLIOS = 5
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate thesis table data for value-weighted Q5/Q1 risk-adjusted "
+            "Generate thesis table data for UCITS 5/10/40 weighted Q5/Q1 risk-adjusted "
             "performance after forming sector-neutral quintiles."
         )
     )
@@ -72,7 +73,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Optional output directory. Defaults to "
-            "<portfolio_evaluation_dir>/thesis_risk_adjusted_tables_sector_neutral."
+            "<portfolio_evaluation_dir>/thesis_risk_adjusted_tables_sector_neutral_ucits_5_10_40."
         ),
     )
     parser.add_argument(
@@ -282,20 +283,68 @@ def build_sector_neutral_summary(assignments: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def aggregate_monthly_returns(monthly_holdings: pd.DataFrame) -> pd.DataFrame:
-    required = ["Method", "Portfolio", "Date", "WeightedReturn"]
+def build_ucits_monthly_returns(
+    monthly_holdings: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    required = ["Ticker", "Method", "Portfolio", "Date", "Return", "LagMarketCap"]
     missing = [c for c in required if c not in monthly_holdings.columns]
     if missing:
         raise ValueError(f"Sector-neutral monthly holdings missing required columns: {missing}")
 
+    group_cols = ["Method", "Portfolio", "Date"]
+    ucits_holdings = pd.concat(
+        [
+            ucits.apply_ucits_weights(
+                group,
+                single_issuer_cap=ucits.UCITS_SINGLE_ISSUER_CAP,
+                large_position_threshold=ucits.UCITS_LARGE_POSITION_THRESHOLD,
+                large_position_aggregate_cap=ucits.UCITS_LARGE_POSITION_AGGREGATE_CAP,
+            )
+            for _, group in monthly_holdings.groupby(group_cols, sort=False)
+        ],
+        ignore_index=True,
+    )
+
     monthly = (
-        monthly_holdings.groupby(["Method", "Portfolio", "Date"], as_index=False)["WeightedReturn"]
-        .sum()
-        .rename(columns={"WeightedReturn": "Return"})
+        ucits_holdings.groupby(group_cols, as_index=False)
+        .agg(
+            Return=("UCITSWeightedReturn", "sum"),
+            n_firms=("Ticker", "nunique"),
+            max_raw_weight=("RawValueWeight", "max"),
+            max_ucits_weight=("UCITSWeight", "max"),
+            large_position_weight=(
+                "UCITSWeight",
+                lambda s: s[s > ucits.UCITS_LARGE_POSITION_THRESHOLD + 1e-10].sum(),
+            ),
+            n_large_positions=("AboveLargePositionThreshold", "sum"),
+            n_names_single_cap_binding=("SingleIssuerCapBinding", "sum"),
+            aggregate_cap_relaxed=("AggregateCapRelaxed", "first"),
+        )
         .sort_values(["Method", "Portfolio", "Date"])
         .reset_index(drop=True)
     )
-    return monthly
+
+    diagnostics = (
+        ucits_holdings.groupby(group_cols, as_index=False)
+        .agg(
+            n_firms=("Ticker", "nunique"),
+            raw_weight_sum=("RawValueWeight", "sum"),
+            ucits_weight_sum=("UCITSWeight", "sum"),
+            max_raw_weight=("RawValueWeight", "max"),
+            max_ucits_weight=("UCITSWeight", "max"),
+            large_position_weight=(
+                "UCITSWeight",
+                lambda s: s[s > ucits.UCITS_LARGE_POSITION_THRESHOLD + 1e-10].sum(),
+            ),
+            n_large_positions=("AboveLargePositionThreshold", "sum"),
+            n_names_single_cap_binding=("SingleIssuerCapBinding", "sum"),
+            aggregate_cap_relaxed=("AggregateCapRelaxed", "first"),
+        )
+        .sort_values(["Date", "Method", "Portfolio"])
+        .reset_index(drop=True)
+    )
+
+    return monthly, ucits_holdings, diagnostics
 
 
 def save_auxiliary_outputs(
@@ -303,19 +352,22 @@ def save_auxiliary_outputs(
     assignments: pd.DataFrame,
     summary: pd.DataFrame,
     skipped_groups: pd.DataFrame,
-    monthly_holdings: pd.DataFrame,
+    ucits_holdings: pd.DataFrame,
+    diagnostics: pd.DataFrame,
 ) -> dict[str, Path]:
     outputs = {
         "sector_neutral_portfolio_assignments_long": output_dir / "sector_neutral_portfolio_assignments_long.csv",
         "sector_neutral_portfolio_formation_summary": output_dir / "sector_neutral_portfolio_formation_summary.csv",
         "sector_neutral_skipped_sector_years": output_dir / "sector_neutral_skipped_sector_years.csv",
-        "sector_neutral_monthly_holdings": output_dir / "sector_neutral_monthly_holdings.csv",
+        "sector_neutral_ucits_weight_monthly_holdings": output_dir / "sector_neutral_ucits_weight_monthly_holdings.csv",
+        "sector_neutral_ucits_weight_diagnostics": output_dir / "sector_neutral_ucits_weight_diagnostics.csv",
     }
 
     assignments.to_csv(outputs["sector_neutral_portfolio_assignments_long"], index=False)
     summary.to_csv(outputs["sector_neutral_portfolio_formation_summary"], index=False)
     skipped_groups.to_csv(outputs["sector_neutral_skipped_sector_years"], index=False)
-    monthly_holdings.to_csv(outputs["sector_neutral_monthly_holdings"], index=False)
+    ucits_holdings.to_csv(outputs["sector_neutral_ucits_weight_monthly_holdings"], index=False)
+    diagnostics.to_csv(outputs["sector_neutral_ucits_weight_diagnostics"], index=False)
 
     return outputs
 
@@ -337,6 +389,10 @@ def print_identification(
     print(f"  monthly stock prices: {stock_prices_csv}")
     print(f"  monthly market caps: {market_cap_csv}")
     print(f"  monthly factor returns: {factors_csv}")
+    print("  weighting rule: UCITS-style 5/10/40 after sector-neutral assignments")
+    print(f"    single issuer cap: {ucits.UCITS_SINGLE_ISSUER_CAP:.2%}")
+    print(f"    large position threshold: {ucits.UCITS_LARGE_POSITION_THRESHOLD:.2%}")
+    print(f"    aggregate cap for positions above threshold: {ucits.UCITS_LARGE_POSITION_AGGREGATE_CAP:.2%}")
     print("  sector quantile helper: modelling/shared/portfolio_formation.py::assign_quantile_portfolios")
     print("  portfolio aggregation helper: modelling/shared/helper_functions.py::build_monthly_portfolio_returns")
     print("  risk-adjusted regression helper: modelling/shared/step5_evaluation.py::risk_adjusted_performance")
@@ -381,7 +437,7 @@ def main() -> None:
     )
     output_dir = resolve_cli_path(args.output_dir, project_root)
     if output_dir is None:
-        output_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_sector_neutral"
+        output_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_sector_neutral_ucits_5_10_40"
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -409,7 +465,7 @@ def main() -> None:
         n_portfolios=N_PORTFOLIOS,
     )
     monthly_holdings = prepared["monthly_holdings"]
-    monthly_returns = aggregate_monthly_returns(monthly_holdings)
+    monthly_returns, ucits_holdings, diagnostics = build_ucits_monthly_returns(monthly_holdings)
 
     rf = factors["RF"].copy()
     zero_rf = pd.Series(0.0, index=rf.index, name="RF")
@@ -465,7 +521,8 @@ def main() -> None:
         assignments=assignments,
         summary=summary,
         skipped_groups=skipped_groups,
-        monthly_holdings=monthly_holdings,
+        ucits_holdings=ucits_holdings,
+        diagnostics=diagnostics,
     )
     plot_outputs = vw.save_cumulative_return_plots(monthly_used=monthly_used, output_dir=output_dir)
 
@@ -474,6 +531,13 @@ def main() -> None:
     print(f"  assignment rows created: {len(assignments)}")
     print(f"  valid assignment rows: {int(assignments['PortfolioNum'].notna().sum())}")
     print(f"  skipped sector-year-method groups: {len(skipped_groups)}")
+
+    print("\nUCITS-weight diagnostics")
+    print(f"  UCITS holdings rows: {len(ucits_holdings)}")
+    print(f"  monthly portfolio groups: {len(diagnostics)}")
+    print(f"  largest UCITS weight: {diagnostics['max_ucits_weight'].max():.4%}")
+    print(f"  largest aggregate weight above threshold: {diagnostics['large_position_weight'].max():.4%}")
+    print(f"  groups where aggregate cap was relaxed: {int(diagnostics['aggregate_cap_relaxed'].sum())}")
 
     print("\nCreated CSV files")
     row_counts = {
@@ -492,7 +556,8 @@ def main() -> None:
         "sector_neutral_portfolio_assignments_long": len(assignments),
         "sector_neutral_portfolio_formation_summary": len(summary),
         "sector_neutral_skipped_sector_years": len(skipped_groups),
-        "sector_neutral_monthly_holdings": len(monthly_holdings),
+        "sector_neutral_ucits_weight_monthly_holdings": len(ucits_holdings),
+        "sector_neutral_ucits_weight_diagnostics": len(diagnostics),
     }
     for key, path in auxiliary_outputs.items():
         print(f"  {path} ({audit_counts[key]} rows)")

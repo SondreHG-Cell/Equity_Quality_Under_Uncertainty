@@ -23,6 +23,7 @@ for path in [SCRIPT_DIR, PROJECT_ROOT]:
         sys.path.insert(0, str(path))
 
 import generate_risk_adjusted_table_data as vw
+import generate_capped_weight_risk_adjusted_table_data as ucits
 from helper_functions import find_project_root, load_factor_data, parse_month_series, resolve_path
 
 
@@ -32,7 +33,7 @@ SIZE_GROUPS = ["SmallCap", "LargeCap"]
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate thesis table data for value-weighted Q5/Q1 risk-adjusted "
+            "Generate thesis table data for UCITS 5/10/40 weighted Q5/Q1 risk-adjusted "
             "performance separately for small-cap and large-cap firms."
         )
     )
@@ -60,7 +61,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Optional output directory. Defaults to "
-            "<portfolio_evaluation_dir>/thesis_risk_adjusted_tables_size_split."
+            "<portfolio_evaluation_dir>/thesis_risk_adjusted_tables_size_split_ucits_5_10_40."
         ),
     )
     parser.add_argument(
@@ -101,7 +102,7 @@ def choose_constituent_source(
         return default_holdings, portfolio_eval_dir
 
     raise FileNotFoundError(
-        "Size-split value-weighted returns require constituent-level monthly holdings.\n"
+        "Size-split UCITS-weighted returns require constituent-level monthly holdings.\n"
         "Could not locate monthly_holdings.csv at:\n"
         f"{default_holdings}\n"
         "The wide monthly_portfolio_returns.csv file is already aggregated and cannot be split by firm size."
@@ -137,7 +138,9 @@ def assign_size_groups(holdings: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def load_size_split_value_weighted_monthly_returns(path: Path) -> pd.DataFrame:
+def load_size_split_ucits_weighted_monthly_returns(
+    path: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df = pd.read_csv(path)
 
     required = ["Ticker", "FormationYear", "Method", "Portfolio", "Date", "Return", "LagMarketCap"]
@@ -162,22 +165,65 @@ def load_size_split_value_weighted_monthly_returns(path: Path) -> pd.DataFrame:
     out["FormationYear"] = out["FormationYear"].astype(int)
 
     out = assign_size_groups(out)
-    denom = out.groupby(["SizeGroup", "Method", "Portfolio", "Date"])["LagMarketCap"].transform("sum")
-    out = out.loc[denom > 0].copy()
-    out["SizeSplitWeight"] = out["LagMarketCap"] / denom.loc[out.index]
-    out["SizeSplitWeightedReturn"] = out["SizeSplitWeight"] * out["Return"]
+    out = out.loc[out["Method"].isin(vw.METHODS)].copy()
+    group_cols = ["SizeGroup", "Method", "Portfolio", "Date"]
+
+    ucits_holdings = pd.concat(
+        [
+            ucits.apply_ucits_weights(
+                group,
+                single_issuer_cap=ucits.UCITS_SINGLE_ISSUER_CAP,
+                large_position_threshold=ucits.UCITS_LARGE_POSITION_THRESHOLD,
+                large_position_aggregate_cap=ucits.UCITS_LARGE_POSITION_AGGREGATE_CAP,
+            )
+            for _, group in out.groupby(group_cols, sort=False)
+        ],
+        ignore_index=True,
+    )
 
     monthly = (
-        out.groupby(["SizeGroup", "Method", "Portfolio", "Date"], as_index=False)
+        ucits_holdings.groupby(group_cols, as_index=False)
         .agg(
-            Return=("SizeSplitWeightedReturn", "sum"),
+            Return=("UCITSWeightedReturn", "sum"),
+            cash_weight=("CashWeight", "first"),
             n_firms=("Ticker", "nunique"),
             total_lag_mcap=("LagMarketCap", "sum"),
+            max_raw_weight=("RawValueWeight", "max"),
+            max_ucits_weight=("UCITSWeight", "max"),
+            large_position_weight=(
+                "UCITSWeight",
+                lambda s: s[s > ucits.UCITS_LARGE_POSITION_THRESHOLD + 1e-10].sum(),
+            ),
+            n_large_positions=("AboveLargePositionThreshold", "sum"),
+            n_names_single_cap_binding=("SingleIssuerCapBinding", "sum"),
+            aggregate_cap_relaxed=("AggregateCapRelaxed", "first"),
         )
         .sort_values(["SizeGroup", "Method", "Portfolio", "Date"])
         .reset_index(drop=True)
     )
-    return monthly
+
+    diagnostics = (
+        ucits_holdings.groupby(group_cols, as_index=False)
+        .agg(
+            n_firms=("Ticker", "nunique"),
+            raw_weight_sum=("RawValueWeight", "sum"),
+            ucits_weight_sum=("UCITSWeight", "sum"),
+            max_raw_weight=("RawValueWeight", "max"),
+            max_ucits_weight=("UCITSWeight", "max"),
+            cash_weight=("CashWeight", "first"),
+            large_position_weight=(
+                "UCITSWeight",
+                lambda s: s[s > ucits.UCITS_LARGE_POSITION_THRESHOLD + 1e-10].sum(),
+            ),
+            n_large_positions=("AboveLargePositionThreshold", "sum"),
+            n_names_single_cap_binding=("SingleIssuerCapBinding", "sum"),
+            aggregate_cap_relaxed=("AggregateCapRelaxed", "first"),
+        )
+        .sort_values(["SizeGroup", "Date", "Method", "Portfolio"])
+        .reset_index(drop=True)
+    )
+
+    return monthly, ucits_holdings, diagnostics
 
 
 def build_strategy_returns_for_size(
@@ -335,6 +381,20 @@ def save_outputs(
     return outputs
 
 
+def save_ucits_audit_outputs(
+    output_dir: Path,
+    ucits_holdings: pd.DataFrame,
+    diagnostics: pd.DataFrame,
+) -> dict[str, Path]:
+    outputs = {
+        "size_split_ucits_weight_monthly_holdings": output_dir / "size_split_ucits_weight_monthly_holdings.csv",
+        "size_split_ucits_weight_diagnostics": output_dir / "size_split_ucits_weight_diagnostics.csv",
+    }
+    ucits_holdings.to_csv(outputs["size_split_ucits_weight_monthly_holdings"], index=False)
+    diagnostics.to_csv(outputs["size_split_ucits_weight_diagnostics"], index=False)
+    return outputs
+
+
 def save_cumulative_return_plots(monthly_used: pd.DataFrame, output_dir: Path) -> dict[str, Path]:
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
@@ -408,7 +468,10 @@ def print_identification(
     print(f"  portfolio_evaluation_dir: {portfolio_eval_dir}")
     print(f"  size-split constituent source: {portfolio_source}")
     print("  size split: median monthly LagMarketCap by Ticker x FormationYear, ranked within FormationYear")
-    print("  portfolio aggregation: value weighted within SizeGroup x Method x Portfolio x Date")
+    print("  weighting rule: UCITS-style 5/10/40 within SizeGroup x Method x Portfolio x Date")
+    print(f"    single issuer cap: {ucits.UCITS_SINGLE_ISSUER_CAP:.2%}")
+    print(f"    large position threshold: {ucits.UCITS_LARGE_POSITION_THRESHOLD:.2%}")
+    print(f"    aggregate cap for positions above threshold: {ucits.UCITS_LARGE_POSITION_AGGREGATE_CAP:.2%}")
     print(f"  monthly factor returns: {factors_csv}")
     print("  risk-adjusted regression helper: modelling/shared/step5_evaluation.py::risk_adjusted_performance")
     print("  Newey-West/HAC helper: modelling/shared/step5_evaluation.py::_ols_newey_west_full")
@@ -434,7 +497,7 @@ def main() -> None:
     )
     output_dir = resolve_cli_path(args.output_dir, project_root)
     if output_dir is None:
-        output_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_size_split"
+        output_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_size_split_ucits_5_10_40"
 
     print_identification(
         run_dir=run_dir,
@@ -445,10 +508,12 @@ def main() -> None:
         nw_lags=args.nw_lags,
     )
 
-    monthly_returns = load_size_split_value_weighted_monthly_returns(portfolio_source)
     factors = load_factor_data(factors_csv)
     rf = factors["RF"].copy()
     zero_rf = pd.Series(0.0, index=rf.index, name="RF")
+    monthly_returns, ucits_holdings, diagnostics = load_size_split_ucits_weighted_monthly_returns(
+        portfolio_source,
+    )
 
     ls_levels, ls_diffs, q5_levels, q5_diffs, monthly_used = run_size_group_analysis(
         monthly_returns=monthly_returns,
@@ -473,7 +538,20 @@ def main() -> None:
         monthly_used=monthly_used,
         preview=preview,
     )
+    audit_outputs = save_ucits_audit_outputs(
+        output_dir=output_dir,
+        ucits_holdings=ucits_holdings,
+        diagnostics=diagnostics,
+    )
     plot_outputs = save_cumulative_return_plots(monthly_used=monthly_used, output_dir=output_dir)
+
+    print("\nUCITS-weight diagnostics")
+    print(f"  UCITS holdings rows: {len(ucits_holdings)}")
+    print(f"  monthly portfolio groups: {len(diagnostics)}")
+    print(f"  largest UCITS weight: {diagnostics['max_ucits_weight'].max():.4%}")
+    print(f"  largest aggregate weight above threshold: {diagnostics['large_position_weight'].max():.4%}")
+    print(f"  groups where aggregate cap was relaxed: {int(diagnostics['aggregate_cap_relaxed'].sum())}")
+    print(f"  largest cash weight: {diagnostics['cash_weight'].max():.4%}")
 
     print("\nCreated CSV files")
     row_counts = {
@@ -486,6 +564,14 @@ def main() -> None:
     }
     for key, path in outputs.items():
         print(f"  {path} ({row_counts[key]} rows)")
+
+    print("\nCreated audit CSV files")
+    audit_counts = {
+        "size_split_ucits_weight_monthly_holdings": len(ucits_holdings),
+        "size_split_ucits_weight_diagnostics": len(diagnostics),
+    }
+    for key, path in audit_outputs.items():
+        print(f"  {path} ({audit_counts[key]} rows)")
 
     print("\nCreated plot files")
     for path in plot_outputs.values():
