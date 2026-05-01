@@ -1,9 +1,22 @@
 # latent_prof_model.py
 #
-# Produces three output directories in one run:
-#   <output_dir>/HB/       — standard EB shrinkage toward mean  (original behaviour)
-#   <output_dir>/HB_cap/   — shrinkage capped at theta_obs      (never lifts signal)
-#   <output_dir>/HB_down/  — always-downward shrinkage          (always penalises)
+# Produces one latent-quality output used by four portfolio methods:
+#   Method1 — observed quality: theta_obs
+#   Method2 — latent quality: standard EB posterior mean
+#   Method3 — probabilistic quality: P(Q5) for Q5 and P(Q1) for Q1
+#   Method4 — conservative quality: theta_obs - gamma * (1 - lambda_i)
+#
+# Key design decisions:
+#   - The old multi-variant split is replaced by method-level signals
+#     in one firm-year file.
+#   - Conservative Quality uses the penalty formula directly:
+#     penalty = gamma * (1 - lambda_i), independent of quality level.
+#   - P(Q5) and P(Q1) now use theta_obs as mean, theta_post_sd as spread.
+#     Rationale: sigma_i is a precision measure without directional implications
+#     (Dechow & Dichev 2002, McNichols 2002). Using theta_obs as mean keeps the
+#     quality signal and the uncertainty measure conceptually separate. The EB
+#     posterior sd is retained as spread because it is scaled to profitability
+#     units via tau2_t and caps extreme sigma values naturally.
 
 from __future__ import annotations
 
@@ -30,6 +43,10 @@ DEFAULT_SIGMA_COL = None
 
 DEFAULT_NOISE_SHARE_OF_PROF_VAR = 0.12
 
+# Conservative Quality penalty size: theta_adj = theta_obs - gamma * (1 - lambda_i).
+# Sensitivity analysis is recommended around this value.
+DEFAULT_GAMMA = 0.1
+
 DEFAULT_WINSORIZE_PROF = False
 DEFAULT_WINSORIZE_SIGMA = False
 DEFAULT_WINSOR_LOWER = 0.01
@@ -44,12 +61,8 @@ DEFAULT_HB_FULL_POSTERIOR_PARQUET = None
 DEFAULT_N_SIGMA_DRAWS = None
 DEFAULT_CHECKPOINT_EVERY_DRAWS = 25
 
-# Variants produced in a single run — name: shrinkage_method
-VARIANTS = {
-    "HB":      None,          # standard — identical to original code
-    "HB_cap":  "cap",         # shrinkage capped at theta_obs
-    "HB_down": "down_only",   # always-downward shrinkage
-}
+# Latent method signal columns produced in a single firm-year output.
+CONSERVATIVE_SIGNAL_COL = "theta_conservative"
 
 
 # --------------------------------------------------
@@ -77,13 +90,24 @@ def apply_shrinkage(
     lambda_i: np.ndarray,
     mu_t: float,
     shrinkage_method: Optional[str],
+    gamma: float = DEFAULT_GAMMA,
 ) -> np.ndarray:
     """
     Compute theta_post_mean with an optional shrinkage adjustment.
 
-    None (HB)        — standard EB: lambda*theta_obs + (1-lambda)*mu_t
-    "cap" (HB_cap)   — standard EB capped at theta_obs; never lifts a signal above observed
-    "down_only" (HB_down) — theta_obs - (1-lambda)*|theta_obs - mu_t|; always downward
+    None  (HB)      — standard EB: lambda*theta_obs + (1-lambda)*mu_t
+                      Direction depends on position relative to mu_t.
+
+    "cap"  — standard EB capped at theta_obs.
+                      Never lifts a signal above its observed value.
+
+    "pen"  — uncertainty penalty: theta_obs - gamma*(1-lambda_i).
+                      Always downward. Position-independent.
+                      (1-lambda_i) is high when sigma_i is large relative to
+                      cross-sectional dispersion, so firms with high relative
+                      accounting uncertainty receive a larger penalty.
+                      Consistent with sigma_i as a precision measure without
+                      directional implications (DD 2002, McNichols 2002).
     """
     baseline = lambda_i * theta_obs + (1.0 - lambda_i) * mu_t
 
@@ -91,12 +115,12 @@ def apply_shrinkage(
         return baseline
     elif shrinkage_method == "cap":
         return np.minimum(baseline, theta_obs)
-    elif shrinkage_method == "down_only":
-        return theta_obs - (1.0 - lambda_i) * np.abs(theta_obs - mu_t)
+    elif shrinkage_method == "pen":
+        return theta_obs - gamma * (1.0 - lambda_i)
     else:
         raise ValueError(
             f"Unknown shrinkage_method='{shrinkage_method}'. "
-            "Valid options: None (HB), 'cap' (HB_cap), 'down_only' (HB_down)."
+            "Valid options: None, 'cap', and 'pen'."
         )
 
 
@@ -215,11 +239,14 @@ def reorder_columns(df: pd.DataFrame, sigma_source_col: str) -> pd.DataFrame:
     first_cols = [
         "Ticker", "Year", "FormationYear", "PROF", "PROF_w",
         "sigma_acc", sigma_source_col, "sigma_raw", "MarketCap",
-        "theta_obs", "theta_post_mean", "theta_post_sd", "theta_post_sd_between",
+        "theta_obs", "theta_post_mean", "theta_conservative",
+        "theta_post_sd", "theta_post_sd_between", "theta_conservative_sd_between",
         "p_q5", "p_q5_sd_mc",
-        "p_median", "p_median_sd_mc",                           # ← NEW
+        "p_median", "p_median_sd_mc",
+        "p_q1", "p_q1_sd_mc",
         "lambda_i", "mu_t", "var_obs_t", "obs_var_i", "tau2_t",
-        "q5_cutoff_obs", "median_cutoff_obs", "n_sigma_draws_used",  # ← median_cutoff_obs NEW
+        "q5_cutoff_obs", "median_cutoff_obs", "q1_cutoff_obs",
+        "n_sigma_draws_used",
     ]
     existing_first, seen = [], set()
     for c in first_cols:
@@ -313,21 +340,23 @@ def prepare_static_panel(
             print(f"Skipping FormationYear={fy}: invalid observed PROF variance")
             continue
 
-        mu_t = theta_obs.mean()
-        q5_cutoff_obs    = theta_obs.quantile(0.80)
-        median_cutoff_obs = theta_obs.quantile(0.50)          # ← NEW
-        median_sigma_raw = sub["sigma_raw"].median()
+        mu_t              = theta_obs.mean()
+        q5_cutoff_obs     = theta_obs.quantile(0.80)
+        median_cutoff_obs = theta_obs.quantile(0.50)
+        q1_cutoff_obs     = theta_obs.quantile(0.20)
+        median_sigma_raw  = sub["sigma_raw"].median()
 
         valid_years.append(fy)
         year_rows.append({
-            "FormationYear": int(fy),
-            "n_firms": int(len(sub)),
-            "mu_t": float(mu_t),
-            "var_obs_t": float(var_obs_t),
-            "q5_cutoff_obs": float(q5_cutoff_obs),
-            "median_cutoff_obs": float(median_cutoff_obs),    # ← NEW
-            "median_sigma_raw": float(median_sigma_raw),
-            "sigma_input_col": sigma_input_col,
+            "FormationYear":     int(fy),
+            "n_firms":           int(len(sub)),
+            "mu_t":              float(mu_t),
+            "var_obs_t":         float(var_obs_t),
+            "q5_cutoff_obs":     float(q5_cutoff_obs),
+            "median_cutoff_obs": float(median_cutoff_obs),
+            "q1_cutoff_obs":     float(q1_cutoff_obs),
+            "median_sigma_raw":  float(median_sigma_raw),
+            "sigma_input_col":   sigma_input_col,
         })
 
     if not valid_years:
@@ -343,21 +372,24 @@ def prepare_static_panel(
 
     year_info: Dict[int, dict] = {}
     for fy, sub in df.groupby("FormationYear", sort=True):
-        pos = sub.index.to_numpy()
+        pos       = sub.index.to_numpy()
         theta_obs = sub["theta_obs"].to_numpy(dtype=float)
-        mu_t = float(theta_obs.mean())
+        mu_t      = float(theta_obs.mean())
         var_obs_t = float(theta_obs.var(ddof=1))
+
         q5_cutoff_obs     = float(np.quantile(theta_obs, 0.80))
-        median_cutoff_obs = float(np.quantile(theta_obs, 0.50))  # ← NEW
+        median_cutoff_obs = float(np.quantile(theta_obs, 0.50))
+        q1_cutoff_obs     = float(np.quantile(theta_obs, 0.20))
 
         year_info[int(fy)] = {
-            "positions": pos,
-            "theta_obs": theta_obs,
-            "mu_t": mu_t,
-            "var_obs_t": var_obs_t,
-            "q5_cutoff_obs": q5_cutoff_obs,
-            "median_cutoff_obs": median_cutoff_obs,              # ← NEW
-            "n_firms": int(len(sub)),
+            "positions":         pos,
+            "theta_obs":         theta_obs,
+            "mu_t":              mu_t,
+            "var_obs_t":         var_obs_t,
+            "q5_cutoff_obs":     q5_cutoff_obs,
+            "median_cutoff_obs": median_cutoff_obs,
+            "q1_cutoff_obs":     q1_cutoff_obs,
+            "n_firms":           int(len(sub)),
         }
 
     return df, static_year_df, year_info
@@ -379,7 +411,21 @@ def run_empirical_bayes_by_year_plugin(
     min_tau2: float = DEFAULT_MIN_TAU2,
     min_post_var: float = DEFAULT_MIN_POST_VAR,
     shrinkage_method: Optional[str] = None,
+    gamma: float = DEFAULT_GAMMA,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compute EB estimates for all formation years.
+
+    theta_post_mean: adjusted quality signal used for Latent Quality sorting.
+
+    P(Q5), P(median), P(Q1): probabilistic placement measures.
+        Uses theta_obs as mean and theta_post_sd as spread.
+        Rationale: sigma_i is a precision measure without directional implications.
+        Keeping theta_obs as mean separates the quality signal from the uncertainty
+        measure. The EB posterior sd is retained as spread because it converts
+        sigma_i from WCA-scale to profitability-scale via tau2_t, and naturally
+        caps extreme sigma values via the posterior variance formula.
+    """
     df = df.copy()
 
     frames: List[pd.DataFrame] = []
@@ -392,7 +438,8 @@ def run_empirical_bayes_by_year_plugin(
         mu_t              = info["mu_t"]
         var_obs_t         = info["var_obs_t"]
         q5_cutoff_obs     = info["q5_cutoff_obs"]
-        median_cutoff_obs = info["median_cutoff_obs"]          # ← NEW
+        median_cutoff_obs = info["median_cutoff_obs"]
+        q1_cutoff_obs     = info["q1_cutoff_obs"]
 
         sigma_vec = sub["sigma_acc"].to_numpy(dtype=float)
         if winsorize_sigma:
@@ -403,7 +450,7 @@ def run_empirical_bayes_by_year_plugin(
             print(f"Skipping FormationYear={fy}: invalid sigma vector")
             continue
 
-        sigma_vec = sigma_vec[sigma_valid]
+        sigma_vec       = sigma_vec[sigma_valid]
         theta_obs_valid = theta_obs[sigma_valid]
 
         sigma_median = float(np.median(sigma_vec))
@@ -411,62 +458,83 @@ def run_empirical_bayes_by_year_plugin(
             print(f"Skipping FormationYear={fy}: invalid median sigma")
             continue
 
-        sigma_rel = sigma_vec / sigma_median
-        obs_var_base = noise_share_of_prof_var * var_obs_t
-        obs_var_i = obs_var_base * (sigma_rel ** 2)
+        sigma_rel     = sigma_vec / sigma_median
+        obs_var_base  = noise_share_of_prof_var * var_obs_t
+        obs_var_i     = obs_var_base * (sigma_rel ** 2)
         avg_obs_var_i = float(obs_var_i.mean())
 
-        tau2_t = max(var_obs_t - avg_obs_var_i, min_tau2)
+        tau2_t   = max(var_obs_t - avg_obs_var_i, min_tau2)
         lambda_i = tau2_t / (tau2_t + obs_var_i)
 
-        post_var_i = (tau2_t * obs_var_i) / (tau2_t + obs_var_i)
-        post_var_i = np.maximum(post_var_i, min_post_var)
+        post_var_i    = (tau2_t * obs_var_i) / (tau2_t + obs_var_i)
+        post_var_i    = np.maximum(post_var_i, min_post_var)
         theta_post_sd = np.sqrt(post_var_i)
 
+        # Latent Quality: standard EB posterior mean.
         theta_post_mean = apply_shrinkage(
             theta_obs=theta_obs_valid,
             lambda_i=lambda_i,
             mu_t=mu_t,
             shrinkage_method=shrinkage_method,
+            gamma=gamma,
+        )
+        theta_conservative = apply_shrinkage(
+            theta_obs=theta_obs_valid,
+            lambda_i=lambda_i,
+            mu_t=mu_t,
+            shrinkage_method="pen",
+            gamma=gamma,
         )
 
-        z     = (q5_cutoff_obs - theta_post_mean) / theta_post_sd
-        p_q5  = 1.0 - norm.cdf(z)
+        # P(Q5), P(median), P(Q1): use theta_obs as mean, theta_post_sd as spread.
+        # sigma_i enters only through the spread — not through the mean.
+        # This keeps the quality signal and the uncertainty measure separate.
+        z_q5  = (q5_cutoff_obs - theta_obs_valid) / theta_post_sd
+        p_q5  = 1.0 - norm.cdf(z_q5)
 
-        z_med    = (median_cutoff_obs - theta_post_mean) / theta_post_sd  # ← NEW
-        p_median = 1.0 - norm.cdf(z_med)                                  # ← NEW
+        z_med    = (median_cutoff_obs - theta_obs_valid) / theta_post_sd
+        p_median = 1.0 - norm.cdf(z_med)
+
+        z_q1  = (q1_cutoff_obs - theta_obs_valid) / theta_post_sd
+        p_q1  = norm.cdf(z_q1)
 
         out = sub.loc[sigma_valid].copy()
-        out["mu_t"]               = mu_t
-        out["var_obs_t"]          = var_obs_t
-        out["obs_var_i"]          = obs_var_i
-        out["tau2_t"]             = tau2_t
-        out["lambda_i"]           = lambda_i
-        out["theta_post_mean"]    = theta_post_mean
-        out["theta_post_sd"]      = theta_post_sd
+        out["mu_t"]                  = mu_t
+        out["var_obs_t"]             = var_obs_t
+        out["obs_var_i"]             = obs_var_i
+        out["tau2_t"]                = tau2_t
+        out["lambda_i"]              = lambda_i
+        out["theta_post_mean"]       = theta_post_mean
+        out["theta_conservative"]    = theta_conservative
+        out["theta_post_sd"]         = theta_post_sd
         out["theta_post_sd_between"] = 0.0
-        out["q5_cutoff_obs"]      = q5_cutoff_obs
-        out["median_cutoff_obs"]  = median_cutoff_obs   # ← NEW
-        out["p_q5"]               = p_q5
-        out["p_q5_sd_mc"]         = 0.0
-        out["p_median"]           = p_median            # ← NEW
-        out["p_median_sd_mc"]     = 0.0                 # ← NEW
-        out["n_sigma_draws_used"] = 1
+        out["theta_conservative_sd_between"] = 0.0
+        out["q5_cutoff_obs"]         = q5_cutoff_obs
+        out["median_cutoff_obs"]     = median_cutoff_obs
+        out["q1_cutoff_obs"]         = q1_cutoff_obs
+        out["p_q5"]                  = p_q5
+        out["p_q5_sd_mc"]            = 0.0
+        out["p_median"]              = p_median
+        out["p_median_sd_mc"]        = 0.0
+        out["p_q1"]                  = p_q1
+        out["p_q1_sd_mc"]            = 0.0
+        out["n_sigma_draws_used"]    = 1
 
         frames.append(out)
         year_results.append({
-            "FormationYear": int(fy),
-            "n_firms": int(len(out)),
-            "mu_t": float(mu_t),
-            "var_obs_t": float(var_obs_t),
-            "avg_obs_var_i": float(avg_obs_var_i),
-            "tau2_t": float(tau2_t),
-            "q5_cutoff_obs": float(q5_cutoff_obs),
-            "median_cutoff_obs": float(median_cutoff_obs),  # ← NEW
-            "median_sigma_raw": float(sigma_median),
-            "sigma_input_col": sigma_input_col,
+            "FormationYear":     int(fy),
+            "n_firms":           int(len(out)),
+            "mu_t":              float(mu_t),
+            "var_obs_t":         float(var_obs_t),
+            "avg_obs_var_i":     float(avg_obs_var_i),
+            "tau2_t":            float(tau2_t),
+            "q5_cutoff_obs":     float(q5_cutoff_obs),
+            "median_cutoff_obs": float(median_cutoff_obs),
+            "q1_cutoff_obs":     float(q1_cutoff_obs),
+            "median_sigma_raw":  float(sigma_median),
+            "sigma_input_col":   sigma_input_col,
             "n_sigma_draws_used": 1,
-            "tau2_floor_share": float(tau2_t <= min_tau2 + 1e-15),
+            "tau2_floor_share":  float(tau2_t <= min_tau2 + 1e-15),
         })
 
         print(
@@ -592,8 +660,9 @@ def run_empirical_bayes_full_propagation(
     min_tau2: float = DEFAULT_MIN_TAU2,
     min_post_var: float = DEFAULT_MIN_POST_VAR,
     shrinkage_method: Optional[str] = None,
+    gamma: float = DEFAULT_GAMMA,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, dict]:
-    output_dir = Path(output_dir)
+    output_dir    = Path(output_dir)
     progress_path = output_dir / "latent_prof_progress.json"
 
     hb_draw_df, selected_draw_cols, n_available_draws = load_hb_full_posteriors(
@@ -618,10 +687,14 @@ def run_empirical_bayes_full_propagation(
     count_i              = np.zeros(n_rows, dtype=np.int32)
     sum_theta_post       = np.zeros(n_rows, dtype=float)
     sum_theta_post_sq    = np.zeros(n_rows, dtype=float)
+    sum_theta_cons       = np.zeros(n_rows, dtype=float)
+    sum_theta_cons_sq    = np.zeros(n_rows, dtype=float)
     sum_p_q5             = np.zeros(n_rows, dtype=float)
     sum_p_q5_sq          = np.zeros(n_rows, dtype=float)
-    sum_p_median         = np.zeros(n_rows, dtype=float)   # ← NEW
-    sum_p_median_sq      = np.zeros(n_rows, dtype=float)   # ← NEW
+    sum_p_median         = np.zeros(n_rows, dtype=float)
+    sum_p_median_sq      = np.zeros(n_rows, dtype=float)
+    sum_p_q1             = np.zeros(n_rows, dtype=float)
+    sum_p_q1_sq          = np.zeros(n_rows, dtype=float)
     sum_lambda           = np.zeros(n_rows, dtype=float)
     sum_obs_var          = np.zeros(n_rows, dtype=float)
     sum_post_var         = np.zeros(n_rows, dtype=float)
@@ -647,10 +720,9 @@ def run_empirical_bayes_full_propagation(
         sigma_draw_all = draw_matrix[:, j]
 
         for fy, info in year_info.items():
-            year_idx          = year_to_idx[fy]
-            pos               = info["positions"]
-            theta_obs         = info["theta_obs"]
-            median_cutoff_obs = info["median_cutoff_obs"]    # ← NEW
+            year_idx  = year_to_idx[fy]
+            pos       = info["positions"]
+            theta_obs = info["theta_obs"]
 
             sigma_sub = sigma_draw_all[pos].astype(float)
             if winsorize_sigma:
@@ -669,8 +741,11 @@ def run_empirical_bayes_full_propagation(
             if not np.isfinite(var_obs_t) or var_obs_t <= 0:
                 continue
 
-            q5_cutoff_obs = float(np.quantile(theta_obs_v, 0.80))
-            sigma_median  = float(np.median(sigma_v))
+            q1_cutoff_obs     = float(np.quantile(theta_obs_v, 0.20))
+            median_cutoff_obs = float(np.quantile(theta_obs_v, 0.50))
+            q5_cutoff_obs     = float(np.quantile(theta_obs_v, 0.80))
+
+            sigma_median = float(np.median(sigma_v))
             if not np.isfinite(sigma_median) or sigma_median <= 0:
                 continue
 
@@ -687,29 +762,47 @@ def run_empirical_bayes_full_propagation(
             )
             post_sd_i = np.sqrt(post_var_i)
 
+            # Latent Quality: standard EB posterior mean.
             theta_post_mean = apply_shrinkage(
                 theta_obs=theta_obs_v,
                 lambda_i=lambda_i,
                 mu_t=mu_t,
                 shrinkage_method=shrinkage_method,
+                gamma=gamma,
+            )
+            theta_conservative = apply_shrinkage(
+                theta_obs=theta_obs_v,
+                lambda_i=lambda_i,
+                mu_t=mu_t,
+                shrinkage_method="pen",
+                gamma=gamma,
             )
 
-            z    = (q5_cutoff_obs - theta_post_mean) / post_sd_i
-            p_q5 = 1.0 - norm.cdf(z)
+            # P(Q5), P(median), P(Q1): theta_obs as mean, post_sd as spread.
+            # sigma_i enters only through the spread — not through the mean.
+            z_q5 = (q5_cutoff_obs - theta_obs_v) / post_sd_i
+            p_q5 = 1.0 - norm.cdf(z_q5)
 
-            z_med    = (median_cutoff_obs - theta_post_mean) / post_sd_i  # ← NEW
-            p_median = 1.0 - norm.cdf(z_med)                              # ← NEW
+            z_med    = (median_cutoff_obs - theta_obs_v) / post_sd_i
+            p_median = 1.0 - norm.cdf(z_med)
 
-            count_i[pos_v]              += 1
-            sum_theta_post[pos_v]       += theta_post_mean
-            sum_theta_post_sq[pos_v]    += theta_post_mean ** 2
-            sum_p_q5[pos_v]             += p_q5
-            sum_p_q5_sq[pos_v]          += p_q5 ** 2
-            sum_p_median[pos_v]         += p_median       # ← NEW
-            sum_p_median_sq[pos_v]      += p_median ** 2  # ← NEW
-            sum_lambda[pos_v]           += lambda_i
-            sum_obs_var[pos_v]          += obs_var_i
-            sum_post_var[pos_v]         += post_var_i
+            z_q1  = (q1_cutoff_obs - theta_obs_v) / post_sd_i
+            p_q1  = norm.cdf(z_q1)
+
+            count_i[pos_v]           += 1
+            sum_theta_post[pos_v]    += theta_post_mean
+            sum_theta_post_sq[pos_v] += theta_post_mean ** 2
+            sum_theta_cons[pos_v]    += theta_conservative
+            sum_theta_cons_sq[pos_v] += theta_conservative ** 2
+            sum_p_q5[pos_v]          += p_q5
+            sum_p_q5_sq[pos_v]       += p_q5 ** 2
+            sum_p_median[pos_v]      += p_median
+            sum_p_median_sq[pos_v]   += p_median ** 2
+            sum_p_q1[pos_v]          += p_q1
+            sum_p_q1_sq[pos_v]       += p_q1 ** 2
+            sum_lambda[pos_v]        += lambda_i
+            sum_obs_var[pos_v]       += obs_var_i
+            sum_post_var[pos_v]      += post_var_i
 
             year_sum_avg_obs_var[year_idx]  += avg_obs_var_i
             year_sum_tau2[year_idx]         += tau2_t
@@ -744,31 +837,42 @@ def run_empirical_bayes_full_propagation(
 
     out = df.copy()
 
-    theta_post_mean_mc = sum_theta_post / count_i
-    p_q5_mc            = sum_p_q5 / count_i
-    p_median_mc        = sum_p_median / count_i              # ← NEW
-    lambda_mc          = sum_lambda / count_i
-    obs_var_mc         = sum_obs_var / count_i
-    mean_post_var_mc   = sum_post_var / count_i
+    theta_post_mean_mc   = sum_theta_post / count_i
+    theta_cons_mc        = sum_theta_cons / count_i
+    p_q5_mc              = sum_p_q5 / count_i
+    p_median_mc          = sum_p_median / count_i
+    p_q1_mc              = sum_p_q1 / count_i
+    lambda_mc            = sum_lambda / count_i
+    obs_var_mc           = sum_obs_var / count_i
+    mean_post_var_mc     = sum_post_var / count_i
 
-    theta_between_var  = np.maximum(sum_theta_post_sq / count_i - theta_post_mean_mc ** 2, 0.0)
-    p_q5_between_var   = np.maximum(sum_p_q5_sq / count_i - p_q5_mc ** 2, 0.0)
-    p_median_between_var = np.maximum(sum_p_median_sq / count_i - p_median_mc ** 2, 0.0)  # ← NEW
-    theta_total_var    = np.maximum(mean_post_var_mc + theta_between_var, min_post_var)
+    theta_between_var    = np.maximum(sum_theta_post_sq / count_i - theta_post_mean_mc ** 2, 0.0)
+    theta_cons_between_var = np.maximum(sum_theta_cons_sq / count_i - theta_cons_mc ** 2, 0.0)
+    p_q5_between_var     = np.maximum(sum_p_q5_sq / count_i - p_q5_mc ** 2, 0.0)
+    p_median_between_var = np.maximum(sum_p_median_sq / count_i - p_median_mc ** 2, 0.0)
+    p_q1_between_var     = np.maximum(sum_p_q1_sq / count_i - p_q1_mc ** 2, 0.0)
+    theta_total_var      = np.maximum(mean_post_var_mc + theta_between_var, min_post_var)
 
     out["theta_post_mean"]       = theta_post_mean_mc
+    out["theta_conservative"]    = theta_cons_mc
     out["theta_post_sd"]         = np.sqrt(theta_total_var)
     out["theta_post_sd_between"] = np.sqrt(theta_between_var)
+    out["theta_conservative_sd_between"] = np.sqrt(theta_cons_between_var)
     out["p_q5"]                  = p_q5_mc
     out["p_q5_sd_mc"]            = np.sqrt(p_q5_between_var)
-    out["p_median"]              = p_median_mc                         # ← NEW
-    out["p_median_sd_mc"]        = np.sqrt(p_median_between_var)       # ← NEW
+    out["p_median"]              = p_median_mc
+    out["p_median_sd_mc"]        = np.sqrt(p_median_between_var)
+    out["p_q1"]                  = p_q1_mc
+    out["p_q1_sd_mc"]            = np.sqrt(p_q1_between_var)
     out["lambda_i"]              = lambda_mc
     out["obs_var_i"]             = obs_var_mc
     out["n_sigma_draws_used"]    = count_i.astype(int)
 
     out = out.merge(
-        static_year_df[["FormationYear", "mu_t", "var_obs_t", "q5_cutoff_obs", "median_cutoff_obs"]],  # ← median_cutoff_obs NEW
+        static_year_df[[
+            "FormationYear", "mu_t", "var_obs_t",
+            "q5_cutoff_obs", "median_cutoff_obs", "q1_cutoff_obs",
+        ]],
         on="FormationYear", how="left", validate="many_to_one",
     )
 
@@ -819,13 +923,7 @@ def run_empirical_bayes_full_propagation(
     }
 
 
-# --------------------------------------------------
-# Single-variant runner
-# --------------------------------------------------
-
-def _run_single_variant(
-    variant_name: str,
-    shrinkage_method: Optional[str],
+def _run_combined_latent_output(
     static_df: pd.DataFrame,
     static_year_df: pd.DataFrame,
     year_info: Dict[int, dict],
@@ -844,16 +942,19 @@ def _run_single_variant(
     formation_year_min: int,
     formation_year_max: int,
     winsorize_prof: bool,
+    gamma: float = DEFAULT_GAMMA,
 ) -> dict:
-    variant_dir = output_dir / variant_name
-    variant_dir.mkdir(parents=True, exist_ok=True)
+    """
+    Save the single firm-year latent-quality file used by all portfolio methods.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'=' * 60}")
-    print(f"Variant:  {variant_name}  (shrinkage_method={shrinkage_method})")
-    print(f"Output:   {variant_dir}")
+    print("Latent quality output: combined method signals")
+    print(f"Output: {output_dir}")
     print(f"{'=' * 60}")
 
-    progress_json_path = variant_dir / "latent_prof_progress.json"
+    progress_json_path = output_dir / "latent_prof_progress.json"
     extra_info = {
         "progress_json": str(progress_json_path),
         "n_available_draws_in_parquet": None,
@@ -868,7 +969,7 @@ def _run_single_variant(
             static_year_df=static_year_df,
             year_info=year_info,
             hb_full_posterior_parquet=hb_full_posterior_parquet,
-            output_dir=variant_dir,
+            output_dir=output_dir,
             n_sigma_draws=n_sigma_draws,
             checkpoint_every_draws=checkpoint_every_draws,
             noise_share_of_prof_var=noise_share_of_prof_var,
@@ -876,7 +977,8 @@ def _run_single_variant(
             winsor_lower=winsor_lower,
             winsor_upper=winsor_upper,
             min_firms_per_year=min_firms_per_year,
-            shrinkage_method=shrinkage_method,
+            shrinkage_method=None,
+            gamma=gamma,
         )
     else:
         signals_df, year_summary_df = run_empirical_bayes_by_year_plugin(
@@ -888,7 +990,8 @@ def _run_single_variant(
             winsorize_sigma=winsorize_sigma,
             winsor_lower=winsor_lower,
             winsor_upper=winsor_upper,
-            shrinkage_method=shrinkage_method,
+            shrinkage_method=None,
+            gamma=gamma,
         )
         write_json(progress_json_path, {
             "mode": "plugin",
@@ -901,17 +1004,24 @@ def _run_single_variant(
 
     signals_df = reorder_columns(signals_df, sigma_source_col=sigma_input_col)
 
-    firm_year_path      = variant_dir / "latent_prof_firm_year.csv"
-    year_summary_path   = variant_dir / "latent_prof_year_summary.csv"
-    config_path         = variant_dir / "latent_prof_config.json"
-    selected_draws_path = variant_dir / "latent_prof_selected_draws.json"
+    firm_year_path      = output_dir / "latent_prof_firm_year.csv"
+    year_summary_path   = output_dir / "latent_prof_year_summary.csv"
+    config_path         = output_dir / "latent_prof_config.json"
+    selected_draws_path = output_dir / "latent_prof_selected_draws.json"
 
     signals_df.to_csv(firm_year_path, index=False)
     year_summary_df.to_csv(year_summary_path, index=False)
 
     write_json(config_path, {
-        "variant": variant_name,
-        "shrinkage_method": str(shrinkage_method),
+        "output_structure": "combined_method_signals",
+        "method_signals": {
+            "Method1_ObservedQuality": "theta_obs",
+            "Method2_LatentQuality": "theta_post_mean",
+            "Method3_ProbabilisticQuality": "p_q5_for_Q5_and_p_q1_for_Q1",
+            "Method4_ConservativeQuality": CONSERVATIVE_SIGNAL_COL,
+        },
+        "conservative_quality_formula": "theta_obs - gamma * (1 - lambda_i)",
+        "gamma": float(gamma),
         "sigma_input_col": sigma_input_col,
         "uncertainty_method": uncertainty_method,
         "formation_year_min": formation_year_min,
@@ -929,6 +1039,8 @@ def _run_single_variant(
         "n_sigma_draws_used": extra_info.get("n_selected_draws"),
         "n_rows_output": int(len(signals_df)),
         "n_years_output": int(year_summary_df["FormationYear"].nunique()),
+        "p_q5_mean_source": "theta_obs",
+        "p_q1_mean_source": "theta_obs",
     })
     write_json(selected_draws_path, {
         "selected_draw_columns": extra_info.get("selected_draw_columns"),
@@ -940,8 +1052,7 @@ def _run_single_variant(
     print(f"Saved: {year_summary_path}")
 
     return {
-        "variant": variant_name,
-        "output_dir": str(variant_dir),
+        "output_dir": str(output_dir),
         "firm_year_csv": str(firm_year_path),
         "year_summary_csv": str(year_summary_path),
         "config_json": str(config_path),
@@ -961,6 +1072,7 @@ def run_latent_prof_model(
     formation_year_min: int = DEFAULT_FORMATION_YEAR_MIN,
     formation_year_max: int = DEFAULT_FORMATION_YEAR_MAX,
     noise_share_of_prof_var: float = DEFAULT_NOISE_SHARE_OF_PROF_VAR,
+    gamma: float = DEFAULT_GAMMA,
     winsorize_prof: bool = DEFAULT_WINSORIZE_PROF,
     winsorize_sigma: bool = DEFAULT_WINSORIZE_SIGMA,
     winsor_lower: float = DEFAULT_WINSOR_LOWER,
@@ -974,10 +1086,14 @@ def run_latent_prof_model(
     """
     Step 3: Empirical Bayes latent PROF model.
 
-    Runs all three shrinkage variants in one call:
-        <output_dir>/HB/       latent_prof_firm_year.csv  — standard
-        <output_dir>/HB_cap/   latent_prof_firm_year.csv  — capped at theta_obs
-        <output_dir>/HB_down/  latent_prof_firm_year.csv  — always downward
+    Produces one firm-year file with the signals used by four portfolio methods:
+        Method1_ObservedQuality       — theta_obs
+        Method2_LatentQuality         — standard EB posterior mean
+        Method3_ProbabilisticQuality  — P(Q5) for Q5 and P(Q1) for Q1
+        Method4_ConservativeQuality   — theta_obs - gamma*(1-lambda_i)
+
+    P(Q5) and P(Q1) use theta_obs as mean and EB posterior sd as spread.
+    gamma controls the conservative quality penalty size.
     """
     input_csv  = Path(input_csv)
     output_dir = Path(output_dir)
@@ -1015,39 +1131,34 @@ def run_latent_prof_model(
                 "pointing to sigma_posteriors_full.parquet."
             )
 
-    all_outputs = {}
-    for variant_name, shrinkage_method in VARIANTS.items():
-        result = _run_single_variant(
-            variant_name=variant_name,
-            shrinkage_method=shrinkage_method,
-            static_df=static_df,
-            static_year_df=static_year_df,
-            year_info=year_info,
-            sigma_input_col=sigma_input_col,
-            output_dir=output_dir,
-            use_full_propagation=use_full_propagation,
-            hb_full_posterior_parquet=hb_full_posterior_parquet,
-            noise_share_of_prof_var=noise_share_of_prof_var,
-            winsorize_sigma=winsorize_sigma,
-            winsor_lower=winsor_lower,
-            winsor_upper=winsor_upper,
-            min_firms_per_year=min_firms_per_year,
-            n_sigma_draws=n_sigma_draws,
-            checkpoint_every_draws=checkpoint_every_draws,
-            uncertainty_method=uncertainty_method,
-            formation_year_min=formation_year_min,
-            formation_year_max=formation_year_max,
-            winsorize_prof=winsorize_prof,
-        )
-        all_outputs[variant_name] = result
+    result = _run_combined_latent_output(
+        static_df=static_df,
+        static_year_df=static_year_df,
+        year_info=year_info,
+        sigma_input_col=sigma_input_col,
+        output_dir=output_dir,
+        use_full_propagation=use_full_propagation,
+        hb_full_posterior_parquet=hb_full_posterior_parquet,
+        noise_share_of_prof_var=noise_share_of_prof_var,
+        winsorize_sigma=winsorize_sigma,
+        winsor_lower=winsor_lower,
+        winsor_upper=winsor_upper,
+        min_firms_per_year=min_firms_per_year,
+        n_sigma_draws=n_sigma_draws,
+        checkpoint_every_draws=checkpoint_every_draws,
+        uncertainty_method=uncertainty_method,
+        formation_year_min=formation_year_min,
+        formation_year_max=formation_year_max,
+        winsorize_prof=winsorize_prof,
+        gamma=gamma,
+    )
 
     print(f"\n{'=' * 60}")
-    print("All variants complete.")
-    for name, res in all_outputs.items():
-        print(f"  {name:10s} → {res['firm_year_csv']}")
+    print("Latent quality output complete.")
+    print(f"  {result['firm_year_csv']}")
     print(f"{'=' * 60}")
 
-    return all_outputs
+    return result
 
 
 # --------------------------------------------------
@@ -1056,7 +1167,7 @@ def run_latent_prof_model(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Step 3 latent PROF model — produces HB, HB_cap and HB_down variants."
+        description="Step 3 latent PROF model — produces one file with four method signals."
     )
 
     parser.add_argument("--input_csv",    type=str, required=True)
@@ -1065,16 +1176,24 @@ def parse_args() -> argparse.Namespace:
         "--uncertainty_method", type=str,
         default=DEFAULT_UNCERTAINTY_METHOD, choices=["auto", "OLS", "HB"],
     )
-    parser.add_argument("--sigma_col",              type=str,   default=None)
-    parser.add_argument("--formation_year_min",     type=int,   default=DEFAULT_FORMATION_YEAR_MIN)
-    parser.add_argument("--formation_year_max",     type=int,   default=DEFAULT_FORMATION_YEAR_MAX)
-    parser.add_argument("--noise_share_of_prof_var",type=float, default=DEFAULT_NOISE_SHARE_OF_PROF_VAR)
-    parser.add_argument("--winsor_lower",           type=float, default=DEFAULT_WINSOR_LOWER)
-    parser.add_argument("--winsor_upper",           type=float, default=DEFAULT_WINSOR_UPPER)
-    parser.add_argument("--min_firms_per_year",     type=int,   default=DEFAULT_MIN_FIRMS_PER_YEAR)
-    parser.add_argument("--use_full_propagation",   action="store_true")
+    parser.add_argument("--sigma_col",               type=str,   default=None)
+    parser.add_argument("--formation_year_min",      type=int,   default=DEFAULT_FORMATION_YEAR_MIN)
+    parser.add_argument("--formation_year_max",      type=int,   default=DEFAULT_FORMATION_YEAR_MAX)
+    parser.add_argument("--noise_share_of_prof_var", type=float, default=DEFAULT_NOISE_SHARE_OF_PROF_VAR)
+    parser.add_argument(
+        "--gamma", type=float, default=DEFAULT_GAMMA,
+        help=(
+            "Penalty size for Method4_ConservativeQuality. "
+            "theta_adj = theta_obs - gamma*(1-lambda_i). "
+            "Sensitivity analysis recommended. Default: 0.1"
+        ),
+    )
+    parser.add_argument("--winsor_lower",            type=float, default=DEFAULT_WINSOR_LOWER)
+    parser.add_argument("--winsor_upper",            type=float, default=DEFAULT_WINSOR_UPPER)
+    parser.add_argument("--min_firms_per_year",      type=int,   default=DEFAULT_MIN_FIRMS_PER_YEAR)
+    parser.add_argument("--use_full_propagation",    action="store_true")
     parser.add_argument("--hb_full_posterior_parquet", type=str, default=None)
-    parser.add_argument("--n_sigma_draws",          type=int,   default=None)
+    parser.add_argument("--n_sigma_draws",           type=int,   default=None)
     parser.add_argument(
         "--checkpoint_every_draws", type=int, default=DEFAULT_CHECKPOINT_EVERY_DRAWS,
     )
@@ -1093,6 +1212,7 @@ if __name__ == "__main__":
         formation_year_min=args.formation_year_min,
         formation_year_max=args.formation_year_max,
         noise_share_of_prof_var=args.noise_share_of_prof_var,
+        gamma=args.gamma,
         winsor_lower=args.winsor_lower,
         winsor_upper=args.winsor_upper,
         min_firms_per_year=args.min_firms_per_year,

@@ -10,6 +10,7 @@ from step5_evaluation import (
     risk_adjusted_performance,
     alpha_differences,
     grs_test,
+    grs_tests_all_models,
 )
 from step5_probabilistic import (
     probabilistic_evaluation,
@@ -121,7 +122,7 @@ def run_portfolio_evaluation(
         rf=rf,
         model="FF5_MOM",
         lags=nw_lags,
-        base_method="Method1_Raw",
+        base_method="Method1_ObservedQuality",
     )
     alpha_diff_csv = output_dir / "alpha_differences.csv"
     alpha_diff_df.to_csv(alpha_diff_csv, index=False)

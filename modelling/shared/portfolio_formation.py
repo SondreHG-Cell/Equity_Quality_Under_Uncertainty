@@ -19,30 +19,47 @@ REQUIRED_COLUMNS = [
     "FormationYear",
     "theta_obs",
     "theta_post_mean",
+    "theta_conservative",
     "p_q5",
-    "p_median",       # ← NEW
+    "p_q1",
     "sigma_acc",
     "MarketCap",
 ]
 
-METHOD_SPECS = {
-    "Method1_Raw": {
+
+STANDARD_METHOD_SPECS = {
+    "Method1_ObservedQuality": {
         "signal_col": "theta_obs",
-        "method_label": "Raw signal",
+        "method_label": "Observed Quality",
     },
-    "Method2_PostMean": {
+    "Method2_LatentQuality": {
         "signal_col": "theta_post_mean",
-        "method_label": "Posterior mean",
+        "method_label": "Latent Quality",
     },
-    "Method3_ProbQ5": {
-        "signal_col": "p_q5",
-        "method_label": "Probabilistic Q5",
-    },
-    "Method4_ProbMedian": {             # ← NEW
-        "signal_col": "p_median",
-        "method_label": "P(>Median)",
+    "Method4_ConservativeQuality": {
+        "signal_col": "theta_conservative",
+        "method_label": "Conservative Quality",
     },
 }
+
+
+HYBRID_METHODS = [
+    "Method3_ProbabilisticQuality",
+]
+
+
+METHOD_LABELS = {
+    **{name: spec["method_label"] for name, spec in STANDARD_METHOD_SPECS.items()},
+    "Method3_ProbabilisticQuality": "Probabilistic Quality",
+}
+
+
+ALL_METHODS = [
+    "Method1_ObservedQuality",
+    "Method2_LatentQuality",
+    "Method3_ProbabilisticQuality",
+    "Method4_ConservativeQuality",
+]
 
 
 # --------------------------------------------------
@@ -58,6 +75,7 @@ def validate_input_columns(df: pd.DataFrame) -> None:
 def clean_input(df: pd.DataFrame) -> pd.DataFrame:
     """
     Basic cleaning before portfolio formation.
+
     Keeps only rows with:
     - non-missing Ticker / FormationYear
     - positive MarketCap
@@ -68,14 +86,23 @@ def clean_input(df: pd.DataFrame) -> pd.DataFrame:
     df["FormationYear"] = pd.to_numeric(df["FormationYear"], errors="coerce").astype("Int64")
     df["MarketCap"] = pd.to_numeric(df["MarketCap"], errors="coerce")
 
-    for col in ["theta_obs", "theta_post_mean", "p_q5", "p_median", "sigma_acc"]:  # ← p_median NEW
+    numeric_cols = [
+        "theta_obs",
+        "theta_post_mean",
+        "theta_conservative",
+        "p_q5",
+        "p_q1",
+        "sigma_acc",
+    ]
+
+    for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = df[df["Ticker"].notna() & (df["Ticker"] != "")]
     df = df[df["FormationYear"].notna()]
     df = df[df["MarketCap"].notna() & (df["MarketCap"] > 0)]
 
-    # drop duplicate firm-year rows if any
+    # Drop duplicate firm-year rows if any
     dupes = df.duplicated(subset=["Ticker", "FormationYear"], keep=False)
     if dupes.any():
         raise ValueError(
@@ -101,9 +128,10 @@ def assign_quantile_portfolios(
     Assigns portfolios Q1...Qn within one FormationYear.
 
     Logic:
-    - sort ascending by signal (and Ticker for stable tie-breaking)
+    - sort ascending by signal and Ticker for stable tie-breaking
     - split into n almost-equal groups
-    - lowest signal -> Q1, highest signal -> Qn
+    - lowest signal -> Q1
+    - highest signal -> Qn
 
     Returns the same dataframe with:
     - PortfolioNum
@@ -142,6 +170,29 @@ def assign_quantile_portfolios(
 
     return sub
 
+
+def common_keep_cols() -> list[str]:
+    """
+    Common output columns for long portfolio assignments.
+    """
+    return [
+        "Ticker",
+        "FormationYear",
+        "theta_obs",
+        "theta_post_mean",
+        "theta_conservative",
+        "p_q5",
+        "p_q1",
+        "sigma_acc",
+        "MarketCap",
+        "Method",
+        "SignalUsed",
+        "PortfolioNum",
+        "Portfolio",
+        "MethodLabel",
+    ]
+
+
 # --------------------------------------------------
 # Main formation logic
 # --------------------------------------------------
@@ -153,12 +204,15 @@ def form_portfolios_for_method(
     n_portfolios: int = 5,
 ) -> pd.DataFrame:
     """
-    Returns long-format portfolio assignments for one method.
+    Returns long-format portfolio assignments for one standard method.
+
+    Standard methods use one signal to assign all portfolios Q1...Qn.
     """
     pieces = []
 
     for year, sub in df.groupby("FormationYear", sort=True):
         sub = sub.copy()
+
         sub = assign_quantile_portfolios(
             sub=sub,
             signal_col=signal_col,
@@ -166,27 +220,102 @@ def form_portfolios_for_method(
         )
 
         sub["Method"] = method_name
+        sub["MethodLabel"] = METHOD_LABELS[method_name]
         sub["SignalUsed"] = signal_col
+
         pieces.append(sub)
 
     out = pd.concat(pieces, axis=0, ignore_index=True)
 
-    keep_cols = [
-        "Ticker",
-        "FormationYear",
-        "theta_obs",
-        "theta_post_mean",
-        "p_q5",
-        "p_median",       # ← NEW
-        "sigma_acc",
-        "MarketCap",
-        "Method",
-        "SignalUsed",
-        "PortfolioNum",
-        "Portfolio",
-    ]
+    return out[common_keep_cols()].copy()
 
-    return out[keep_cols].copy()
+
+def form_method3_probabilistic_quality(
+    df: pd.DataFrame,
+    n_portfolios: int = 5,
+    allow_overlap: bool = False,
+) -> pd.DataFrame:
+    """
+    Hybrid method:
+
+    Method3_ProbabilisticQuality
+    - Q5 is selected by highest p_q5
+    - Q1 is selected by highest p_q1
+    - Q2-Q4 are not defined
+
+    This method is mainly intended for Q5 - Q1 long-short portfolios.
+
+    Parameters
+    ----------
+    df:
+        Firm-year latent profitability dataframe.
+    n_portfolios:
+        Used to define the top/bottom fraction. With n_portfolios=5,
+        Q1 and Q5 each contain approximately 20% of firms.
+    allow_overlap:
+        If False, a firm selected into Q5 cannot also be selected into Q1
+        in the same FormationYear. This is usually the safest choice.
+    """
+    required = ["Ticker", "FormationYear", "p_q5", "p_q1"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"Input file is missing required columns for Method3: {missing}")
+
+    pieces = []
+
+    for year, sub in df.groupby("FormationYear", sort=True):
+        sub = sub.copy()
+
+        n_valid_q5 = int(sub["p_q5"].notna().sum())
+        n_valid_q1 = int(sub["p_q1"].notna().sum())
+
+        if n_valid_q5 < n_portfolios or n_valid_q1 < n_portfolios:
+            continue
+
+        n_q = max(int(len(sub) / n_portfolios), 1)
+
+        q5 = (
+            sub.dropna(subset=["p_q5"])
+            .sort_values(["p_q5", "Ticker"], ascending=[False, True])
+            .head(n_q)
+            .copy()
+        )
+
+        if allow_overlap:
+            q1_pool = sub.dropna(subset=["p_q1"]).copy()
+        else:
+            q1_pool = sub[
+                ~sub["Ticker"].isin(q5["Ticker"])
+            ].dropna(subset=["p_q1"]).copy()
+
+        q1 = (
+            q1_pool
+            .sort_values(["p_q1", "Ticker"], ascending=[False, True])
+            .head(n_q)
+            .copy()
+        )
+
+        q5["Method"] = "Method3_ProbabilisticQuality"
+        q5["MethodLabel"] = METHOD_LABELS["Method3_ProbabilisticQuality"]
+        q5["SignalUsed"] = "p_q5"
+        q5["PortfolioNum"] = 5
+        q5["Portfolio"] = "Q5"
+
+        q1["Method"] = "Method3_ProbabilisticQuality"
+        q1["MethodLabel"] = METHOD_LABELS["Method3_ProbabilisticQuality"]
+        q1["SignalUsed"] = "p_q1"
+        q1["PortfolioNum"] = 1
+        q1["Portfolio"] = "Q1"
+
+        pieces.append(q1)
+        pieces.append(q5)
+
+    if not pieces:
+        return pd.DataFrame(columns=common_keep_cols())
+
+    out = pd.concat(pieces, axis=0, ignore_index=True)
+
+    return out[common_keep_cols()].copy()
 
 
 def build_long_output(
@@ -194,11 +323,21 @@ def build_long_output(
     n_portfolios: int = 5,
 ) -> pd.DataFrame:
     """
-    Builds one long file with all four sorting methods.
+    Builds one long file with all sorting methods.
+
+    Method1, Method2 and Method4:
+    - standard full-quintile sorts using one signal
+
+    Method3:
+    - hybrid long-short method
+    - Q5 from highest p_q5
+    - Q1 from highest p_q1
+    - Q2-Q4 are missing / not defined
     """
     method_frames = []
 
-    for method_name, spec in METHOD_SPECS.items():
+    for method_name in ["Method1_ObservedQuality", "Method2_LatentQuality"]:
+        spec = STANDARD_METHOD_SPECS[method_name]
         method_df = form_portfolios_for_method(
             df=df,
             method_name=method_name,
@@ -207,10 +346,31 @@ def build_long_output(
         )
         method_frames.append(method_df)
 
+    method3_df = form_method3_probabilistic_quality(
+        df=df,
+        n_portfolios=n_portfolios,
+        allow_overlap=False,
+    )
+    method_frames.append(method3_df)
+
+    method4_spec = STANDARD_METHOD_SPECS["Method4_ConservativeQuality"]
+    method4_df = form_portfolios_for_method(
+        df=df,
+        method_name="Method4_ConservativeQuality",
+        signal_col=method4_spec["signal_col"],
+        n_portfolios=n_portfolios,
+    )
+    method_frames.append(method4_df)
+
     long_df = pd.concat(method_frames, axis=0, ignore_index=True)
 
     long_df["PortfolioNum"] = long_df["PortfolioNum"].astype("Int64")
-    long_df = long_df.sort_values(["FormationYear", "Method", "PortfolioNum", "Ticker"]).reset_index(drop=True)
+
+    long_df = (
+        long_df
+        .sort_values(["FormationYear", "Method", "PortfolioNum", "Ticker"])
+        .reset_index(drop=True)
+    )
 
     return long_df
 
@@ -218,15 +378,16 @@ def build_long_output(
 def build_wide_output(long_df: pd.DataFrame) -> pd.DataFrame:
     """
     Converts the long file into one row per firm-year, with separate
-    portfolio assignment and weight columns for each method.
+    portfolio assignment columns for each method.
     """
     base_cols = [
         "Ticker",
         "FormationYear",
         "theta_obs",
         "theta_post_mean",
+        "theta_conservative",
         "p_q5",
-        "p_median",       # ← NEW
+        "p_q1",
         "sigma_acc",
         "MarketCap",
     ]
@@ -237,8 +398,13 @@ def build_wide_output(long_df: pd.DataFrame) -> pd.DataFrame:
         .copy()
     )
 
-    for method_name in METHOD_SPECS.keys():
+    for method_name in ALL_METHODS:
         sub = long_df[long_df["Method"] == method_name].copy()
+
+        if sub.empty:
+            wide[f"{method_name}_PortfolioNum"] = pd.NA
+            wide[f"{method_name}_Portfolio"] = pd.NA
+            continue
 
         sub = sub.rename(
             columns={
@@ -261,6 +427,7 @@ def build_wide_output(long_df: pd.DataFrame) -> pd.DataFrame:
         )
 
     wide = wide.sort_values(["FormationYear", "Ticker"]).reset_index(drop=True)
+
     return wide
 
 
@@ -268,41 +435,47 @@ def build_summary_output(long_df: pd.DataFrame) -> pd.DataFrame:
     """
     Creates a summary file by FormationYear x Method x Portfolio.
     """
+    summary_cols = [
+        "FormationYear",
+        "Method",
+        "PortfolioNum",
+        "Portfolio",
+        "MethodLabel",
+        "n_firms",
+        "total_marketcap",
+        "avg_theta_obs",
+        "avg_theta_post_mean",
+        "avg_theta_conservative",
+        "avg_p_q5",
+        "avg_p_q1",
+        "avg_sigma_acc",
+    ]
+
     valid = long_df[long_df["PortfolioNum"].notna()].copy()
 
     if valid.empty:
-        return pd.DataFrame(
-            columns=[
-                "FormationYear",
-                "Method",
-                "PortfolioNum",
-                "Portfolio",
-                "n_firms",
-                "total_marketcap",
-                "avg_theta_obs",
-                "avg_theta_post_mean",
-                "avg_p_q5",
-                "avg_p_median",       # ← NEW
-                "avg_sigma_acc",
-            ]
-        )
+        return pd.DataFrame(columns=summary_cols)
 
     summary = (
-        valid.groupby(["FormationYear", "Method", "PortfolioNum", "Portfolio"], as_index=False)
+        valid.groupby(
+            ["FormationYear", "Method", "MethodLabel", "PortfolioNum", "Portfolio"],
+            as_index=False,
+        )
         .agg(
             n_firms=("Ticker", "nunique"),
             total_marketcap=("MarketCap", "sum"),
             avg_theta_obs=("theta_obs", "mean"),
             avg_theta_post_mean=("theta_post_mean", "mean"),
+            avg_theta_conservative=("theta_conservative", "mean"),
             avg_p_q5=("p_q5", "mean"),
-            avg_p_median=("p_median", "mean"),    # ← NEW
+            avg_p_q1=("p_q1", "mean"),
             avg_sigma_acc=("sigma_acc", "mean"),
         )
         .sort_values(["FormationYear", "Method", "PortfolioNum"])
         .reset_index(drop=True)
     )
 
-    return summary
+    return summary[summary_cols]
 
 
 # --------------------------------------------------
@@ -318,13 +491,14 @@ def run_portfolio_formation(
     Main function to be called from run_main.py.
 
     Returns:
-        dict with explicit output paths
+        dict with explicit output paths.
     """
     input_csv = Path(input_csv)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(input_csv)
+
     validate_input_columns(df)
     df = clean_input(df)
 
@@ -344,6 +518,16 @@ def run_portfolio_formation(
     print(f"Saved wide output:    {wide_path}")
     print(f"Saved summary output: {summary_path}")
 
+    print("\nPortfolio methods in long output:")
+    print(long_df["Method"].value_counts(dropna=False))
+
+    print("\nMethod3 probabilistic portfolio counts:")
+    m3 = long_df[long_df["Method"] == "Method3_ProbabilisticQuality"]
+    if m3.empty:
+        print("Method3_ProbabilisticQuality: no rows")
+    else:
+        print(m3["Portfolio"].value_counts(dropna=False))
+
     return {
         "output_dir": str(output_dir),
         "portfolio_assignments_long_csv": str(long_path),
@@ -358,6 +542,7 @@ def run_portfolio_formation(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Form portfolios from latent PROF model output.")
+
     parser.add_argument(
         "--input_csv",
         type=str,
@@ -374,8 +559,9 @@ def parse_args() -> argparse.Namespace:
         "--n_portfolios",
         type=int,
         default=5,
-        help="Number of portfolios to form (default=5).",
+        help="Number of portfolios to form. Default is 5.",
     )
+
     return parser.parse_args()
 
 
