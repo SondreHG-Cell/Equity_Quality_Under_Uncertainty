@@ -87,7 +87,16 @@ def parse_args() -> argparse.Namespace:
     # OLS-specific passthrough arguments
     parser.add_argument("--min_obs_per_year", type=int, default=20)
     parser.add_argument("--rolling_window", type=int, default=5)
-    parser.add_argument("--min_periods_start", type=int, default=3)
+    parser.add_argument("--min_periods_start", type=int, default=4)
+    parser.add_argument(
+        "--sigma_history_start_year",
+        type=int,
+        default=2004,
+        help=(
+            "First residual year allowed to enter OLS sigma history. "
+            "Use 0 or a negative value to use all available history."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -122,6 +131,7 @@ if __name__ == "__main__":
             "min_obs_per_year": args.min_obs_per_year,
             "rolling_window": args.rolling_window,
             "min_periods_start": args.min_periods_start,
+            "sigma_history_start_year": args.sigma_history_start_year,
         }
 
     result = run_uncertainty_model(
