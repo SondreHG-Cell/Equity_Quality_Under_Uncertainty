@@ -142,7 +142,7 @@ def alpha_differences(
     rf: pd.Series,
     model: str = "FF5_MOM",
     lags: int = 12,
-    base_method: str = "Method1_Raw",
+    base_method: str = "Method1_ObservedQuality",
 ) -> pd.DataFrame:
     factor_sets = {
         "CAPM":    ["MKT"],
@@ -216,52 +216,185 @@ def grs_test(
     rf: pd.Series,
     model: str = "FF5_MOM",
 ) -> dict:
+    """
+    Compute the Gibbons--Ross--Shanken (GRS) test for a given factor model.
+
+    The test evaluates whether the intercepts from a set of time-series
+    factor regressions are jointly equal to zero.
+
+    Parameters
+    ----------
+    q5_returns : dict
+        Dictionary of Q5 portfolio return series, one for each sorting method.
+        Example: {"Method1_ObservedQuality": series, "Method2_LatentQuality": series, ...}
+
+    factors : pd.DataFrame
+        Monthly factor returns. Must contain the columns required by the
+        selected factor model.
+
+    rf : pd.Series
+        Monthly risk-free rate.
+
+    model : str
+        Factor model to use. Supported values are:
+        "CAPM", "FF3", "FF3_MOM", "FF5", and "FF5_MOM".
+
+    Returns
+    -------
+    dict
+        Dictionary containing the GRS statistic, p-value, estimated alphas,
+        number of observations, number of portfolios, and number of factors.
+    """
+
     factor_sets = {
         "CAPM":    ["MKT"],
         "FF3":     ["MKT", "SMB", "HML"],
-        "Carhart": ["MKT", "SMB", "HML", "MOM"],
+        "FF3_MOM": ["MKT", "SMB", "HML", "MOM"],
         "FF5":     ["MKT", "SMB", "HML", "RMW", "CMA"],
         "FF5_MOM": ["MKT", "SMB", "HML", "RMW", "CMA", "MOM"],
     }
+
+    if model not in factor_sets:
+        raise ValueError(
+            f"Unknown model '{model}'. "
+            f"Supported models are: {list(factor_sets.keys())}"
+        )
 
     cols = factor_sets[model]
     methods = list(q5_returns.keys())
     N = len(methods)
 
+    if N < 2:
+        raise ValueError("The GRS test requires at least two test portfolios.")
+
+    # Convert Q5 returns to excess returns.
     excess = {m: (q5_returns[m] - rf) for m in methods}
+
+    # Align all portfolio returns, factors, and the risk-free rate.
     idx = factors.index
     for m in methods:
         idx = idx.intersection(excess[m].dropna().index)
 
+    idx = idx.sort_values()
+
+    F = factors.loc[idx, cols].dropna()
+    idx = idx.intersection(F.index)
+
+    for m in methods:
+        idx = idx.intersection(excess[m].dropna().index)
+
+    idx = idx.sort_values()
+
     F = factors.loc[idx, cols].values
     T, K = F.shape
+
+    if T <= N + K:
+        raise ValueError(
+            f"Not enough observations for the GRS test: "
+            f"T={T}, N={N}, K={K}."
+        )
+
     F_demean = F - F.mean(axis=0)
 
-    alphas, residuals = [], []
+    alphas = []
+    residuals = []
+
+    X = np.column_stack([np.ones(T), F])
+
     for m in methods:
         y = excess[m].loc[idx].values
-        X = np.column_stack([np.ones(T), F])
+
         beta = np.linalg.lstsq(X, y, rcond=None)[0]
-        alphas.append(beta[0])
-        residuals.append(y - X @ beta)
+        alpha = beta[0]
+        resid = y - X @ beta
+
+        alphas.append(alpha)
+        residuals.append(resid)
 
     alpha_vec = np.array(alphas)
     resid_mat = np.column_stack(residuals)
+
+    # Residual covariance matrix.
     Sigma = resid_mat.T @ resid_mat / T
 
-    Sigma_inv = np.linalg.inv(Sigma)
+    # Factor mean and covariance adjustment.
     mu_f = F.mean(axis=0)
-    Omega_inv = np.linalg.inv(F_demean.T @ F_demean / T)
+    Omega = F_demean.T @ F_demean / T
+
+    # Use pseudo-inverse for numerical stability, as Q5 portfolios across
+    # methods can be highly correlated.
+    Sigma_inv = np.linalg.pinv(Sigma)
+    Omega_inv = np.linalg.pinv(Omega)
+
     kappa = 1 + mu_f @ Omega_inv @ mu_f
 
-    grs_f = (T / N) * ((T - N - K) / (T - K - 1)) * (alpha_vec @ Sigma_inv @ alpha_vec) / kappa
+    grs_f = (
+        (T / N)
+        * ((T - N - K) / (T - K - 1))
+        * (alpha_vec @ Sigma_inv @ alpha_vec)
+        / kappa
+    )
+
     p_val = 1 - stats.f.cdf(grs_f, dfn=N, dfd=T - N - K)
 
     return {
-        "grs_f_stat": grs_f,
-        "p_value": p_val,
-        "alphas": dict(zip(methods, alphas)),
+        "model": model,
+        "grs_f_stat": float(grs_f),
+        "p_value": float(p_val),
+        "reject_h0_5pct": bool(p_val < 0.05),
+        "alphas": dict(zip(methods, map(float, alphas))),
         "n_obs": int(T),
         "n_portfolios": int(N),
         "n_factors": int(K),
     }
+
+
+def grs_tests_all_models(
+    q5_returns: dict,
+    factors: pd.DataFrame,
+    rf: pd.Series,
+) -> pd.DataFrame:
+    """
+    Run the GRS test separately for all factor specifications.
+
+    This is used as a supplementary joint model adequacy check. It shows
+    whether the joint pricing errors across Q5 portfolios decline as additional
+    risk factors are included.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per factor model.
+    """
+
+    models = ["CAPM", "FF3", "FF3_MOM", "FF5", "FF5_MOM"]
+
+    model_labels = {
+        "CAPM": "CAPM",
+        "FF3": "FF3",
+        "FF3_MOM": "FF3+MOM",
+        "FF5": "FF5",
+        "FF5_MOM": "FF5+MOM",
+    }
+
+    rows = []
+
+    for model in models:
+        res = grs_test(
+            q5_returns=q5_returns,
+            factors=factors,
+            rf=rf,
+            model=model,
+        )
+
+        rows.append({
+            "Model": model_labels[model],
+            "GRS statistic": res["grs_f_stat"],
+            "p-value": res["p_value"],
+            "Reject H0": "Yes" if res["reject_h0_5pct"] else "No",
+            "n_obs": res["n_obs"],
+            "n_portfolios": res["n_portfolios"],
+            "n_factors": res["n_factors"],
+        })
+
+    return pd.DataFrame(rows)
