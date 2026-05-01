@@ -81,7 +81,7 @@ def clean_input(df: pd.DataFrame) -> pd.DataFrame:
 def expanding_then_rolling_std(
     x: pd.Series,
     rolling_window: int = 5,
-    min_periods_start: int = 3,
+    min_periods_start: int = 4,
 ) -> pd.Series:
     x = x.astype(float)
     out = []
@@ -102,7 +102,7 @@ def expanding_then_rolling_std(
 def expanding_then_rolling_mean_abs(
     x: pd.Series,
     rolling_window: int = 5,
-    min_periods_start: int = 3,
+    min_periods_start: int = 4,
 ) -> pd.Series:
     x = x.astype(float)
     out = []
@@ -129,7 +129,8 @@ def run_uncertainty_model_ols(
     output_dir: str | Path,
     min_obs_per_year: int = 20,
     rolling_window: int = 5,
-    min_periods_start: int = 3,
+    min_periods_start: int = 4,
+    sigma_history_start_year: int | None = 2004,
 ) -> dict:
     """
     Step 2 OLS uncertainty model.
@@ -303,11 +304,23 @@ def run_uncertainty_model_ols(
     print(resid_df.head())
 
     # --------------------------------------------------
-    # 6. Construct firm-year accounting noise
-    #    Expanding std first, then rolling 5-year std
+    # 6. Construct firm-year accounting noise.
+    #    Use the same historical anchor as the HB run: for the first
+    #    2009 portfolio year, the five-year training window begins in 2004.
     # --------------------------------------------------
+    if sigma_history_start_year is not None and sigma_history_start_year <= 0:
+        sigma_history_start_year = None
+
+    sigma_source = resid_df["dd_resid"].copy()
+    if sigma_history_start_year is not None:
+        sigma_source = sigma_source.where(resid_df["Year"] >= sigma_history_start_year)
+        print(f"\nOLS sigma history starts in {sigma_history_start_year}.")
+
+    sigma_input = resid_df[["Ticker", "Year"]].copy()
+    sigma_input["dd_resid_for_sigma"] = sigma_source
+
     resid_df["sigma_acc"] = (
-        resid_df.groupby("Ticker", group_keys=False)["dd_resid"]
+        sigma_input.groupby("Ticker", group_keys=False)["dd_resid_for_sigma"]
         .apply(
             expanding_then_rolling_std,
             rolling_window=rolling_window,
@@ -316,7 +329,7 @@ def run_uncertainty_model_ols(
     )
 
     resid_df["sigma_acc_abs"] = (
-        resid_df.groupby("Ticker", group_keys=False)["dd_resid"]
+        sigma_input.groupby("Ticker", group_keys=False)["dd_resid_for_sigma"]
         .apply(
             expanding_then_rolling_mean_abs,
             rolling_window=rolling_window,
@@ -377,6 +390,7 @@ def run_uncertainty_model_ols(
         "min_obs_per_year": min_obs_per_year,
         "rolling_window": rolling_window,
         "min_periods_start": min_periods_start,
+        "sigma_history_start_year": sigma_history_start_year,
         "n_rows_input": int(len(panel)),
         "n_rows_reg_sample": int(len(reg_df)),
         "n_rows_residual_output": int(len(resid_df)),
@@ -407,7 +421,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save OLS outputs.")
     parser.add_argument("--min_obs_per_year", type=int, default=20)
     parser.add_argument("--rolling_window", type=int, default=5)
-    parser.add_argument("--min_periods_start", type=int, default=3)
+    parser.add_argument("--min_periods_start", type=int, default=4)
+    parser.add_argument(
+        "--sigma_history_start_year",
+        type=int,
+        default=2004,
+        help=(
+            "First residual year allowed to enter rolling sigma history. "
+            "Use 0 or a negative value to use all available history."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -420,4 +443,5 @@ if __name__ == "__main__":
         min_obs_per_year=args.min_obs_per_year,
         rolling_window=args.rolling_window,
         min_periods_start=args.min_periods_start,
+        sigma_history_start_year=args.sigma_history_start_year,
     )

@@ -37,6 +37,12 @@ class RunConfig:
     # HB CFO handling
     hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
 
+    # OLS uncertainty settings aligned with the HB rolling-window design.
+    ols_min_obs_per_year: int = 20
+    ols_rolling_window: int = 5
+    ols_min_periods_start: int = 4
+    ols_sigma_history_start_year: int = 2004
+
     # Step 3 full propagation settings
     latent_use_full_propagation: bool = False
     latent_n_sigma_draws: Optional[int] = None
@@ -202,6 +208,15 @@ def run_pipeline(config: RunConfig) -> Path:
 
         if config.uncertainty_method.upper() == "HB":
             uncertainty_kwargs["cfo_lead_mode"] = config.hb_cfo_lead_mode
+        elif config.uncertainty_method.upper() == "OLS":
+            uncertainty_kwargs.update(
+                {
+                    "min_obs_per_year": config.ols_min_obs_per_year,
+                    "rolling_window": config.ols_rolling_window,
+                    "min_periods_start": config.ols_min_periods_start,
+                    "sigma_history_start_year": config.ols_sigma_history_start_year,
+                }
+            )
 
         uncertainty_result = run_uncertainty_model(
             input_csv=extracted_input_csv,
@@ -434,6 +449,33 @@ def parse_args() -> argparse.Namespace:
         help="How HB Step 2 should handle CFO_{t+1}.",
     )
     parser.add_argument(
+        "--ols_min_obs_per_year",
+        type=int,
+        default=RunConfig.ols_min_obs_per_year,
+        help="Minimum observations required to estimate an OLS year regression.",
+    )
+    parser.add_argument(
+        "--ols_rolling_window",
+        type=int,
+        default=RunConfig.ols_rolling_window,
+        help="Rolling residual window used for OLS sigma.",
+    )
+    parser.add_argument(
+        "--ols_min_periods_start",
+        type=int,
+        default=RunConfig.ols_min_periods_start,
+        help="Minimum residual observations required before OLS sigma is non-missing.",
+    )
+    parser.add_argument(
+        "--ols_sigma_history_start_year",
+        type=int,
+        default=RunConfig.ols_sigma_history_start_year,
+        help=(
+            "First residual year allowed to enter OLS sigma history. "
+            "Use 0 or a negative value to use all available history."
+        ),
+    )
+    parser.add_argument(
         "--n_portfolios",
         type=int,
         default=RunConfig.n_portfolios,
@@ -481,6 +523,10 @@ def main() -> None:
         n_portfolios=args.n_portfolios,
         nw_lags=args.nw_lags,
         hb_cfo_lead_mode=args.hb_cfo_lead_mode,
+        ols_min_obs_per_year=args.ols_min_obs_per_year,
+        ols_rolling_window=args.ols_rolling_window,
+        ols_min_periods_start=args.ols_min_periods_start,
+        ols_sigma_history_start_year=args.ols_sigma_history_start_year,
         latent_use_full_propagation=args.latent_use_full_propagation,
         latent_n_sigma_draws=args.latent_n_sigma_draws,
         latent_checkpoint_every_draws=args.latent_checkpoint_every_draws,
