@@ -453,7 +453,7 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=RunConfig.latent_gamma,
         help=(
-            "Penalty size for Method4_ConservativeQuality. "
+            "Penalty size for Method3_ConservativeQuality. "
             "theta_adj = theta_obs - gamma * (1 - lambda_i)."
         ),
     )
