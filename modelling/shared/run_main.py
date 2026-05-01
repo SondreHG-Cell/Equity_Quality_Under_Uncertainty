@@ -29,7 +29,7 @@ class RunConfig:
     factors_csv: str = "results/extraction_static/factor_data.csv"
     results_root: str = "results"
     run_name: Optional[str] = None
-    uncertainty_method: str = "HB"
+    uncertainty_method: str = "OLS"
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
@@ -38,7 +38,7 @@ class RunConfig:
     hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
 
     # Step 3 full propagation settings
-    latent_use_full_propagation: bool = True
+    latent_use_full_propagation: bool = False
     latent_n_sigma_draws: Optional[int] = None
     latent_checkpoint_every_draws: int = 50
 
@@ -198,11 +198,16 @@ def run_pipeline(config: RunConfig) -> Path:
         append_log(log_path, "Starting Step 1: uncertainty_model")
         t0 = perf_counter()
 
+        uncertainty_kwargs = {}
+
+        if config.uncertainty_method.upper() == "HB":
+            uncertainty_kwargs["cfo_lead_mode"] = config.hb_cfo_lead_mode
+
         uncertainty_result = run_uncertainty_model(
             input_csv=extracted_input_csv,
             output_dir=step_dirs["uncertainty_model"],
             method=config.uncertainty_method,
-            cfo_lead_mode=config.hb_cfo_lead_mode,
+            **uncertainty_kwargs,
         )
 
         durations["uncertainty_model"] = perf_counter() - t0
