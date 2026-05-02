@@ -65,6 +65,13 @@ METHOD_COLORS = {
     "Method4_ProbabilisticQuality": "#B279A2",
 }
 
+METHOD_DISPLAY_LABELS = {
+    "Method1_ObservedQuality": "Observed Quality",
+    "Method2_LatentQuality": "Latent Quality",
+    "Method3_ConservativeQuality": "Conservative Quality",
+    "Method4_ProbabilisticQuality": "Probabilistic Quality",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -537,6 +544,91 @@ def build_preview(levels: pd.DataFrame, differences: pd.DataFrame) -> pd.DataFra
     return level_wide.merge(diff_wide, on=["PortfolioStrategy", "FactorModel"], how="left")
 
 
+def max_drawdown(returns: pd.Series) -> float:
+    cumulative = (1.0 + returns).cumprod()
+    peak = cumulative.cummax()
+    drawdown = cumulative / peak - 1.0
+    return float(drawdown.min()) if not drawdown.empty else np.nan
+
+
+def compute_raw_performance_table(
+    monthly_used: pd.DataFrame,
+    rf: pd.Series | None = None,
+) -> pd.DataFrame:
+    """
+    Build table-ready unadjusted performance metrics from the exact monthly
+    strategy returns used in regressions.
+
+    Q5 is long-only, so excess returns subtract RF. LongShort is self-financing,
+    so the strategy return is already an excess return.
+    """
+    data = monthly_used.copy()
+    data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+    data["Return"] = pd.to_numeric(data["Return"], errors="coerce")
+    data = data.dropna(subset=["Date", "Method", "PortfolioStrategy", "Return"])
+
+    if rf is not None:
+        rf_aligned = rf.copy()
+        rf_aligned.index = pd.to_datetime(rf_aligned.index)
+    else:
+        rf_aligned = pd.Series(dtype=float)
+
+    rows = []
+    for (strategy, method), sub in data.groupby(["PortfolioStrategy", "Method"], sort=True):
+        sub = sub.sort_values("Date")
+        returns = sub.set_index("Date")["Return"].astype(float)
+
+        if strategy == "LongShort":
+            excess = returns.copy()
+        elif not rf_aligned.empty:
+            excess = returns.subtract(rf_aligned.reindex(returns.index), fill_value=np.nan)
+        else:
+            excess = returns.copy()
+
+        returns = returns.dropna()
+        excess = excess.dropna()
+
+        if returns.empty:
+            continue
+
+        annualized_return = float(returns.mean() * 12.0)
+        annualized_excess_return = float(excess.mean() * 12.0) if not excess.empty else np.nan
+        volatility_ann = float(returns.std(ddof=1) * np.sqrt(12.0)) if len(returns) > 1 else np.nan
+        excess_volatility_ann = (
+            float(excess.std(ddof=1) * np.sqrt(12.0)) if len(excess) > 1 else np.nan
+        )
+        sharpe_ratio = (
+            annualized_excess_return / excess_volatility_ann
+            if pd.notna(excess_volatility_ann) and excess_volatility_ann > 0
+            else np.nan
+        )
+
+        rows.append(
+            {
+                "PortfolioStrategy": strategy,
+                "Method": method,
+                "MethodLabel": METHOD_DISPLAY_LABELS.get(method, method),
+                "annualized_return": annualized_return,
+                "annualized_excess_return": annualized_excess_return,
+                "volatility_ann": volatility_ann,
+                "excess_volatility_ann": excess_volatility_ann,
+                "sharpe_ratio": sharpe_ratio,
+                "max_drawdown": max_drawdown(returns),
+                "n_obs": int(len(returns)),
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+
+    strategy_order = pd.CategoricalDtype(["Q5", "LongShort"], ordered=True)
+    method_order = pd.CategoricalDtype(METHODS, ordered=True)
+    out["PortfolioStrategy"] = out["PortfolioStrategy"].astype(strategy_order)
+    out["Method"] = out["Method"].astype(method_order)
+    return out.sort_values(["PortfolioStrategy", "Method"]).reset_index(drop=True)
+
+
 def build_cumulative_returns(monthly_used: pd.DataFrame) -> pd.DataFrame:
     cumulative = monthly_used.copy()
     cumulative["Date"] = pd.to_datetime(cumulative["Date"], errors="coerce")
@@ -609,14 +701,20 @@ def save_outputs(
     q5_diffs: pd.DataFrame,
     monthly_used: pd.DataFrame,
     preview: pd.DataFrame,
+    rf: pd.Series | None = None,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    raw_performance = compute_raw_performance_table(monthly_used=monthly_used, rf=rf)
 
     outputs = {
         "table_ls_alpha_levels": output_dir / "table_ls_alpha_levels.csv",
         "table_ls_alpha_differences": output_dir / "table_ls_alpha_differences.csv",
         "table_q5_alpha_levels": output_dir / "table_q5_alpha_levels.csv",
         "table_q5_alpha_differences": output_dir / "table_q5_alpha_differences.csv",
+        "table_raw_performance": output_dir / "table_raw_performance.csv",
+        "table_ls_raw_performance": output_dir / "table_ls_raw_performance.csv",
+        "table_q5_raw_performance": output_dir / "table_q5_raw_performance.csv",
         "monthly_portfolio_returns_used": output_dir / "monthly_portfolio_returns_used.csv",
         "risk_adjusted_table_preview": output_dir / "risk_adjusted_table_preview.csv",
     }
@@ -625,6 +723,13 @@ def save_outputs(
     ls_diffs.to_csv(outputs["table_ls_alpha_differences"], index=False)
     q5_levels.to_csv(outputs["table_q5_alpha_levels"], index=False)
     q5_diffs.to_csv(outputs["table_q5_alpha_differences"], index=False)
+    raw_performance.to_csv(outputs["table_raw_performance"], index=False)
+    raw_performance.loc[
+        raw_performance["PortfolioStrategy"].astype(str) == "LongShort"
+    ].to_csv(outputs["table_ls_raw_performance"], index=False)
+    raw_performance.loc[
+        raw_performance["PortfolioStrategy"].astype(str) == "Q5"
+    ].to_csv(outputs["table_q5_raw_performance"], index=False)
     monthly_used.to_csv(outputs["monthly_portfolio_returns_used"], index=False)
     preview.to_csv(outputs["risk_adjusted_table_preview"], index=False)
 
@@ -754,6 +859,7 @@ def main() -> None:
         q5_diffs=q5_diffs,
         monthly_used=monthly_used,
         preview=preview,
+        rf=rf,
     )
     plot_outputs = save_cumulative_return_plots(monthly_used=monthly_used, output_dir=output_dir)
 
@@ -767,7 +873,13 @@ def main() -> None:
         "risk_adjusted_table_preview": len(preview),
     }
     for key, path in outputs.items():
-        print(f"  {path} ({row_counts[key]} rows)")
+        n_rows = row_counts.get(key)
+        if n_rows is None and path.suffix.lower() == ".csv":
+            n_rows = len(pd.read_csv(path))
+        if n_rows is None:
+            print(f"  {path}")
+        else:
+            print(f"  {path} ({n_rows} rows)")
 
     print("\nCreated plot files")
     for path in plot_outputs.values():
