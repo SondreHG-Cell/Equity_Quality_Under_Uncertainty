@@ -32,6 +32,303 @@ from hb_shared_utils import (
 warnings.filterwarnings("ignore", category=FutureWarning)
 np.random.seed(42)
 
+DEFAULT_ANALYST_CFO_FORECAST_CSV = "modelling/analysis/cfo_forecast_complete_cases_no_gaps_until_2024.csv"
+ANALYST_FORECAST_FILENAME = "cfo_forecast_complete_cases_no_gaps_until_2024.csv"
+
+
+def _find_project_root() -> Path:
+    here = Path(__file__).resolve().parent
+    for p in [here] + list(here.parents):
+        if (p / "data").exists() and (p / "modelling").exists():
+            return p
+    return here.parents[1]
+
+
+def _resolve_optional_path(path_like: str | Path | None) -> Path | None:
+    if path_like is None:
+        return None
+    path = Path(path_like)
+    if path.is_absolute():
+        return path
+    return _find_project_root() / path
+
+
+def resolve_analyst_cfo_forecast_csv(path_like: str | Path | None) -> Path:
+    if path_like is not None:
+        path = _resolve_optional_path(path_like)
+        if path is None or not path.exists():
+            raise FileNotFoundError(f"Analyst CFO forecast CSV not found: {path}")
+        return path
+
+    project_root = _find_project_root()
+    candidates = [
+        project_root / DEFAULT_ANALYST_CFO_FORECAST_CSV,
+        project_root / ANALYST_FORECAST_FILENAME,
+        Path.cwd() / ANALYST_FORECAST_FILENAME,
+        Path(__file__).resolve().parent / ANALYST_FORECAST_FILENAME,
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+
+    searched = "\n".join(str(p) for p in candidates)
+    raise FileNotFoundError(
+        "Could not locate analyst CFO forecast CSV. Searched:\n" + searched
+    )
+
+
+def load_analyst_cfo_forecasts(path: str | Path) -> tuple[pd.DataFrame, dict]:
+    """
+    Load analyst CFO forecasts and keep the latest valid forecast available
+    before the portfolio-formation cutoff for each Ticker x FiscalYear.
+    """
+    path = Path(path)
+    raw = pd.read_csv(path)
+    required = ["Ticker", "FiscalYear", "ForecastDate", "cfo_forecast"]
+    missing = [c for c in required if c not in raw.columns]
+    if missing:
+        raise ValueError(f"Analyst CFO forecast CSV missing required columns: {missing}")
+
+    df = raw.copy()
+    df["Ticker"] = df["Ticker"].astype(str).str.strip()
+    df["FiscalYear"] = pd.to_numeric(df["FiscalYear"], errors="coerce").astype("Int64")
+    df["ForecastDate"] = pd.to_datetime(df["ForecastDate"], errors="coerce")
+    df["cfo_forecast"] = pd.to_numeric(df["cfo_forecast"], errors="coerce")
+
+    if "forecast_window_end" in df.columns:
+        df["ForecastCutoffDate"] = pd.to_datetime(df["forecast_window_end"], errors="coerce")
+    else:
+        cutoff_year = df["FiscalYear"].astype("float").astype("Int64") + 1
+        df["ForecastCutoffDate"] = pd.to_datetime(
+            cutoff_year.astype(str) + "-06-30",
+            errors="coerce",
+        )
+
+    if "forecast_window_start" in df.columns:
+        df["ForecastWindowStart"] = pd.to_datetime(df["forecast_window_start"], errors="coerce")
+    elif "AnnouncementDate" in df.columns:
+        df["ForecastWindowStart"] = pd.to_datetime(df["AnnouncementDate"], errors="coerce")
+    else:
+        df["ForecastWindowStart"] = pd.NaT
+
+    valid = (
+        df["Ticker"].ne("")
+        & df["FiscalYear"].notna()
+        & df["ForecastDate"].notna()
+        & df["ForecastCutoffDate"].notna()
+        & df["cfo_forecast"].notna()
+        & (df["ForecastDate"] <= df["ForecastCutoffDate"])
+        & (df["ForecastWindowStart"].isna() | (df["ForecastDate"] >= df["ForecastWindowStart"]))
+    )
+    if "has_valid_cfo_forecast" in df.columns:
+        valid &= pd.to_numeric(df["has_valid_cfo_forecast"], errors="coerce").fillna(0).astype(int).eq(1)
+
+    df["forecast_timing_valid"] = valid
+    valid_df = df.loc[valid].copy()
+
+    # If multiple forecasts exist, use the latest one observable before the cutoff.
+    valid_df = (
+        valid_df.sort_values(["Ticker", "FiscalYear", "ForecastDate"])
+        .drop_duplicates(["Ticker", "FiscalYear"], keep="last")
+        .reset_index(drop=True)
+    )
+    valid_df["FiscalYear"] = valid_df["FiscalYear"].astype(int)
+
+    diagnostics = {
+        "forecast_csv": str(path),
+        "rows_raw": int(len(raw)),
+        "rows_valid_timing": int(len(valid_df)),
+        "rows_invalid_or_missing": int(len(raw) - len(valid_df)),
+        "unique_firms_valid": int(valid_df["Ticker"].nunique()),
+        "first_fiscal_year_valid": int(valid_df["FiscalYear"].min()) if not valid_df.empty else None,
+        "last_fiscal_year_valid": int(valid_df["FiscalYear"].max()) if not valid_df.empty else None,
+    }
+
+    keep_cols = [
+        "Ticker",
+        "FiscalYear",
+        "ForecastDate",
+        "ForecastCutoffDate",
+        "ForecastWindowStart",
+        "cfo_forecast",
+        "forecast_timing_valid",
+    ]
+    return valid_df[keep_cols].copy(), diagnostics
+
+
+def merge_analyst_cfo_forecasts(
+    data: pd.DataFrame,
+    forecast_csv: str | Path,
+    output_dir: Path,
+) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    forecasts, forecast_diag = load_analyst_cfo_forecasts(forecast_csv)
+    before_rows = len(data)
+
+    merged = data.merge(
+        forecasts,
+        left_on=["Ticker", "Year"],
+        right_on=["Ticker", "FiscalYear"],
+        how="left",
+        validate="many_to_one",
+    ).copy()
+    merged["has_analyst_cfo_forecast"] = merged["cfo_forecast"].notna()
+    merged["CFO_lead1_analyst_scaled"] = merged["cfo_forecast"] / merged["AvgAT"]
+
+    coverage = (
+        merged.groupby("Year", as_index=False)
+        .agg(
+            firm_years_before_merge=("Ticker", "size"),
+            firms_before_merge=("Ticker", "nunique"),
+            firm_years_with_analyst_forecast=("has_analyst_cfo_forecast", "sum"),
+            firms_with_analyst_forecast=(
+                "Ticker",
+                lambda s: s[merged.loc[s.index, "has_analyst_cfo_forecast"]].nunique(),
+            ),
+        )
+        .sort_values("Year")
+        .reset_index(drop=True)
+    )
+
+    missing_after_merge = int(merged["CFO_lead1_analyst_scaled"].isna().sum())
+    diagnostics = {
+        **forecast_diag,
+        "firm_years_before_merging_analyst_forecasts": int(before_rows),
+        "firm_years_after_merging_analyst_forecasts": int(len(merged)),
+        "firms_in_hb_panel_before_merge": int(data["Ticker"].nunique()),
+        "firms_in_analyst_forecast_csv": int(forecasts["Ticker"].nunique()),
+        "firm_years_with_analyst_cfo_forecast_after_merge": int(merged["has_analyst_cfo_forecast"].sum()),
+        "firms_with_analyst_cfo_forecast_after_merge": int(
+            merged.loc[merged["has_analyst_cfo_forecast"], "Ticker"].nunique()
+        ),
+        "first_fiscal_year_in_analyst_csv": int(forecasts["FiscalYear"].min()) if not forecasts.empty else None,
+        "last_fiscal_year_in_analyst_csv": int(forecasts["FiscalYear"].max()) if not forecasts.empty else None,
+        "missing_analyst_cfo_forecasts_after_merge": missing_after_merge,
+        "firm_years_without_analyst_cfo_forecast_after_merge": missing_after_merge,
+    }
+
+    diag_path = output_dir / "analyst_cfo_forecast_merge_diagnostics.json"
+    coverage_path = output_dir / "analyst_cfo_forecast_yearly_coverage.csv"
+    with open(diag_path, "w", encoding="utf-8") as f:
+        json.dump(diagnostics, f, indent=2)
+    coverage.to_csv(coverage_path, index=False)
+
+    diagnostics["diagnostics_json"] = str(diag_path)
+    diagnostics["yearly_coverage_csv"] = str(coverage_path)
+    return merged, diagnostics, coverage
+
+
+def _canonical_cfo_source(source: str | None, cfo_lead_mode: str, use_analyst: bool) -> str:
+    if source is not None:
+        raw = source.lower().replace("-", "_")
+    elif use_analyst:
+        raw = "analyst"
+    else:
+        raw = cfo_lead_mode.lower().replace("-", "_")
+
+    aliases = {
+        "analystcfo": "analyst",
+        "analyst_cfo": "analyst",
+        "best_external": "external",
+        "ar1": "external",
+        "none": "none",
+        "realized": "realized",
+        "realised": "realized",
+        "analyst": "analyst",
+        "hybrid": "hybrid",
+        "external": "external",
+    }
+    if raw not in aliases:
+        raise ValueError(
+            "cfo_t1_source must be one of realized, analyst, hybrid, external, or none."
+        )
+    return aliases[raw]
+
+
+def apply_cfo_t1_source_to_window(
+    window_df: pd.DataFrame,
+    cfo_t1_source: str,
+) -> tuple[pd.DataFrame, dict, bool]:
+    """
+    Set CFO_lead1_pred_scaled for realized/analyst/hybrid modes.
+    Returns (window_df_fixed, diagnostics, include_cfo_lead).
+    """
+    wdf = window_df.copy()
+    diagnostics = {
+        "cfo_t1_source": cfo_t1_source,
+        "window_rows_before_cfo_source_filter": int(len(wdf)),
+        "rows_dropped_missing_analyst_forecast": 0,
+        "rows_dropped_missing_realized_cfo_lead": 0,
+    }
+
+    if cfo_t1_source == "none":
+        diagnostics["window_rows_after_cfo_source_filter"] = int(len(wdf))
+        return wdf, diagnostics, False
+
+    if cfo_t1_source == "realized":
+        wdf["CFO_lead1_pred_scaled"] = wdf["CFO_lead1_scaled"]
+        missing = wdf["CFO_lead1_pred_scaled"].isna()
+        diagnostics["rows_dropped_missing_realized_cfo_lead"] = int(missing.sum())
+        wdf = wdf.loc[~missing].copy()
+
+    elif cfo_t1_source == "analyst":
+        wdf["CFO_lead1_pred_scaled"] = wdf["CFO_lead1_analyst_scaled"]
+        missing = wdf["CFO_lead1_pred_scaled"].isna()
+        diagnostics["rows_dropped_missing_analyst_forecast"] = int(missing.sum())
+        wdf = wdf.loc[~missing].copy()
+
+    elif cfo_t1_source == "hybrid":
+        is_port = wdf["is_portfolio_year"].astype(bool)
+        wdf["CFO_lead1_pred_scaled"] = np.where(
+            is_port,
+            wdf["CFO_lead1_analyst_scaled"],
+            wdf["CFO_lead1_scaled"],
+        )
+        missing_analyst = is_port & wdf["CFO_lead1_analyst_scaled"].isna()
+        missing_realized = (~is_port) & wdf["CFO_lead1_scaled"].isna()
+        diagnostics["rows_dropped_missing_analyst_forecast"] = int(missing_analyst.sum())
+        diagnostics["rows_dropped_missing_realized_cfo_lead"] = int(missing_realized.sum())
+        wdf = wdf.loc[~(missing_analyst | missing_realized)].copy()
+
+    else:
+        raise ValueError(f"Unsupported direct CFO source: {cfo_t1_source}")
+
+    diagnostics["window_rows_after_cfo_source_filter"] = int(len(wdf))
+    return wdf.reset_index(drop=True), diagnostics, True
+
+
+def enforce_training_requirements_after_cfo_filter(
+    window_df: pd.DataFrame,
+    min_train_years: int,
+    min_firm_obs: int = 3,
+) -> tuple[pd.DataFrame | None, dict]:
+    train_df = window_df.loc[~window_df["is_portfolio_year"].astype(bool)].copy()
+    diagnostics = {
+        "training_years_after_cfo_filter": int(train_df["Year"].nunique()),
+        "training_rows_after_cfo_filter_before_firm_filter": int(len(train_df)),
+        "firms_removed_after_cfo_filter_insufficient_training": 0,
+        "rows_removed_after_cfo_filter_insufficient_training": 0,
+    }
+
+    if len(train_df) == 0 or train_df["Year"].nunique() < min_train_years:
+        diagnostics["window_dropped_insufficient_training_history"] = True
+        return None, diagnostics
+
+    firm_obs_counts = train_df.groupby("Ticker").size()
+    firms_ok = firm_obs_counts[firm_obs_counts >= min_firm_obs].index
+    before_firms = window_df["Ticker"].nunique()
+    filtered = window_df.loc[window_df["Ticker"].isin(firms_ok)].copy()
+    after_firms = filtered["Ticker"].nunique()
+    diagnostics["firms_removed_after_cfo_filter_insufficient_training"] = int(before_firms - after_firms)
+    diagnostics["rows_removed_after_cfo_filter_insufficient_training"] = int(len(window_df) - len(filtered))
+
+    if filtered.empty:
+        diagnostics["window_dropped_insufficient_training_history"] = True
+        return None, diagnostics
+
+    diagnostics["window_dropped_insufficient_training_history"] = False
+    return filtered.reset_index(drop=True), diagnostics
+
 
 # =============================================================================
 # Stage 1: external CFO_{t+1} forecast model
@@ -356,6 +653,8 @@ def build_hb_accrual_model_fixed_lead(
         if include_cfo_lead:
             mu_wca = mu_wca + b_lead * cfo_lead_fixed
 
+        mu_wca_expected = pm.Deterministic("mu_wca_expected", mu_wca, dims="obs")
+
         # -------------------------
         # Student-t likelihood
         # -------------------------
@@ -365,7 +664,7 @@ def build_hb_accrual_model_fixed_lead(
         pm.StudentT(
             "WCA_obs",
             nu=nu,
-            mu=mu_wca,
+            mu=mu_wca_expected,
             sigma=sigma_firm[firm_idx],
             observed=y,
             dims="obs",
@@ -599,11 +898,52 @@ def _save_last_ppc_plot(
     return str(out_path)
 
 
+def extract_expected_accrual_summary(
+    trace: az.InferenceData,
+    trace_info: dict,
+    window_df: pd.DataFrame,
+    portfolio_year: int,
+    cfo_t1_source: str,
+) -> pd.DataFrame:
+    if "mu_wca_expected" not in trace.posterior:
+        return pd.DataFrame()
+
+    mu_samples = trace.posterior["mu_wca_expected"].values
+    mu_samples = mu_samples.reshape(-1, mu_samples.shape[-1])
+    wdf = window_df.reset_index(drop=True).copy()
+
+    rows = []
+    for obs_idx, row in wdf.iterrows():
+        draws = mu_samples[:, obs_idx]
+        rows.append(
+            {
+                "Year": int(portfolio_year),
+                "Ticker": row["Ticker"],
+                "firm_idx": int(row["firm_idx"]),
+                "is_portfolio_year": bool(row["is_portfolio_year"]),
+                "cfo_t1_source": cfo_t1_source,
+                "expected_wca_mean": float(np.mean(draws)),
+                "expected_wca_median": float(np.median(draws)),
+                "expected_wca_std": float(np.std(draws)),
+                "expected_wca_q05": float(np.percentile(draws, 5)),
+                "expected_wca_q95": float(np.percentile(draws, 95)),
+                "observed_wca_scaled": float(row["WCA_scaled"]),
+                "cfo_t1_scaled_used": (
+                    float(row["CFO_lead1_pred_scaled"])
+                    if "CFO_lead1_pred_scaled" in row.index and pd.notna(row["CFO_lead1_pred_scaled"])
+                    else np.nan
+                ),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 # =============================================================================
 # Main pipeline function
 # =============================================================================
 
-def run_uncertainty_model_hb(
+def _run_uncertainty_model_hb_single(
     input_csv: str | Path,
     output_dir: str | Path,
     model_name: str = "two_stage_ar1",
@@ -621,7 +961,11 @@ def run_uncertainty_model_hb(
     cfo_draws: int = 1000,
     cfo_tune: int = 1500,
     cfo_prediction_mode: str = "mean",
-    cfo_lead_mode: str = "best_external"
+    cfo_lead_mode: str = "best_external",
+    cfo_t1_source: str | None = None,
+    use_analyst_cfo_forecast: bool = False,
+    analyst_cfo_forecast_csv: str | Path | None = None,
+    specification_label: str | None = None,
 ) -> dict:
     input_csv = Path(input_csv)
     output_dir = Path(output_dir)
@@ -637,8 +981,14 @@ def run_uncertainty_model_hb(
     print(f"PyMC {pm.__version__} | ArviZ {az.__version__} | Model: {model_name}")
     
     cfo_lead_mode = cfo_lead_mode.lower()
-    if cfo_lead_mode not in {"best_external", "none"}:
-        raise ValueError("cfo_lead_mode must be one of: 'best_external', 'none'")
+    cfo_t1_source = _canonical_cfo_source(
+        cfo_t1_source,
+        cfo_lead_mode=cfo_lead_mode,
+        use_analyst=use_analyst_cfo_forecast,
+    )
+    specification_label = specification_label or cfo_t1_source
+    if cfo_t1_source in {"analyst", "hybrid"}:
+        analyst_cfo_forecast_csv = resolve_analyst_cfo_forecast_csv(analyst_cfo_forecast_csv)
 
     data = pd.read_csv(input_csv)
 
@@ -647,24 +997,44 @@ def run_uncertainty_model_hb(
     data = mark_usable(data)
     data, firm_map, sector_map, firm_sector = assign_indices(data)
 
+    analyst_merge_diagnostics = None
+    analyst_yearly_coverage = None
+    if cfo_t1_source in {"analyst", "hybrid"}:
+        data, analyst_merge_diagnostics, analyst_yearly_coverage = merge_analyst_cfo_forecasts(
+            data=data,
+            forecast_csv=analyst_cfo_forecast_csv,
+            output_dir=output_dir,
+        )
+
     print(
         f"Panel: {len(data)} firm-years, {data['Ticker'].nunique()} firms, "
         f"{data['Year'].min()}–{data['Year'].max()}"
     )
     print(f"Usable: {data['usable'].sum()}")
     print(f"CFO_lead1 non-null: {data['CFO_lead1_scaled'].notna().sum()}")
+    print(f"CFO_t+1 source: {cfo_t1_source}")
+    if analyst_merge_diagnostics is not None:
+        print(
+            "Analyst CFO forecasts: "
+            f"{analyst_merge_diagnostics['firms_in_analyst_forecast_csv']} firms, "
+            f"{analyst_merge_diagnostics['first_fiscal_year_in_analyst_csv']}–"
+            f"{analyst_merge_diagnostics['last_fiscal_year_in_analyst_csv']}; "
+            f"missing after merge={analyst_merge_diagnostics['missing_analyst_cfo_forecasts_after_merge']}"
+        )
 
     portfolio_years_to_run = sorted(
         y for y in data["Year"].unique() if year_start <= y <= year_end
     )
 
     all_results = {}
+    expected_accrual_frames = []
+    window_diagnostics = []
     last_model = None
     last_trace = None
     last_window_df = None
 
     for port_year in portfolio_years_to_run:
-        checkpoint_path = checkpoint_dir / f"hb_checkpoint_{port_year}.pkl"
+        checkpoint_path = checkpoint_dir / f"hb_checkpoint_{specification_label}_{port_year}.pkl"
 
         if checkpoint_path.exists():
             print(f"Loading checkpoint for {port_year}")
@@ -698,7 +1068,17 @@ def run_uncertainty_model_hb(
         # --------------------------------------------------
         # Stage 1: CFO_{t+1} handling
         # --------------------------------------------------
-        if cfo_lead_mode == "best_external":
+        year_diag = {
+            "portfolio_year": int(port_year),
+            "cfo_t1_source": cfo_t1_source,
+            "window_rows_initial": int(len(window_df)),
+            "window_firms_initial": int(window_df["Ticker"].nunique()),
+            "window_training_years_initial": int(
+                window_df.loc[~window_df["is_portfolio_year"].astype(bool), "Year"].nunique()
+            ),
+        }
+
+        if cfo_t1_source == "external":
             try:
                 cfo_info, cfo_trace = fit_external_cfo_ar1_model(
                     window_df=window_df,
@@ -731,13 +1111,52 @@ def run_uncertainty_model_hb(
 
             include_cfo_lead = True
 
-        elif cfo_lead_mode == "none":
-            print("Skipping CFO_{t+1}: cfo_lead_mode='none'")
-            window_df_fixed = window_df.copy()
-            include_cfo_lead = False
+            year_diag.update(
+                {
+                    "rows_dropped_missing_analyst_forecast": 0,
+                    "rows_dropped_missing_realized_cfo_lead": 0,
+                    "window_rows_after_cfo_source_filter": int(len(window_df_fixed)),
+                    "n_ar1_observed_transitions": int(cfo_info["n_ar1_obs"]),
+                    "n_ar1_predicted_rows": int(cfo_info["n_predict"]),
+                }
+            )
+
+        elif cfo_t1_source in {"realized", "analyst", "hybrid", "none"}:
+            if cfo_t1_source == "none":
+                print("Skipping CFO_{t+1}: cfo_t1_source='none'")
+            else:
+                print(f"Using CFO_t+1 source: {cfo_t1_source}")
+
+            window_df_fixed, source_diag, include_cfo_lead = apply_cfo_t1_source_to_window(
+                window_df=window_df,
+                cfo_t1_source=cfo_t1_source,
+            )
+            year_diag.update(source_diag)
 
         else:
-            raise ValueError(f"Unknown cfo_lead_mode: {cfo_lead_mode}")
+            raise ValueError(f"Unknown cfo_t1_source: {cfo_t1_source}")
+
+        window_df_fixed, training_diag = enforce_training_requirements_after_cfo_filter(
+            window_df=window_df_fixed,
+            min_train_years=min_train_years,
+            min_firm_obs=3,
+        )
+        year_diag.update(training_diag)
+
+        if window_df_fixed is None:
+            year_diag["skipped"] = True
+            year_diag["skip_reason"] = "insufficient_training_history_after_cfo_source_filter"
+            window_diagnostics.append(year_diag)
+            print("SKIPPED — insufficient training data after CFO_t+1 source filter")
+            continue
+
+        year_diag["skipped"] = False
+        year_diag["window_rows_final"] = int(len(window_df_fixed))
+        year_diag["window_firms_final"] = int(window_df_fixed["Ticker"].nunique())
+        year_diag["portfolio_year_rows_final"] = int(
+            window_df_fixed["is_portfolio_year"].astype(bool).sum()
+        )
+        window_diagnostics.append(year_diag)
 
         # --------------------------------------------------
         # Stage 2: accrual model
@@ -799,6 +1218,16 @@ def run_uncertainty_model_hb(
         year_results = extract_sigma_posteriors(trace, trace_info)
         all_results[port_year] = year_results
 
+        expected_accruals = extract_expected_accrual_summary(
+            trace=trace,
+            trace_info=trace_info,
+            window_df=window_df_fixed,
+            portfolio_year=int(port_year),
+            cfo_t1_source=cfo_t1_source,
+        )
+        if not expected_accruals.empty:
+            expected_accrual_frames.append(expected_accruals)
+
         with open(checkpoint_path, "wb") as f:
             pickle.dump({port_year: year_results}, f)
         print(f"Checkpoint saved: {checkpoint_path.name}")
@@ -844,6 +1273,21 @@ def run_uncertainty_model_hb(
         sigma_full.to_parquet(full_post_path, index=False)
         print(f"Saved full posteriors: {full_post_path}")
         print(f"Shape: {sigma_full.shape} ({sigma_full.shape[1] - 3} draws per firm-year)")
+
+    window_diag_df = pd.DataFrame(window_diagnostics)
+    window_diag_path = output_dir / "hb_window_diagnostics.csv"
+    window_diag_df.to_csv(window_diag_path, index=False)
+    print(f"Saved window diagnostics: {window_diag_path}")
+
+    expected_accruals_path = output_dir / "expected_accruals_summary.csv"
+    if expected_accrual_frames:
+        expected_accruals_df = pd.concat(expected_accrual_frames, ignore_index=True)
+        expected_accruals_df.to_csv(expected_accruals_path, index=False)
+        print(f"Saved expected accrual summary: {expected_accruals_path}")
+    else:
+        expected_accruals_df = pd.DataFrame()
+        expected_accruals_df.to_csv(expected_accruals_path, index=False)
+        print(f"Saved empty expected accrual summary: {expected_accruals_path}")
 
     sigma_merged = data.merge(
         sigma_summary,
@@ -895,9 +1339,28 @@ def run_uncertainty_model_hb(
         "cfo_tune": cfo_tune,
         "cfo_prediction_mode": cfo_prediction_mode,
         "cfo_lead_mode": cfo_lead_mode,
+        "cfo_t1_source": cfo_t1_source,
+        "use_analyst_cfo_forecast": bool(use_analyst_cfo_forecast),
+        "analyst_cfo_forecast_csv": str(analyst_cfo_forecast_csv) if analyst_cfo_forecast_csv is not None else None,
+        "specification_label": specification_label,
+        "analyst_merge_diagnostics": analyst_merge_diagnostics,
+        "rows_dropped_missing_analyst_forecast_across_windows": (
+            int(window_diag_df.get("rows_dropped_missing_analyst_forecast", pd.Series(dtype=float)).sum())
+            if not window_diag_df.empty else 0
+        ),
+        "rows_dropped_missing_realized_cfo_lead_across_windows": (
+            int(window_diag_df.get("rows_dropped_missing_realized_cfo_lead", pd.Series(dtype=float)).sum())
+            if not window_diag_df.empty else 0
+        ),
+        "rows_removed_insufficient_training_after_cfo_filter_across_windows": (
+            int(window_diag_df.get("rows_removed_after_cfo_filter_insufficient_training", pd.Series(dtype=float)).sum())
+            if not window_diag_df.empty else 0
+        ),
         "n_portfolio_years_completed": len(all_results),
         "n_sigma_rows": int(len(sigma_summary)),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
+        "window_diagnostics_csv": str(window_diag_path),
+        "expected_accruals_summary_csv": str(expected_accruals_path),
     }
 
     config_path = output_dir / "uncertainty_model_hb_config.json"
@@ -910,9 +1373,293 @@ def run_uncertainty_model_hb(
         "sigma_summary_csv": str(sigma_summary_path),
         "all_results_pkl": str(all_results_path),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
+        "window_diagnostics_csv": str(window_diag_path),
+        "expected_accruals_summary_csv": str(expected_accruals_path),
+        "analyst_cfo_forecast_yearly_coverage_csv": (
+            analyst_merge_diagnostics.get("yearly_coverage_csv")
+            if analyst_merge_diagnostics is not None else None
+        ),
+        "analyst_cfo_forecast_merge_diagnostics_json": (
+            analyst_merge_diagnostics.get("diagnostics_json")
+            if analyst_merge_diagnostics is not None else None
+        ),
         "config_json": str(config_path),
         "plots_dir": str(plot_dir) if save_plots else None,
         "ppc_plot_png": ppc_plot_path,
+    }
+
+
+def _read_expected_accruals(path: str | Path | None) -> pd.DataFrame:
+    if path is None or not Path(path).exists():
+        return pd.DataFrame()
+    df = pd.read_csv(path)
+    if df.empty:
+        return df
+    df = df[df["is_portfolio_year"].astype(bool)].copy()
+    return df
+
+
+def create_hb_specification_comparison(
+    baseline_result: dict,
+    analyst_result: dict,
+    output_dir: Path,
+) -> dict:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    baseline_fy = pd.read_csv(baseline_result["firm_year_csv"])
+    analyst_fy = pd.read_csv(analyst_result["firm_year_csv"])
+    baseline_exp = _read_expected_accruals(baseline_result.get("expected_accruals_summary_csv"))
+    analyst_exp = _read_expected_accruals(analyst_result.get("expected_accruals_summary_csv"))
+
+    if not baseline_exp.empty:
+        baseline_exp = baseline_exp.rename(columns={"expected_wca_mean": "expected_wca_baseline"})
+    if not analyst_exp.empty:
+        analyst_exp = analyst_exp.rename(columns={"expected_wca_mean": "expected_wca_analyst_cfo"})
+
+    baseline_counts = baseline_fy.groupby("Year").agg(
+        baseline_firms=("Ticker", "nunique"),
+        baseline_firm_years=("Ticker", "size"),
+    )
+    analyst_counts = analyst_fy.groupby("Year").agg(
+        analyst_cfo_firms=("Ticker", "nunique"),
+        analyst_cfo_firm_years=("Ticker", "size"),
+    )
+
+    years = sorted(set(baseline_counts.index).union(set(analyst_counts.index)))
+    yearly = pd.DataFrame(index=years)
+    yearly = yearly.join(baseline_counts, how="left").join(analyst_counts, how="left")
+
+    overlap_rows = []
+    for year in years:
+        b_firms = set(baseline_fy.loc[baseline_fy["Year"] == year, "Ticker"])
+        a_firms = set(analyst_fy.loc[analyst_fy["Year"] == year, "Ticker"])
+        overlap_rows.append({"Year": year, "overlap_firms": len(b_firms & a_firms)})
+    yearly = yearly.reset_index(names="Year").merge(pd.DataFrame(overlap_rows), on="Year", how="left")
+
+    if not baseline_exp.empty:
+        b_mean = baseline_exp.groupby("Year")["expected_wca_baseline"].mean().rename("mean_expected_wca_baseline")
+        yearly = yearly.merge(b_mean.reset_index(), on="Year", how="left")
+    if not analyst_exp.empty:
+        a_mean = analyst_exp.groupby("Year")["expected_wca_analyst_cfo"].mean().rename("mean_expected_wca_analyst_cfo")
+        yearly = yearly.merge(a_mean.reset_index(), on="Year", how="left")
+
+    if not baseline_exp.empty and not analyst_exp.empty:
+        overlap_exp = baseline_exp[["Year", "Ticker", "expected_wca_baseline"]].merge(
+            analyst_exp[["Year", "Ticker", "expected_wca_analyst_cfo"]],
+            on=["Year", "Ticker"],
+            how="inner",
+        )
+        overlap_exp["expected_wca_difference_analyst_minus_baseline"] = (
+            overlap_exp["expected_wca_analyst_cfo"] - overlap_exp["expected_wca_baseline"]
+        )
+        yearly_stats = (
+            overlap_exp.groupby("Year")
+            .agg(
+                expected_wca_overlap_obs=("Ticker", "size"),
+                expected_wca_overlap_corr=(
+                    "expected_wca_baseline",
+                    lambda s: s.corr(
+                        overlap_exp.loc[s.index, "expected_wca_analyst_cfo"]
+                    ),
+                ),
+                mean_expected_wca_difference_analyst_minus_baseline=(
+                    "expected_wca_difference_analyst_minus_baseline",
+                    "mean",
+                ),
+            )
+            .reset_index()
+        )
+        yearly = yearly.merge(yearly_stats, on="Year", how="left")
+    else:
+        overlap_exp = pd.DataFrame()
+
+    yearly_path = output_dir / "hb_baseline_vs_analyst_cfo_by_year.csv"
+    yearly.to_csv(yearly_path, index=False)
+
+    def _distribution_rows(label: str, df: pd.DataFrame, value_col: str, sample: str) -> dict:
+        if df.empty or value_col not in df:
+            return {
+                "model": label,
+                "sample": sample,
+                "n_firm_years": 0,
+                "n_firms": 0,
+            }
+        x = pd.to_numeric(df[value_col], errors="coerce").dropna()
+        return {
+            "model": label,
+            "sample": sample,
+            "n_firm_years": int(len(df)),
+            "n_firms": int(df["Ticker"].nunique()),
+            "mean_expected_wca": float(x.mean()) if len(x) else np.nan,
+            "median_expected_wca": float(x.median()) if len(x) else np.nan,
+            "std_expected_wca": float(x.std(ddof=1)) if len(x) > 1 else np.nan,
+            "p05_expected_wca": float(x.quantile(0.05)) if len(x) else np.nan,
+            "p25_expected_wca": float(x.quantile(0.25)) if len(x) else np.nan,
+            "p75_expected_wca": float(x.quantile(0.75)) if len(x) else np.nan,
+            "p95_expected_wca": float(x.quantile(0.95)) if len(x) else np.nan,
+        }
+
+    overall_rows = [
+        _distribution_rows("baseline", baseline_exp, "expected_wca_baseline", "full_available_sample"),
+        _distribution_rows("analyst_cfo", analyst_exp, "expected_wca_analyst_cfo", "full_available_sample"),
+    ]
+    if not overlap_exp.empty:
+        overall_rows.extend(
+            [
+                _distribution_rows(
+                    "baseline",
+                    overlap_exp.rename(columns={"expected_wca_baseline": "expected_wca"}),
+                    "expected_wca",
+                    "overlapping_firm_year_sample",
+                ),
+                _distribution_rows(
+                    "analyst_cfo",
+                    overlap_exp.rename(columns={"expected_wca_analyst_cfo": "expected_wca"}),
+                    "expected_wca",
+                    "overlapping_firm_year_sample",
+                ),
+                {
+                    "model": "baseline_vs_analyst_cfo",
+                    "sample": "overlapping_firm_year_sample",
+                    "n_firm_years": int(len(overlap_exp)),
+                    "n_firms": int(overlap_exp["Ticker"].nunique()),
+                    "correlation_expected_wca": float(
+                        overlap_exp["expected_wca_baseline"].corr(overlap_exp["expected_wca_analyst_cfo"])
+                    ),
+                    "mean_difference_analyst_minus_baseline": float(
+                        overlap_exp["expected_wca_difference_analyst_minus_baseline"].mean()
+                    ),
+                    "median_difference_analyst_minus_baseline": float(
+                        overlap_exp["expected_wca_difference_analyst_minus_baseline"].median()
+                    ),
+                    "std_difference_analyst_minus_baseline": float(
+                        overlap_exp["expected_wca_difference_analyst_minus_baseline"].std(ddof=1)
+                    ),
+                },
+            ]
+        )
+
+    overall = pd.DataFrame(overall_rows)
+    overall_path = output_dir / "hb_baseline_vs_analyst_cfo_overall_summary.csv"
+    overall.to_csv(overall_path, index=False)
+
+    overlap_path = output_dir / "hb_baseline_vs_analyst_cfo_overlap_firm_years.csv"
+    overlap_exp.to_csv(overlap_path, index=False)
+
+    return {
+        "comparison_by_year_csv": str(yearly_path),
+        "comparison_overall_summary_csv": str(overall_path),
+        "comparison_overlap_firm_years_csv": str(overlap_path),
+    }
+
+
+def run_uncertainty_model_hb(
+    input_csv: str | Path,
+    output_dir: str | Path,
+    model_name: str = "two_stage_ar1",
+    year_start: int = 2009,
+    year_end: int = 2025,
+    n_draws: int = 2000,
+    n_tune: int = 4000,
+    n_chains: int = 4,
+    target_accept: float = 0.95,
+    min_train_years: int = 3,
+    max_train_years: int = 5,
+    random_seed: int = 42,
+    save_full_posteriors: bool = True,
+    save_plots: bool = True,
+    cfo_draws: int = 1000,
+    cfo_tune: int = 1500,
+    cfo_prediction_mode: str = "mean",
+    cfo_lead_mode: str = "best_external",
+    use_analyst_cfo_forecast: bool = False,
+    cfo_t1_source: str | None = None,
+    analyst_cfo_forecast_csv: str | Path | None = None,
+    run_model_specification: str = "baseline",
+) -> dict:
+    spec = run_model_specification.lower().replace("-", "_")
+    if spec == "analystcfo":
+        spec = "analyst_cfo"
+    if spec not in {"baseline", "analyst_cfo", "both"}:
+        raise ValueError("run_model_specification must be 'baseline', 'analyst_cfo', or 'both'.")
+
+    common_kwargs = {
+        "input_csv": input_csv,
+        "model_name": model_name,
+        "year_start": year_start,
+        "year_end": year_end,
+        "n_draws": n_draws,
+        "n_tune": n_tune,
+        "n_chains": n_chains,
+        "target_accept": target_accept,
+        "min_train_years": min_train_years,
+        "max_train_years": max_train_years,
+        "random_seed": random_seed,
+        "save_full_posteriors": save_full_posteriors,
+        "save_plots": save_plots,
+        "cfo_draws": cfo_draws,
+        "cfo_tune": cfo_tune,
+        "cfo_prediction_mode": cfo_prediction_mode,
+        "cfo_lead_mode": cfo_lead_mode,
+        "analyst_cfo_forecast_csv": analyst_cfo_forecast_csv,
+    }
+
+    output_dir = Path(output_dir)
+    if spec == "baseline":
+        source = cfo_t1_source or ("analyst" if use_analyst_cfo_forecast else "realized")
+        return _run_uncertainty_model_hb_single(
+            output_dir=output_dir,
+            cfo_t1_source=source,
+            use_analyst_cfo_forecast=use_analyst_cfo_forecast,
+            specification_label="baseline",
+            **common_kwargs,
+        )
+
+    if spec == "analyst_cfo":
+        source = cfo_t1_source or "analyst"
+        return _run_uncertainty_model_hb_single(
+            output_dir=output_dir,
+            cfo_t1_source=source,
+            use_analyst_cfo_forecast=True,
+            specification_label="analyst_cfo" if source == "analyst" else source,
+            **common_kwargs,
+        )
+
+    baseline_dir = output_dir / "hb_results_baseline"
+    analyst_dir = output_dir / "hb_results_analyst_cfo"
+    comparison_dir = output_dir / "hb_results_comparison"
+
+    baseline_result = _run_uncertainty_model_hb_single(
+        output_dir=baseline_dir,
+        cfo_t1_source="realized",
+        use_analyst_cfo_forecast=False,
+        specification_label="baseline",
+        **common_kwargs,
+    )
+    analyst_result = _run_uncertainty_model_hb_single(
+        output_dir=analyst_dir,
+        cfo_t1_source="analyst",
+        use_analyst_cfo_forecast=True,
+        specification_label="analyst_cfo",
+        **common_kwargs,
+    )
+    comparison_result = create_hb_specification_comparison(
+        baseline_result=baseline_result,
+        analyst_result=analyst_result,
+        output_dir=comparison_dir,
+    )
+
+    return {
+        "output_dir": str(output_dir),
+        "firm_year_csv": analyst_result["firm_year_csv"],
+        "full_posterior_parquet": analyst_result.get("full_posterior_parquet"),
+        "sigma_summary_csv": analyst_result.get("sigma_summary_csv"),
+        "all_results_pkl": analyst_result.get("all_results_pkl"),
+        "config_json": analyst_result.get("config_json"),
+        "selected_specification_for_downstream": "analyst_cfo",
+        "baseline": baseline_result,
+        "analyst_cfo": analyst_result,
+        "comparison": comparison_result,
     }
 
 
@@ -944,6 +1691,37 @@ def parse_args() -> argparse.Namespace:
         choices=["best_external", "none"],
         help="How to handle CFO_{t+1} in the accrual model.",
     )
+    parser.add_argument(
+        "--cfo_t1_source",
+        type=str,
+        default=None,
+        choices=["realized", "realised", "analyst", "analyst_cfo", "hybrid", "external", "none"],
+        help=(
+            "Source for CFO_{t+1}: realized, analyst, hybrid, external, or none. "
+            "Hybrid uses realized CFO_{t+1} in training rows and analyst forecasts in portfolio-year rows."
+        ),
+    )
+    parser.add_argument(
+        "--use_analyst_cfo_forecast",
+        action="store_true",
+        help="Convenience switch equivalent to --cfo_t1_source analyst unless cfo_t1_source is set.",
+    )
+    parser.add_argument(
+        "--analyst_cfo_forecast_csv",
+        type=str,
+        default=None,
+        help=(
+            "Path to cfo_forecast_complete_cases_no_gaps_until_2024.csv. "
+            "Defaults to modelling/analysis/cfo_forecast_complete_cases_no_gaps_until_2024.csv."
+        ),
+    )
+    parser.add_argument(
+        "--run_model_specification",
+        type=str,
+        default="baseline",
+        choices=["baseline", "analyst_cfo", "analystcfo", "both"],
+        help="Run baseline only, analyst-CFO only, or both with comparison tables.",
+    )
     parser.add_argument("--no_full_posteriors", action="store_true")
     parser.add_argument("--no_plots", action="store_true")
     return parser.parse_args()
@@ -971,4 +1749,8 @@ if __name__ == "__main__":
         cfo_tune=args.cfo_tune,
         cfo_prediction_mode=args.cfo_prediction_mode,
         cfo_lead_mode=args.cfo_lead_mode,
+        cfo_t1_source=args.cfo_t1_source,
+        use_analyst_cfo_forecast=args.use_analyst_cfo_forecast,
+        analyst_cfo_forecast_csv=args.analyst_cfo_forecast_csv,
+        run_model_specification=args.run_model_specification,
     )

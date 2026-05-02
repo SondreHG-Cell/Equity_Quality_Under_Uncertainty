@@ -36,7 +36,11 @@ class RunConfig:
     save_intermediate: bool = True
     
     # HB CFO handling
-    hb_cfo_lead_mode: str = "none"   # "best_external" or "none"
+    hb_cfo_lead_mode: str = "none"   # legacy: "best_external" or "none"
+    hb_cfo_t1_source: Optional[str] = None  # realized, analyst, hybrid, external, or none
+    hb_use_analyst_cfo_forecast: bool = False
+    hb_analyst_cfo_forecast_csv: Optional[str] = None
+    hb_run_model_specification: str = "baseline"  # baseline, analyst_cfo, or both
 
     # OLS uncertainty settings aligned with the HB rolling-window design.
     ols_min_obs_per_year: int = 20
@@ -209,7 +213,15 @@ def run_pipeline(config: RunConfig) -> Path:
         uncertainty_kwargs = {}
 
         if config.uncertainty_method.upper() == "HB":
-            uncertainty_kwargs["cfo_lead_mode"] = config.hb_cfo_lead_mode
+            uncertainty_kwargs.update(
+                {
+                    "cfo_lead_mode": config.hb_cfo_lead_mode,
+                    "cfo_t1_source": config.hb_cfo_t1_source,
+                    "use_analyst_cfo_forecast": config.hb_use_analyst_cfo_forecast,
+                    "analyst_cfo_forecast_csv": config.hb_analyst_cfo_forecast_csv,
+                    "run_model_specification": config.hb_run_model_specification,
+                }
+            )
         elif config.uncertainty_method.upper() == "OLS":
             uncertainty_kwargs.update(
                 {
@@ -407,7 +419,36 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=RunConfig.hb_cfo_lead_mode,
         choices=["best_external", "none"],
-        help="How HB Step 2 should handle CFO_{t+1}.",
+        help="Legacy HB CFO_{t+1} handling when --hb_cfo_t1_source is not set.",
+    )
+    parser.add_argument(
+        "--hb_cfo_t1_source",
+        type=str,
+        default=RunConfig.hb_cfo_t1_source,
+        choices=["realized", "realised", "analyst", "analyst_cfo", "hybrid", "external", "none"],
+        help=(
+            "HB CFO_{t+1} source. 'hybrid' uses realized CFO_{t+1} for training rows "
+            "and analyst forecasts for portfolio-year rows."
+        ),
+    )
+    parser.add_argument(
+        "--hb_use_analyst_cfo_forecast",
+        action="store_true",
+        default=RunConfig.hb_use_analyst_cfo_forecast,
+        help="Use analyst CFO forecasts for HB CFO_{t+1}.",
+    )
+    parser.add_argument(
+        "--hb_analyst_cfo_forecast_csv",
+        type=str,
+        default=RunConfig.hb_analyst_cfo_forecast_csv,
+        help="Path to cfo_forecast_complete_cases_no_gaps_until_2024.csv.",
+    )
+    parser.add_argument(
+        "--hb_run_model_specification",
+        type=str,
+        default=RunConfig.hb_run_model_specification,
+        choices=["baseline", "analyst_cfo", "analystcfo", "both"],
+        help="Run baseline HB, analyst-CFO HB, or both with comparison outputs.",
     )
     parser.add_argument(
         "--ols_min_obs_per_year",
@@ -493,6 +534,10 @@ def main() -> None:
         n_portfolios=args.n_portfolios,
         nw_lags=args.nw_lags,
         hb_cfo_lead_mode=args.hb_cfo_lead_mode,
+        hb_cfo_t1_source=args.hb_cfo_t1_source,
+        hb_use_analyst_cfo_forecast=args.hb_use_analyst_cfo_forecast,
+        hb_analyst_cfo_forecast_csv=args.hb_analyst_cfo_forecast_csv,
+        hb_run_model_specification=args.hb_run_model_specification,
         ols_min_obs_per_year=args.ols_min_obs_per_year,
         ols_rolling_window=args.ols_rolling_window,
         ols_min_periods_start=args.ols_min_periods_start,

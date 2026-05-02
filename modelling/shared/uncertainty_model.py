@@ -77,11 +77,39 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--no_full_posteriors", action="store_true")
     parser.add_argument("--no_plots", action="store_true")
+    parser.add_argument("--cfo_draws", type=int, default=1000)
+    parser.add_argument("--cfo_tune", type=int, default=1500)
+    parser.add_argument("--cfo_prediction_mode", type=str, default="mean", choices=["mean", "draw"])
     parser.add_argument(
         "--cfo_lead_mode",
         type=str,
         default="best_external",
         choices=["best_external", "none"],
+    )
+    parser.add_argument(
+        "--cfo_t1_source",
+        type=str,
+        default=None,
+        choices=["realized", "realised", "analyst", "analyst_cfo", "hybrid", "external", "none"],
+        help="Source for CFO_{t+1} in HB: realized, analyst, hybrid, external, or none.",
+    )
+    parser.add_argument(
+        "--use_analyst_cfo_forecast",
+        action="store_true",
+        help="Use analyst CFO forecasts for CFO_{t+1}.",
+    )
+    parser.add_argument(
+        "--analyst_cfo_forecast_csv",
+        type=str,
+        default=None,
+        help="Path to analyst CFO forecast CSV.",
+    )
+    parser.add_argument(
+        "--run_model_specification",
+        type=str,
+        default="baseline",
+        choices=["baseline", "analyst_cfo", "analystcfo", "both"],
+        help="Run baseline, analyst-CFO, or both HB specifications.",
     )
 
     # OLS-specific passthrough arguments
@@ -124,6 +152,10 @@ if __name__ == "__main__":
             "cfo_tune": args.cfo_tune,
             "cfo_prediction_mode": args.cfo_prediction_mode,
             "cfo_lead_mode": args.cfo_lead_mode,
+            "cfo_t1_source": args.cfo_t1_source,
+            "use_analyst_cfo_forecast": args.use_analyst_cfo_forecast,
+            "analyst_cfo_forecast_csv": args.analyst_cfo_forecast_csv,
+            "run_model_specification": args.run_model_specification,
         }
 
     elif args.method.upper() == "OLS":
