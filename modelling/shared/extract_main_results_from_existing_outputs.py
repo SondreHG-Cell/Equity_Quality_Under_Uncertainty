@@ -8,6 +8,16 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+METHOD_DISPLAY_LABELS = {
+    "Method1_Raw": "Observed Quality",
+    "Method2_PostMean": "Latent Quality",
+    "Method3_ProbQ5": "Probabilistic Quality",
+    "Method1_ObservedQuality": "Observed Quality",
+    "Method2_LatentQuality": "Latent Quality",
+    "Method3_ConservativeQuality": "Conservative Quality",
+    "Method4_ProbabilisticQuality": "Probabilistic Quality",
+}
+
 
 # -----------------------------------------------------------------------------
 # Project / run paths
@@ -254,7 +264,11 @@ cumulative_ls_returns = cumulative_ls_returns.reset_index().rename(columns={"ind
 
 fig, ax = plt.subplots(figsize=(10, 6))
 for method in ["Method1_Raw", "Method2_PostMean", "Method3_ProbQ5"]:
-    ax.plot(pd.to_datetime(cumulative_ls_returns["Date"]), cumulative_ls_returns[method], label=method)
+    ax.plot(
+        pd.to_datetime(cumulative_ls_returns["Date"]),
+        cumulative_ls_returns[method],
+        label=METHOD_DISPLAY_LABELS.get(method, method),
+    )
 ax.set_title("Cumulative long-short returns (Q5-Q1)")
 ax.set_xlabel("Date")
 ax.set_ylabel("Cumulative return")

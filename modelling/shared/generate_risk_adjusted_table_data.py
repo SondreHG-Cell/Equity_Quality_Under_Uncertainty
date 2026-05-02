@@ -70,7 +70,7 @@ METHOD_COLORS = {
     "Method1_ObservedQuality": "#4C78A8",
     "Method2_LatentQuality": "#F2A65A",
     "Method3_ConservativeQuality": "#72B7B2",
-    "Method4_ProbabilisticQuality": "#B279A2",
+    "Method4_ProbabilisticQuality": "#D95F5F",
 }
 
 METHOD_DISPLAY_LABELS = {
@@ -799,7 +799,7 @@ def save_cumulative_return_plots(monthly_used: pd.DataFrame, output_dir: Path) -
             ax.plot(
                 method_sub["Date"],
                 method_sub["CumulativeReturn"],
-                label=method,
+                label=METHOD_DISPLAY_LABELS.get(method, method),
                 color=METHOD_COLORS.get(method),
                 linewidth=2.1,
             )
