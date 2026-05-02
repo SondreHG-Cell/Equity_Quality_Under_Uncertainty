@@ -36,7 +36,7 @@ STANDARD_METHOD_SPECS = {
         "signal_col": "theta_post_mean",
         "method_label": "Latent Quality",
     },
-    "Method4_ConservativeQuality": {
+    "Method3_ConservativeQuality": {
         "signal_col": "theta_conservative",
         "method_label": "Conservative Quality",
     },
@@ -44,21 +44,21 @@ STANDARD_METHOD_SPECS = {
 
 
 HYBRID_METHODS = [
-    "Method3_ProbabilisticQuality",
+    "Method4_ProbabilisticQuality",
 ]
 
 
 METHOD_LABELS = {
     **{name: spec["method_label"] for name, spec in STANDARD_METHOD_SPECS.items()},
-    "Method3_ProbabilisticQuality": "Probabilistic Quality",
+    "Method4_ProbabilisticQuality": "Probabilistic Quality",
 }
 
 
 ALL_METHODS = [
     "Method1_ObservedQuality",
     "Method2_LatentQuality",
-    "Method3_ProbabilisticQuality",
-    "Method4_ConservativeQuality",
+    "Method3_ConservativeQuality",
+    "Method4_ProbabilisticQuality",
 ]
 
 
@@ -230,7 +230,7 @@ def form_portfolios_for_method(
     return out[common_keep_cols()].copy()
 
 
-def form_method3_probabilistic_quality(
+def form_method4_probabilistic_quality(
     df: pd.DataFrame,
     n_portfolios: int = 5,
     allow_overlap: bool = False,
@@ -238,7 +238,7 @@ def form_method3_probabilistic_quality(
     """
     Hybrid method:
 
-    Method3_ProbabilisticQuality
+    Method4_ProbabilisticQuality
     - Q5 is selected by highest p_q5
     - Q1 is selected by highest p_q1
     - Q2-Q4 are not defined
@@ -259,7 +259,7 @@ def form_method3_probabilistic_quality(
     required = ["Ticker", "FormationYear", "p_q5", "p_q1"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        raise ValueError(f"Input file is missing required columns for Method3: {missing}")
+        raise ValueError(f"Input file is missing required columns for Method4: {missing}")
 
     pieces = []
 
@@ -295,14 +295,14 @@ def form_method3_probabilistic_quality(
             .copy()
         )
 
-        q5["Method"] = "Method3_ProbabilisticQuality"
-        q5["MethodLabel"] = METHOD_LABELS["Method3_ProbabilisticQuality"]
+        q5["Method"] = "Method4_ProbabilisticQuality"
+        q5["MethodLabel"] = METHOD_LABELS["Method4_ProbabilisticQuality"]
         q5["SignalUsed"] = "p_q5"
         q5["PortfolioNum"] = 5
         q5["Portfolio"] = "Q5"
 
-        q1["Method"] = "Method3_ProbabilisticQuality"
-        q1["MethodLabel"] = METHOD_LABELS["Method3_ProbabilisticQuality"]
+        q1["Method"] = "Method4_ProbabilisticQuality"
+        q1["MethodLabel"] = METHOD_LABELS["Method4_ProbabilisticQuality"]
         q1["SignalUsed"] = "p_q1"
         q1["PortfolioNum"] = 1
         q1["Portfolio"] = "Q1"
@@ -325,10 +325,10 @@ def build_long_output(
     """
     Builds one long file with all sorting methods.
 
-    Method1, Method2 and Method4:
+    Method1, Method2 and Method3:
     - standard full-quintile sorts using one signal
 
-    Method3:
+    Method4:
     - hybrid long-short method
     - Q5 from highest p_q5
     - Q1 from highest p_q1
@@ -346,19 +346,19 @@ def build_long_output(
         )
         method_frames.append(method_df)
 
-    method3_df = form_method3_probabilistic_quality(
+    method3_spec = STANDARD_METHOD_SPECS["Method3_ConservativeQuality"]
+    method3_df = form_portfolios_for_method(
         df=df,
+        method_name="Method3_ConservativeQuality",
+        signal_col=method3_spec["signal_col"],
         n_portfolios=n_portfolios,
-        allow_overlap=False,
     )
     method_frames.append(method3_df)
 
-    method4_spec = STANDARD_METHOD_SPECS["Method4_ConservativeQuality"]
-    method4_df = form_portfolios_for_method(
+    method4_df = form_method4_probabilistic_quality(
         df=df,
-        method_name="Method4_ConservativeQuality",
-        signal_col=method4_spec["signal_col"],
         n_portfolios=n_portfolios,
+        allow_overlap=False,
     )
     method_frames.append(method4_df)
 
@@ -521,12 +521,12 @@ def run_portfolio_formation(
     print("\nPortfolio methods in long output:")
     print(long_df["Method"].value_counts(dropna=False))
 
-    print("\nMethod3 probabilistic portfolio counts:")
-    m3 = long_df[long_df["Method"] == "Method3_ProbabilisticQuality"]
-    if m3.empty:
-        print("Method3_ProbabilisticQuality: no rows")
+    print("\nMethod4 probabilistic portfolio counts:")
+    m4 = long_df[long_df["Method"] == "Method4_ProbabilisticQuality"]
+    if m4.empty:
+        print("Method4_ProbabilisticQuality: no rows")
     else:
-        print(m3["Portfolio"].value_counts(dropna=False))
+        print(m4["Portfolio"].value_counts(dropna=False))
 
     return {
         "output_dir": str(output_dir),

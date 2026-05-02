@@ -3,8 +3,8 @@
 # Produces one latent-quality output used by four portfolio methods:
 #   Method1 — observed quality: theta_obs
 #   Method2 — latent quality: standard EB posterior mean
-#   Method3 — probabilistic quality: P(Q5) for Q5 and P(Q1) for Q1
-#   Method4 — conservative quality: theta_obs - gamma * (1 - lambda_i)
+#   Method3 — conservative quality: theta_obs - gamma * (1 - lambda_i)
+#   Method4 — probabilistic quality: P(Q5) for Q5 and P(Q1) for Q1
 #
 # Key design decisions:
 #   - The old multi-variant split is replaced by method-level signals
@@ -1017,8 +1017,8 @@ def _run_combined_latent_output(
         "method_signals": {
             "Method1_ObservedQuality": "theta_obs",
             "Method2_LatentQuality": "theta_post_mean",
-            "Method3_ProbabilisticQuality": "p_q5_for_Q5_and_p_q1_for_Q1",
-            "Method4_ConservativeQuality": CONSERVATIVE_SIGNAL_COL,
+            "Method3_ConservativeQuality": CONSERVATIVE_SIGNAL_COL,
+            "Method4_ProbabilisticQuality": "p_q5_for_Q5_and_p_q1_for_Q1",
         },
         "conservative_quality_formula": "theta_obs - gamma * (1 - lambda_i)",
         "gamma": float(gamma),
@@ -1089,8 +1089,8 @@ def run_latent_prof_model(
     Produces one firm-year file with the signals used by four portfolio methods:
         Method1_ObservedQuality       — theta_obs
         Method2_LatentQuality         — standard EB posterior mean
-        Method3_ProbabilisticQuality  — P(Q5) for Q5 and P(Q1) for Q1
-        Method4_ConservativeQuality   — theta_obs - gamma*(1-lambda_i)
+        Method3_ConservativeQuality   — theta_obs - gamma*(1-lambda_i)
+        Method4_ProbabilisticQuality  — P(Q5) for Q5 and P(Q1) for Q1
 
     P(Q5) and P(Q1) use theta_obs as mean and EB posterior sd as spread.
     gamma controls the conservative quality penalty size.
@@ -1183,7 +1183,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gamma", type=float, default=DEFAULT_GAMMA,
         help=(
-            "Penalty size for Method4_ConservativeQuality. "
+            "Penalty size for Method3_ConservativeQuality. "
             "theta_adj = theta_obs - gamma*(1-lambda_i). "
             "Sensitivity analysis recommended. Default: 0.1"
         ),

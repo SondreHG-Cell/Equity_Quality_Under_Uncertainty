@@ -112,6 +112,11 @@ def choose_assignment_source(
             return requested_source
         raise FileNotFoundError(f"Requested assignments CSV does not exist: {requested_source}")
 
+    direct = run_dir / "portfolio_formation" / "portfolio_assignments_long.csv"
+    searched.append(direct)
+    if direct.exists():
+        return direct
+
     variant = infer_variant_name(portfolio_eval_dir)
     if variant is not None:
         candidate = run_dir / "portfolio_formation" / variant / "portfolio_assignments_long.csv"

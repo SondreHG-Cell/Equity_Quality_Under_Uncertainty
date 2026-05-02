@@ -381,11 +381,13 @@ def assert_exchange_shapes(
     q5_diffs: pd.DataFrame,
 ) -> None:
     n_exchanges = len(EXCHANGES)
+    n_level_rows = n_exchanges * len(vw.INTERNAL_MODELS) * len(vw.METHODS)
+    n_difference_rows = n_exchanges * len(vw.INTERNAL_MODELS) * (len(vw.METHODS) - 1)
     expected = {
-        "Long-short alpha levels": (ls_levels, 15 * n_exchanges),
-        "Long-short alpha differences": (ls_diffs, 10 * n_exchanges),
-        "Q5 alpha levels": (q5_levels, 15 * n_exchanges),
-        "Q5 alpha differences": (q5_diffs, 10 * n_exchanges),
+        "Long-short alpha levels": (ls_levels, n_level_rows),
+        "Long-short alpha differences": (ls_diffs, n_difference_rows),
+        "Q5 alpha levels": (q5_levels, n_level_rows),
+        "Q5 alpha differences": (q5_diffs, n_difference_rows),
     }
     bad = [f"{name}: expected {n}, got {len(df)}" for name, (df, n) in expected.items() if len(df) != n]
     if bad:

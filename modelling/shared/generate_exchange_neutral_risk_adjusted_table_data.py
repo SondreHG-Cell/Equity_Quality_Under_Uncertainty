@@ -24,10 +24,16 @@ import generate_capped_weight_risk_adjusted_table_data as ucits
 import generate_exchange_split_risk_adjusted_table_data as exchange_split
 import generate_risk_adjusted_table_data as vw
 from helper_functions import build_monthly_portfolio_returns, find_project_root, load_factor_data, resolve_path
-from portfolio_formation import METHOD_SPECS, assign_quantile_portfolios, clean_input
+from portfolio_formation import (
+    METHOD_LABELS,
+    STANDARD_METHOD_SPECS,
+    assign_quantile_portfolios,
+    clean_input,
+)
 
 
 N_PORTFOLIOS = 5
+PROBABILISTIC_METHOD = "Method4_ProbabilisticQuality"
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,6 +122,11 @@ def choose_latent_source(
             return requested_source
         raise FileNotFoundError(f"Requested latent source does not exist: {requested_source}")
 
+    direct = run_dir / "latent_prof_model" / "latent_prof_firm_year.csv"
+    searched.append(direct)
+    if direct.exists():
+        return direct
+
     variant = infer_variant_name(portfolio_eval_dir)
     if variant is not None:
         candidate = run_dir / "latent_prof_model" / variant / "latent_prof_firm_year.csv"
@@ -173,9 +184,12 @@ def choose_run_config_path(
 def validate_signal_source(df: pd.DataFrame, source_path: Path) -> None:
     required = []
     for method in vw.METHODS:
-        if method not in METHOD_SPECS:
-            raise ValueError(f"{method} is missing from portfolio_formation.METHOD_SPECS.")
-        required.append(METHOD_SPECS[method]["signal_col"])
+        if method == PROBABILISTIC_METHOD:
+            required.extend(["p_q5", "p_q1"])
+            continue
+        if method not in STANDARD_METHOD_SPECS:
+            raise ValueError(f"{method} is missing from portfolio_formation.STANDARD_METHOD_SPECS.")
+        required.append(STANDARD_METHOD_SPECS[method]["signal_col"])
 
     missing = [c for c in required if c not in df.columns]
     if missing:
@@ -230,8 +244,8 @@ def form_exchange_neutral_assignments(
     method_frames = []
     skipped_groups = []
 
-    for method in vw.METHODS:
-        signal_col = METHOD_SPECS[method]["signal_col"]
+    for method in [m for m in vw.METHODS if m != PROBABILISTIC_METHOD]:
+        signal_col = STANDARD_METHOD_SPECS[method]["signal_col"]
         pieces = []
 
         for (year, exchange), sub in firm_year.groupby(["FormationYear", "Exchange"], sort=True):
@@ -241,6 +255,7 @@ def form_exchange_neutral_assignments(
                 n_portfolios=n_portfolios,
             )
             assigned["Method"] = method
+            assigned["MethodLabel"] = METHOD_LABELS[method]
             assigned["SignalUsed"] = signal_col
             pieces.append(assigned)
 
@@ -259,6 +274,56 @@ def form_exchange_neutral_assignments(
 
         method_frames.append(pd.concat(pieces, ignore_index=True))
 
+    probabilistic_pieces = []
+    for (year, exchange), sub in firm_year.groupby(["FormationYear", "Exchange"], sort=True):
+        n_valid_q5 = int(sub["p_q5"].notna().sum())
+        n_valid_q1 = int(sub["p_q1"].notna().sum())
+        n_q = max(int(len(sub) / n_portfolios), 1)
+
+        if n_valid_q5 < n_portfolios or n_valid_q1 < n_portfolios:
+            skipped_groups.append(
+                {
+                    "FormationYear": year,
+                    "Exchange": exchange,
+                    "Method": PROBABILISTIC_METHOD,
+                    "SignalUsed": "p_q5/p_q1",
+                    "n_valid": min(n_valid_q5, n_valid_q1),
+                    "reason": f"fewer than {n_portfolios} valid firms",
+                }
+            )
+            continue
+
+        q5 = (
+            sub.dropna(subset=["p_q5"])
+            .sort_values(["p_q5", "Ticker"], ascending=[False, True])
+            .head(n_q)
+            .copy()
+        )
+        q1 = (
+            sub.loc[~sub["Ticker"].isin(q5["Ticker"])]
+            .dropna(subset=["p_q1"])
+            .sort_values(["p_q1", "Ticker"], ascending=[False, True])
+            .head(n_q)
+            .copy()
+        )
+
+        q5["Method"] = PROBABILISTIC_METHOD
+        q5["MethodLabel"] = METHOD_LABELS[PROBABILISTIC_METHOD]
+        q5["SignalUsed"] = "p_q5"
+        q5["PortfolioNum"] = 5
+        q5["Portfolio"] = "Q5"
+
+        q1["Method"] = PROBABILISTIC_METHOD
+        q1["MethodLabel"] = METHOD_LABELS[PROBABILISTIC_METHOD]
+        q1["SignalUsed"] = "p_q1"
+        q1["PortfolioNum"] = 1
+        q1["Portfolio"] = "Q1"
+
+        probabilistic_pieces.extend([q1, q5])
+
+    if probabilistic_pieces:
+        method_frames.append(pd.concat(probabilistic_pieces, ignore_index=True))
+
     long_df = pd.concat(method_frames, ignore_index=True)
 
     keep_cols = [
@@ -268,11 +333,13 @@ def form_exchange_neutral_assignments(
         "Exchange",
         "theta_obs",
         "theta_post_mean",
+        "theta_conservative",
         "p_q5",
-        "p_median",
+        "p_q1",
         "sigma_acc",
         "MarketCap",
         "Method",
+        "MethodLabel",
         "SignalUsed",
         "PortfolioNum",
         "Portfolio",
@@ -303,7 +370,9 @@ def build_exchange_neutral_summary(assignments: pd.DataFrame) -> pd.DataFrame:
             total_marketcap=("MarketCap", "sum"),
             avg_theta_obs=("theta_obs", "mean"),
             avg_theta_post_mean=("theta_post_mean", "mean"),
+            avg_theta_conservative=("theta_conservative", "mean"),
             avg_p_q5=("p_q5", "mean"),
+            avg_p_q1=("p_q1", "mean"),
             avg_sigma_acc=("sigma_acc", "mean"),
         )
         .sort_values(["FormationYear", "Exchange", "Method", "PortfolioNum"])
