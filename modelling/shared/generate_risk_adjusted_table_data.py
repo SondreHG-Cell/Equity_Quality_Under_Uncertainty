@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -44,6 +45,13 @@ MODEL_LABELS = {
     "FF5_MOM": "FF5+MOM",
 }
 INTERNAL_MODELS = list(MODEL_LABELS.keys())
+FACTOR_COLUMNS = {
+    "CAPM": ["MKT"],
+    "FF3": ["MKT", "SMB", "HML"],
+    "Carhart": ["MKT", "SMB", "HML", "MOM"],
+    "FF5": ["MKT", "SMB", "HML", "RMW", "CMA"],
+    "FF5_MOM": ["MKT", "SMB", "HML", "RMW", "CMA", "MOM"],
+}
 
 COMPARISON_LABELS = {
     "Method2_LatentQuality vs Method1_ObservedQuality": (
@@ -518,6 +526,128 @@ def run_alpha_difference_tests(
     )
 
 
+def run_grs_tests(
+    strategy_returns: dict[str, pd.Series],
+    factors: pd.DataFrame,
+    rf: pd.Series,
+    strategy_label: str,
+    methods: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Classic Gibbons-Ross-Shanken joint alpha test across sorting methods.
+
+    Pass the regular RF series for long-only portfolios. For self-financing
+    long-short spreads, pass a zero RF series so the spread is not adjusted twice.
+    """
+    if methods is None:
+        methods = METHODS
+
+    missing_methods = [method for method in methods if method not in strategy_returns]
+    if missing_methods:
+        raise ValueError(f"Missing strategy returns for GRS methods: {missing_methods}")
+
+    test_rows = []
+    alpha_rows = []
+    rf = rf.copy()
+    rf.index = pd.to_datetime(rf.index)
+
+    for internal_model in INTERNAL_MODELS:
+        factor_cols = FACTOR_COLUMNS[internal_model]
+        missing_factors = [col for col in factor_cols if col not in factors.columns]
+        if missing_factors:
+            raise ValueError(f"Factors missing columns for {internal_model}: {missing_factors}")
+
+        factor_frame = factors[factor_cols].copy()
+        factor_frame.index = pd.to_datetime(factor_frame.index)
+        factor_frame = factor_frame.apply(pd.to_numeric, errors="coerce").dropna()
+
+        excess_by_method = {}
+        for method in methods:
+            returns = strategy_returns[method].copy()
+            returns.index = pd.to_datetime(returns.index)
+            returns = pd.to_numeric(returns, errors="coerce")
+            excess_by_method[method] = returns.subtract(rf.reindex(returns.index), fill_value=np.nan)
+
+        excess = pd.concat(excess_by_method, axis=1).dropna()
+        idx = factor_frame.index.intersection(excess.index).sort_values()
+        factor_frame = factor_frame.loc[idx]
+        excess = excess.loc[idx, methods]
+
+        T = int(len(idx))
+        N = int(len(methods))
+        K = int(len(factor_cols))
+        if N < 2:
+            raise ValueError("The GRS test requires at least two test assets.")
+        if T <= N + K:
+            raise ValueError(
+                f"Not enough observations for the GRS test: T={T}, N={N}, K={K}."
+            )
+
+        F = factor_frame.to_numpy(dtype=float)
+        Y = excess.to_numpy(dtype=float)
+        X = np.column_stack([np.ones(T), F])
+        beta = np.linalg.lstsq(X, Y, rcond=None)[0]
+        alpha_vec = beta[0, :]
+        residuals = Y - X @ beta
+
+        sigma = residuals.T @ residuals / T
+        mu_f = F.mean(axis=0)
+        f_demeaned = F - mu_f
+        omega = f_demeaned.T @ f_demeaned / T
+
+        sigma_inv = np.linalg.pinv(sigma)
+        omega_inv = np.linalg.pinv(omega)
+        kappa = 1.0 + float(mu_f @ omega_inv @ mu_f)
+
+        grs_f = (
+            (T / N)
+            * ((T - N - K) / (T - K - 1))
+            * float(alpha_vec @ sigma_inv @ alpha_vec)
+            / kappa
+        )
+        p_value = 1.0 - stats.f.cdf(grs_f, dfn=N, dfd=T - N - K)
+
+        factor_label = MODEL_LABELS[internal_model]
+        test_rows.append(
+            {
+                "PortfolioStrategy": strategy_label,
+                "FactorModel": factor_label,
+                "grs_f_stat": float(grs_f),
+                "p_value": float(p_value),
+                "reject_h0_5pct": bool(p_value < 0.05),
+                "n_obs": T,
+                "n_test_assets": N,
+                "n_factors": K,
+                "test_assets": ";".join(methods),
+            }
+        )
+        for method, alpha_monthly in zip(methods, alpha_vec):
+            alpha_rows.append(
+                {
+                    "PortfolioStrategy": strategy_label,
+                    "FactorModel": factor_label,
+                    "Method": method,
+                    "MethodLabel": METHOD_DISPLAY_LABELS.get(method, method),
+                    "alpha_annualized": float(alpha_monthly * 12.0),
+                    "alpha_monthly": float(alpha_monthly),
+                }
+            )
+
+    grs_tests = pd.DataFrame(test_rows)
+    grs_alpha_components = pd.DataFrame(alpha_rows)
+
+    factor_order = pd.CategoricalDtype(list(MODEL_LABELS.values()), ordered=True)
+    grs_tests["FactorModel"] = grs_tests["FactorModel"].astype(factor_order)
+    grs_alpha_components["FactorModel"] = grs_alpha_components["FactorModel"].astype(factor_order)
+    method_order = pd.CategoricalDtype(methods, ordered=True)
+    grs_alpha_components["Method"] = grs_alpha_components["Method"].astype(method_order)
+
+    return (
+        grs_tests.sort_values(["PortfolioStrategy", "FactorModel"]).reset_index(drop=True),
+        grs_alpha_components.sort_values(["PortfolioStrategy", "FactorModel", "Method"]).reset_index(drop=True),
+    )
+
+
 def build_preview(levels: pd.DataFrame, differences: pd.DataFrame) -> pd.DataFrame:
     level_wide = levels.pivot_table(
         index=["PortfolioStrategy", "FactorModel"],
@@ -702,6 +832,8 @@ def save_outputs(
     monthly_used: pd.DataFrame,
     preview: pd.DataFrame,
     rf: pd.Series | None = None,
+    grs_tests: pd.DataFrame | None = None,
+    grs_alpha_components: pd.DataFrame | None = None,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -718,6 +850,16 @@ def save_outputs(
         "monthly_portfolio_returns_used": output_dir / "monthly_portfolio_returns_used.csv",
         "risk_adjusted_table_preview": output_dir / "risk_adjusted_table_preview.csv",
     }
+    if grs_tests is not None:
+        outputs.update(
+            {
+                "table_grs_tests": output_dir / "table_grs_tests.csv",
+                "table_ls_grs_tests": output_dir / "table_ls_grs_tests.csv",
+                "table_q5_grs_tests": output_dir / "table_q5_grs_tests.csv",
+            }
+        )
+    if grs_alpha_components is not None:
+        outputs["table_grs_alpha_components"] = output_dir / "table_grs_alpha_components.csv"
 
     ls_levels.to_csv(outputs["table_ls_alpha_levels"], index=False)
     ls_diffs.to_csv(outputs["table_ls_alpha_differences"], index=False)
@@ -732,6 +874,16 @@ def save_outputs(
     ].to_csv(outputs["table_q5_raw_performance"], index=False)
     monthly_used.to_csv(outputs["monthly_portfolio_returns_used"], index=False)
     preview.to_csv(outputs["risk_adjusted_table_preview"], index=False)
+    if grs_tests is not None:
+        grs_tests.to_csv(outputs["table_grs_tests"], index=False)
+        grs_tests.loc[
+            grs_tests["PortfolioStrategy"].astype(str) == "LongShort"
+        ].to_csv(outputs["table_ls_grs_tests"], index=False)
+        grs_tests.loc[
+            grs_tests["PortfolioStrategy"].astype(str) == "Q5"
+        ].to_csv(outputs["table_q5_grs_tests"], index=False)
+    if grs_alpha_components is not None:
+        grs_alpha_components.to_csv(outputs["table_grs_alpha_components"], index=False)
 
     return outputs
 
@@ -845,6 +997,20 @@ def main() -> None:
         strategy_label="Q5",
         nw_lags=args.nw_lags,
     )
+    ls_grs, ls_grs_alpha = run_grs_tests(
+        strategy_returns=ls_returns,
+        factors=factors,
+        rf=zero_rf,
+        strategy_label="LongShort",
+    )
+    q5_grs, q5_grs_alpha = run_grs_tests(
+        strategy_returns=q5_returns,
+        factors=factors,
+        rf=rf,
+        strategy_label="Q5",
+    )
+    grs_tests = pd.concat([ls_grs, q5_grs], ignore_index=True)
+    grs_alpha_components = pd.concat([ls_grs_alpha, q5_grs_alpha], ignore_index=True)
 
     assert_expected_shapes(ls_levels, ls_diffs, q5_levels, q5_diffs)
     preview = build_preview(
@@ -860,6 +1026,8 @@ def main() -> None:
         monthly_used=monthly_used,
         preview=preview,
         rf=rf,
+        grs_tests=grs_tests,
+        grs_alpha_components=grs_alpha_components,
     )
     plot_outputs = save_cumulative_return_plots(monthly_used=monthly_used, output_dir=output_dir)
 
@@ -869,6 +1037,10 @@ def main() -> None:
         "table_ls_alpha_differences": len(ls_diffs),
         "table_q5_alpha_levels": len(q5_levels),
         "table_q5_alpha_differences": len(q5_diffs),
+        "table_grs_tests": len(grs_tests),
+        "table_ls_grs_tests": len(ls_grs),
+        "table_q5_grs_tests": len(q5_grs),
+        "table_grs_alpha_components": len(grs_alpha_components),
         "monthly_portfolio_returns_used": len(monthly_used),
         "risk_adjusted_table_preview": len(preview),
     }
