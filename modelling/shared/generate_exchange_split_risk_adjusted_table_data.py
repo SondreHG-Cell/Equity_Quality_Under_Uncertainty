@@ -481,7 +481,7 @@ def save_cumulative_return_plots(monthly_used: pd.DataFrame, output_dir: Path) -
                 ax.plot(
                     method_sub["Date"],
                     method_sub["CumulativeReturn"],
-                    label=method,
+                    label=vw.METHOD_DISPLAY_LABELS.get(method, method),
                     color=vw.METHOD_COLORS.get(method),
                     linewidth=2.1,
                 )
