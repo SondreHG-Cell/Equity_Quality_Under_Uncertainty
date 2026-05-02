@@ -608,6 +608,20 @@ def main() -> None:
         strategy_label="Q5",
         nw_lags=args.nw_lags,
     )
+    ls_grs, ls_grs_alpha = vw.run_grs_tests(
+        strategy_returns=ls_returns,
+        factors=factors,
+        rf=zero_rf,
+        strategy_label="LongShort",
+    )
+    q5_grs, q5_grs_alpha = vw.run_grs_tests(
+        strategy_returns=q5_returns,
+        factors=factors,
+        rf=rf,
+        strategy_label="Q5",
+    )
+    grs_tests = pd.concat([ls_grs, q5_grs], ignore_index=True)
+    grs_alpha_components = pd.concat([ls_grs_alpha, q5_grs_alpha], ignore_index=True)
 
     vw.assert_expected_shapes(ls_levels, ls_diffs, q5_levels, q5_diffs)
     preview = vw.build_preview(
@@ -624,6 +638,8 @@ def main() -> None:
         monthly_used=monthly_used,
         preview=preview,
         rf=rf,
+        grs_tests=grs_tests,
+        grs_alpha_components=grs_alpha_components,
     )
     audit_outputs = save_ucits_audit_outputs(
         output_dir=output_dir,
@@ -646,6 +662,10 @@ def main() -> None:
         "table_ls_alpha_differences": len(ls_diffs),
         "table_q5_alpha_levels": len(q5_levels),
         "table_q5_alpha_differences": len(q5_diffs),
+        "table_grs_tests": len(grs_tests),
+        "table_ls_grs_tests": len(ls_grs),
+        "table_q5_grs_tests": len(q5_grs),
+        "table_grs_alpha_components": len(grs_alpha_components),
         "monthly_portfolio_returns_used": len(monthly_used),
         "risk_adjusted_table_preview": len(preview),
     }
