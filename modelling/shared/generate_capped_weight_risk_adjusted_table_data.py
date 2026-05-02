@@ -623,6 +623,7 @@ def main() -> None:
         q5_diffs=q5_diffs,
         monthly_used=monthly_used,
         preview=preview,
+        rf=rf,
     )
     audit_outputs = save_ucits_audit_outputs(
         output_dir=output_dir,
@@ -649,7 +650,13 @@ def main() -> None:
         "risk_adjusted_table_preview": len(preview),
     }
     for key, path in outputs.items():
-        print(f"  {path} ({row_counts[key]} rows)")
+        n_rows = row_counts.get(key)
+        if n_rows is None and path.suffix.lower() == ".csv":
+            n_rows = len(pd.read_csv(path))
+        if n_rows is None:
+            print(f"  {path}")
+        else:
+            print(f"  {path} ({n_rows} rows)")
 
     print("\nCreated audit CSV files")
     audit_counts = {
