@@ -183,6 +183,16 @@ def load_market_cap_monthly(path: str | Path) -> pd.DataFrame:
 # Portfolio return construction
 # ============================================================
 
+def assign_june_formation_year(dates: pd.Series) -> pd.Series:
+    """
+    Map monthly return dates to the portfolio formed at the prior June end.
+
+    FormationYear Y is held from July of Y through June of Y+1.
+    """
+    parsed = pd.to_datetime(dates, errors="coerce")
+    return parsed.dt.year.where(parsed.dt.month >= 7, parsed.dt.year - 1)
+
+
 def build_monthly_portfolio_returns(
     assignments: pd.DataFrame,
     stock_prices_csv: str | Path,
@@ -197,7 +207,8 @@ def build_monthly_portfolio_returns(
     - monthly lagged market cap weights from market_cap_csv
 
     Assumption:
-    - FormationYear Y applies to all months Jan-Dec in calendar year Y
+    - portfolios are formed at June end
+    - FormationYear Y applies to July Y through June Y+1
     """
     required_cols = ["Ticker", "FormationYear", "Method", "PortfolioNum", "Portfolio"]
     missing = [c for c in required_cols if c not in assignments.columns]
@@ -223,7 +234,7 @@ def build_monthly_portfolio_returns(
         validate="1:1",
     ).copy()
 
-    stock_panel["FormationYear"] = stock_panel["Date"].dt.year
+    stock_panel["FormationYear"] = assign_june_formation_year(stock_panel["Date"])
 
     monthly_holdings = stock_panel.merge(
         assignments,
@@ -309,7 +320,8 @@ def build_probabilistic_targets(
     - y_true = 1 if realised annual return is in cross-sectional Q5 within FormationYear
 
     Assumption:
-    - realised holding-period return is Jan-Dec within FormationYear
+    - realised holding-period return is July Y through June Y+1
+      for FormationYear Y
     """
     if "p_q5" not in assignments.columns:
         raise ValueError("Assignments must contain 'p_q5' for probabilistic evaluation.")
@@ -317,14 +329,17 @@ def build_probabilistic_targets(
     returns_df = load_prices_and_build_returns(stock_prices_csv)
 
     monthly = returns_df.copy()
-    monthly["FormationYear"] = monthly["Date"].dt.year
+    monthly["FormationYear"] = assign_june_formation_year(monthly["Date"])
 
-    # Jan-Dec buy-and-hold return within FormationYear
+    # July-June buy-and-hold return within FormationYear.
     annual_realised = (
-        monthly.groupby(["Ticker", "FormationYear"])["Return"]
-        .apply(lambda x: (1 + x).prod() - 1)
-        .reset_index(name="RealisedReturn")
+        monthly.groupby(["Ticker", "FormationYear"], as_index=False)
+        .agg(
+            RealisedReturn=("Return", lambda x: (1 + x).prod() - 1),
+            n_months=("Return", "count"),
+        )
     )
+    annual_realised = annual_realised.loc[annual_realised["n_months"] == 12].copy()
 
     base = assignments[
         ["Ticker", "FormationYear", "p_q5"]
