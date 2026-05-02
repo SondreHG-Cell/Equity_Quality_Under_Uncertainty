@@ -28,6 +28,7 @@ from helper_functions import find_project_root, load_factor_data, resolve_path
 
 LONG_PORTFOLIO = "Q4"
 SHORT_PORTFOLIO = "Q2"
+METHODS = [m for m in vw.METHODS if m != "Method4_ProbabilisticQuality"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,7 +82,7 @@ def resolve_cli_path(path: Path | None, project_root: Path) -> Path | None:
 
 def validate_methods_and_portfolios(monthly_returns: pd.DataFrame) -> None:
     available_methods = sorted(monthly_returns["Method"].dropna().unique())
-    missing_methods = [m for m in vw.METHODS if m not in available_methods]
+    missing_methods = [m for m in METHODS if m not in available_methods]
     if missing_methods:
         raise ValueError(
             "Monthly portfolio returns are missing required sorting methods.\n"
@@ -90,7 +91,7 @@ def validate_methods_and_portfolios(monthly_returns: pd.DataFrame) -> None:
         )
 
     missing = []
-    for method in vw.METHODS:
+    for method in METHODS:
         portfolios = set(monthly_returns.loc[monthly_returns["Method"] == method, "Portfolio"])
         for portfolio in [SHORT_PORTFOLIO, LONG_PORTFOLIO]:
             if portfolio not in portfolios:
@@ -111,7 +112,7 @@ def build_strategy_returns(
     ls_returns: dict[str, pd.Series] = {}
     used_rows = []
 
-    for method in vw.METHODS:
+    for method in METHODS:
         sub = monthly_returns.loc[monthly_returns["Method"] == method]
         q2 = (
             sub.loc[sub["Portfolio"] == SHORT_PORTFOLIO, ["Date", "Return"]]
@@ -186,7 +187,7 @@ def save_cumulative_return_plots(monthly_used: pd.DataFrame, output_dir: Path) -
         fig, ax = plt.subplots(figsize=(10.5, 5.8))
         ax.axhline(0.0, color="#2f3b4a", linewidth=0.9, linestyle="--", alpha=0.75)
 
-        for method in vw.METHODS:
+        for method in METHODS:
             method_sub = sub.loc[sub["Method"] == method].sort_values("Date")
             if method_sub.empty:
                 continue
@@ -318,6 +319,7 @@ def main() -> None:
         rf=zero_rf,
         strategy_label="LongShort",
         nw_lags=args.nw_lags,
+        methods=METHODS,
     )
     q4_levels = vw.run_level_regressions(
         strategy_returns=q4_returns,
@@ -325,6 +327,7 @@ def main() -> None:
         rf=rf,
         strategy_label="Q4",
         nw_lags=args.nw_lags,
+        methods=METHODS,
     )
     ls_diffs = vw.run_alpha_difference_tests(
         strategy_returns=ls_returns,
@@ -332,6 +335,7 @@ def main() -> None:
         rf=zero_rf,
         strategy_label="LongShort",
         nw_lags=args.nw_lags,
+        methods=METHODS,
     )
     q4_diffs = vw.run_alpha_difference_tests(
         strategy_returns=q4_returns,
@@ -339,9 +343,10 @@ def main() -> None:
         rf=rf,
         strategy_label="Q4",
         nw_lags=args.nw_lags,
+        methods=METHODS,
     )
 
-    vw.assert_expected_shapes(ls_levels, ls_diffs, q4_levels, q4_diffs)
+    vw.assert_expected_shapes(ls_levels, ls_diffs, q4_levels, q4_diffs, methods=METHODS)
     preview = vw.build_preview(
         levels=pd.concat([ls_levels, q4_levels], ignore_index=True),
         differences=pd.concat([ls_diffs, q4_diffs], ignore_index=True),

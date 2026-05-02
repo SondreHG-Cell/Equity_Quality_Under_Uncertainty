@@ -29,7 +29,12 @@ from helper_functions import find_project_root, load_factor_data, parse_month_se
 from step5_evaluation import alpha_differences, risk_adjusted_performance
 
 
-METHODS = ["Method1_Raw", "Method2_PostMean", "Method3_ProbQ5"]
+METHODS = [
+    "Method1_ObservedQuality",
+    "Method2_LatentQuality",
+    "Method3_ConservativeQuality",
+    "Method4_ProbabilisticQuality",
+]
 
 MODEL_LABELS = {
     "CAPM": "CAPM",
@@ -41,15 +46,23 @@ MODEL_LABELS = {
 INTERNAL_MODELS = list(MODEL_LABELS.keys())
 
 COMPARISON_LABELS = {
-    "Method2_PostMean vs Method1_Raw": "Method2_PostMean minus Method1_Raw",
-    "Method3_ProbQ5 vs Method1_Raw": "Method3_ProbQ5 minus Method1_Raw",
+    "Method2_LatentQuality vs Method1_ObservedQuality": (
+        "Method2_LatentQuality minus Method1_ObservedQuality"
+    ),
+    "Method3_ConservativeQuality vs Method1_ObservedQuality": (
+        "Method3_ConservativeQuality minus Method1_ObservedQuality"
+    ),
+    "Method4_ProbabilisticQuality vs Method1_ObservedQuality": (
+        "Method4_ProbabilisticQuality minus Method1_ObservedQuality"
+    ),
 }
 COMPARISONS = list(COMPARISON_LABELS.values())
 
 METHOD_COLORS = {
-    "Method1_Raw": "#4C78A8",
-    "Method2_PostMean": "#F2A65A",
-    "Method3_ProbQ5": "#72B7B2",
+    "Method1_ObservedQuality": "#4C78A8",
+    "Method2_LatentQuality": "#F2A65A",
+    "Method3_ConservativeQuality": "#72B7B2",
+    "Method4_ProbabilisticQuality": "#B279A2",
 }
 
 
@@ -313,9 +326,15 @@ def load_monthly_portfolio_returns(path: Path, source_type: str) -> pd.DataFrame
     return load_returns_from_wide_csv(path)
 
 
-def validate_methods_and_portfolios(monthly_returns: pd.DataFrame) -> None:
+def validate_methods_and_portfolios(
+    monthly_returns: pd.DataFrame,
+    methods: list[str] | None = None,
+) -> None:
+    if methods is None:
+        methods = METHODS
+
     available_methods = sorted(monthly_returns["Method"].dropna().unique())
-    missing_methods = [m for m in METHODS if m not in available_methods]
+    missing_methods = [m for m in methods if m not in available_methods]
     if missing_methods:
         raise ValueError(
             "Monthly portfolio returns are missing required sorting methods.\n"
@@ -324,7 +343,7 @@ def validate_methods_and_portfolios(monthly_returns: pd.DataFrame) -> None:
         )
 
     missing = []
-    for method in METHODS:
+    for method in methods:
         portfolios = set(monthly_returns.loc[monthly_returns["Method"] == method, "Portfolio"])
         for portfolio in ["Q1", "Q5"]:
             if portfolio not in portfolios:
@@ -336,14 +355,18 @@ def validate_methods_and_portfolios(monthly_returns: pd.DataFrame) -> None:
 def build_strategy_returns(
     monthly_returns: pd.DataFrame,
     factors: pd.DataFrame,
+    methods: list[str] | None = None,
 ) -> tuple[dict[str, pd.Series], dict[str, pd.Series], pd.DataFrame]:
-    validate_methods_and_portfolios(monthly_returns)
+    if methods is None:
+        methods = METHODS
+
+    validate_methods_and_portfolios(monthly_returns, methods=methods)
 
     q5_returns: dict[str, pd.Series] = {}
     ls_returns: dict[str, pd.Series] = {}
     used_rows = []
 
-    for method in METHODS:
+    for method in methods:
         sub = monthly_returns.loc[monthly_returns["Method"] == method]
         q1 = (
             sub.loc[sub["Portfolio"] == "Q1", ["Date", "Return"]]
@@ -400,9 +423,13 @@ def run_level_regressions(
     rf: pd.Series,
     strategy_label: str,
     nw_lags: int,
+    methods: list[str] | None = None,
 ) -> pd.DataFrame:
+    if methods is None:
+        methods = METHODS
+
     rows = []
-    for method in METHODS:
+    for method in methods:
         for internal_model in INTERNAL_MODELS:
             res = risk_adjusted_performance(
                 portfolio_returns=strategy_returns[method],
@@ -436,16 +463,21 @@ def run_alpha_difference_tests(
     rf: pd.Series,
     strategy_label: str,
     nw_lags: int,
+    methods: list[str] | None = None,
+    base_method: str = "Method1_ObservedQuality",
 ) -> pd.DataFrame:
+    if methods is None:
+        methods = METHODS
+
     frames = []
     for internal_model in INTERNAL_MODELS:
         res = alpha_differences(
-            ls_returns={method: strategy_returns[method] for method in METHODS},
+            ls_returns={method: strategy_returns[method] for method in methods},
             factors=factors,
             rf=rf,
             model=internal_model,
             lags=nw_lags,
-            base_method="Method1_Raw",
+            base_method=base_method,
         )
         res["Comparison"] = res["Comparison"].replace(COMPARISON_LABELS)
         res = res.loc[res["Comparison"].isin(COMPARISONS)].copy()
@@ -604,12 +636,18 @@ def assert_expected_shapes(
     ls_diffs: pd.DataFrame,
     q5_levels: pd.DataFrame,
     q5_diffs: pd.DataFrame,
+    methods: list[str] | None = None,
 ) -> None:
+    if methods is None:
+        methods = METHODS
+
+    n_level_rows = len(INTERNAL_MODELS) * len(methods)
+    n_difference_rows = len(INTERNAL_MODELS) * (len(methods) - 1)
     expected = {
-        "Long-short alpha levels": (ls_levels, 15),
-        "Long-short alpha differences": (ls_diffs, 10),
-        "Q5 alpha levels": (q5_levels, 15),
-        "Q5 alpha differences": (q5_diffs, 10),
+        "Long-short alpha levels": (ls_levels, n_level_rows),
+        "Long-short alpha differences": (ls_diffs, n_difference_rows),
+        "Q5 alpha levels": (q5_levels, n_level_rows),
+        "Q5 alpha differences": (q5_diffs, n_difference_rows),
     }
     bad = [f"{name}: expected {n}, got {len(df)}" for name, (df, n) in expected.items() if len(df) != n]
     if bad:

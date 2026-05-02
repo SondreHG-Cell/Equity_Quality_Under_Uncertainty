@@ -340,11 +340,13 @@ def assert_size_split_shapes(
     q5_levels: pd.DataFrame,
     q5_diffs: pd.DataFrame,
 ) -> None:
+    n_level_rows = len(SIZE_GROUPS) * len(vw.INTERNAL_MODELS) * len(vw.METHODS)
+    n_difference_rows = len(SIZE_GROUPS) * len(vw.INTERNAL_MODELS) * (len(vw.METHODS) - 1)
     expected = {
-        "Long-short alpha levels": (ls_levels, 30),
-        "Long-short alpha differences": (ls_diffs, 20),
-        "Q5 alpha levels": (q5_levels, 30),
-        "Q5 alpha differences": (q5_diffs, 20),
+        "Long-short alpha levels": (ls_levels, n_level_rows),
+        "Long-short alpha differences": (ls_diffs, n_difference_rows),
+        "Q5 alpha levels": (q5_levels, n_level_rows),
+        "Q5 alpha differences": (q5_diffs, n_difference_rows),
     }
     bad = [f"{name}: expected {n}, got {len(df)}" for name, (df, n) in expected.items() if len(df) != n]
     if bad:
