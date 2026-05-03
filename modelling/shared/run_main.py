@@ -37,10 +37,10 @@ class RunConfig:
     
     # HB CFO handling
     hb_cfo_lead_mode: str = "none"   # legacy: "best_external" or "none"
-    hb_cfo_t1_source: Optional[str] = None  # realized, analyst, hybrid, external, or none
+    hb_cfo_t1_source: Optional[str] = None  # none, analyst, hybrid, external, or explicit realized diagnostic
     hb_use_analyst_cfo_forecast: bool = False
     hb_analyst_cfo_forecast_csv: Optional[str] = None
-    hb_run_model_specification: str = "baseline"  # baseline, analyst_cfo, or both
+    hb_run_model_specification: str = "baseline"  # baseline, analyst_cfo hybrid, or matched-sample both
 
     # OLS uncertainty settings aligned with the HB rolling-window design.
     ols_min_obs_per_year: int = 20
@@ -419,7 +419,10 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=RunConfig.hb_cfo_lead_mode,
         choices=["best_external", "none"],
-        help="Legacy HB CFO_{t+1} handling when --hb_cfo_t1_source is not set.",
+        help=(
+            "Legacy HB CFO_{t+1} handling when --hb_cfo_t1_source is not set. "
+            "Default 'none' matches the no-look-ahead main specification."
+        ),
     )
     parser.add_argument(
         "--hb_cfo_t1_source",
@@ -427,15 +430,16 @@ def parse_args() -> argparse.Namespace:
         default=RunConfig.hb_cfo_t1_source,
         choices=["realized", "realised", "analyst", "analyst_cfo", "hybrid", "external", "none"],
         help=(
-            "HB CFO_{t+1} source. 'hybrid' uses realized CFO_{t+1} for training rows "
-            "and analyst forecasts for portfolio-year rows."
+            "HB CFO_{t+1} source. Use 'realized' only for diagnostics/backtests because "
+            "it can create look-ahead bias in portfolio-year rows. 'hybrid' uses realized "
+            "CFO_{t+1} for training rows and analyst forecasts for portfolio-year rows."
         ),
     )
     parser.add_argument(
         "--hb_use_analyst_cfo_forecast",
         action="store_true",
         default=RunConfig.hb_use_analyst_cfo_forecast,
-        help="Use analyst CFO forecasts for HB CFO_{t+1}.",
+        help="Use analyst CFO forecasts for HB CFO_{t+1}; defaults to hybrid source handling.",
     )
     parser.add_argument(
         "--hb_analyst_cfo_forecast_csv",
@@ -448,7 +452,11 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=RunConfig.hb_run_model_specification,
         choices=["baseline", "analyst_cfo", "analystcfo", "both"],
-        help="Run baseline HB, analyst-CFO HB, or both with comparison outputs.",
+        help=(
+            "Run baseline HB, analyst-CFO HB, or both with comparison outputs. "
+            "'analyst_cfo' defaults to hybrid CFO handling; 'both' compares analyst-CFO "
+            "hybrid with a no-lead HB model matched to the analyst-CFO estimation sample."
+        ),
     )
     parser.add_argument(
         "--ols_min_obs_per_year",

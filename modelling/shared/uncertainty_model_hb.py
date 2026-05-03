@@ -1,8 +1,7 @@
 # uncertainty_model_hb.py
-# Two-stage version:
-# 1) fit CFO_{t+1} AR(1) model outside the accrual model, using training rows only
-# 2) predict CFO_{t+1} for portfolio-year rows
-# 3) fit accrual HB model with predicted CFO_{t+1} fixed in the WCA equation
+# Default version drops CFO_{t+1} from the accrual equation to avoid look-ahead.
+# Optional variants can use analyst CFO forecasts or an explicit external CFO
+# forecast model where those inputs are available before portfolio formation.
 
 from __future__ import annotations
 
@@ -328,6 +327,104 @@ def enforce_training_requirements_after_cfo_filter(
 
     diagnostics["window_dropped_insufficient_training_history"] = False
     return filtered.reset_index(drop=True), diagnostics
+
+
+def keep_firms_with_portfolio_year_rows(
+    window_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict]:
+    is_port = window_df["is_portfolio_year"].astype(bool)
+    portfolio_firms = set(window_df.loc[is_port, "Ticker"])
+    before_rows = int(len(window_df))
+    before_firms = int(window_df["Ticker"].nunique())
+
+    if not portfolio_firms:
+        return window_df.iloc[0:0].copy(), {
+            "portfolio_firms_after_cfo_source_filter": 0,
+            "rows_removed_no_portfolio_year_row_after_cfo_filter": before_rows,
+            "firms_removed_no_portfolio_year_row_after_cfo_filter": before_firms,
+        }
+
+    filtered = window_df.loc[window_df["Ticker"].isin(portfolio_firms)].copy()
+    return filtered.reset_index(drop=True), {
+        "portfolio_firms_after_cfo_source_filter": int(len(portfolio_firms)),
+        "rows_removed_no_portfolio_year_row_after_cfo_filter": int(before_rows - len(filtered)),
+        "firms_removed_no_portfolio_year_row_after_cfo_filter": int(before_firms - filtered["Ticker"].nunique()),
+    }
+
+
+def _window_row_filter_from_csv(path: str | Path | None) -> dict[int, set[tuple[str, int]]] | None:
+    if path is None or not Path(path).exists():
+        return None
+    df = pd.read_csv(path)
+    if df.empty:
+        return {}
+    required = {"portfolio_year", "Ticker", "Year"}
+    missing = required.difference(df.columns)
+    if missing:
+        raise ValueError(f"Window-row filter file missing required columns: {sorted(missing)}")
+
+    filters: dict[int, set[tuple[str, int]]] = {}
+    clean = df.dropna(subset=["portfolio_year", "Ticker", "Year"]).copy()
+    clean["portfolio_year"] = clean["portfolio_year"].astype(int)
+    clean["Year"] = clean["Year"].astype(int)
+    for portfolio_year, group in clean.groupby("portfolio_year"):
+        filters[int(portfolio_year)] = set(zip(group["Ticker"].astype(str), group["Year"].astype(int)))
+    return filters
+
+
+def _filter_window_to_reference_rows(
+    window_df: pd.DataFrame,
+    portfolio_year: int,
+    row_filter_by_year: dict[int, set[tuple[str, int]]],
+) -> tuple[pd.DataFrame, dict]:
+    allowed = row_filter_by_year.get(int(portfolio_year), set())
+    before_rows = int(len(window_df))
+    before_firms = int(window_df["Ticker"].nunique())
+
+    diagnostics = {
+        "reference_sample_rows_available": int(len(allowed)),
+        "window_rows_before_reference_sample_filter": before_rows,
+        "window_firms_before_reference_sample_filter": before_firms,
+        "window_rows_after_reference_sample_filter": 0,
+        "window_firms_after_reference_sample_filter": 0,
+        "rows_removed_by_reference_sample_filter": before_rows,
+        "firms_removed_by_reference_sample_filter": before_firms,
+    }
+
+    if not allowed:
+        return window_df.iloc[0:0].copy(), diagnostics
+
+    keys = list(zip(window_df["Ticker"].astype(str), window_df["Year"].astype(int)))
+    mask = pd.Series([key in allowed for key in keys], index=window_df.index)
+    filtered = window_df.loc[mask].copy()
+
+    diagnostics["window_rows_after_reference_sample_filter"] = int(len(filtered))
+    diagnostics["window_firms_after_reference_sample_filter"] = int(filtered["Ticker"].nunique())
+    diagnostics["rows_removed_by_reference_sample_filter"] = int(before_rows - len(filtered))
+    diagnostics["firms_removed_by_reference_sample_filter"] = int(before_firms - filtered["Ticker"].nunique())
+    return filtered.reset_index(drop=True), diagnostics
+
+
+def _window_rows_used_frame(
+    window_df: pd.DataFrame,
+    portfolio_year: int,
+    cfo_t1_source: str,
+    specification_label: str,
+    reference_sample_label: str | None,
+) -> pd.DataFrame:
+    cols = ["Ticker", "Year", "is_portfolio_year"]
+    optional_cols = [
+        "CFO_lead1_scaled",
+        "CFO_lead1_analyst_scaled",
+        "CFO_lead1_pred_scaled",
+    ]
+    out_cols = cols + [c for c in optional_cols if c in window_df.columns]
+    out = window_df[out_cols].copy()
+    out.insert(0, "portfolio_year", int(portfolio_year))
+    out.insert(1, "specification_label", specification_label)
+    out.insert(2, "cfo_t1_source", cfo_t1_source)
+    out.insert(3, "reference_sample_label", reference_sample_label)
+    return out
 
 
 # =============================================================================
@@ -961,11 +1058,13 @@ def _run_uncertainty_model_hb_single(
     cfo_draws: int = 1000,
     cfo_tune: int = 1500,
     cfo_prediction_mode: str = "mean",
-    cfo_lead_mode: str = "best_external",
+    cfo_lead_mode: str = "none",
     cfo_t1_source: str | None = None,
     use_analyst_cfo_forecast: bool = False,
     analyst_cfo_forecast_csv: str | Path | None = None,
     specification_label: str | None = None,
+    window_row_filter_by_year: dict[int, set[tuple[str, int]]] | str | Path | None = None,
+    window_row_filter_label: str | None = None,
 ) -> dict:
     input_csv = Path(input_csv)
     output_dir = Path(output_dir)
@@ -987,6 +1086,8 @@ def _run_uncertainty_model_hb_single(
         use_analyst=use_analyst_cfo_forecast,
     )
     specification_label = specification_label or cfo_t1_source
+    if not isinstance(window_row_filter_by_year, dict):
+        window_row_filter_by_year = _window_row_filter_from_csv(window_row_filter_by_year)
     if cfo_t1_source in {"analyst", "hybrid"}:
         analyst_cfo_forecast_csv = resolve_analyst_cfo_forecast_csv(analyst_cfo_forecast_csv)
 
@@ -1028,6 +1129,7 @@ def _run_uncertainty_model_hb_single(
 
     all_results = {}
     expected_accrual_frames = []
+    window_rows_used_frames = []
     window_diagnostics = []
     last_model = None
     last_trace = None
@@ -1071,12 +1173,33 @@ def _run_uncertainty_model_hb_single(
         year_diag = {
             "portfolio_year": int(port_year),
             "cfo_t1_source": cfo_t1_source,
+            "specification_label": specification_label,
+            "reference_sample_label": window_row_filter_label,
             "window_rows_initial": int(len(window_df)),
             "window_firms_initial": int(window_df["Ticker"].nunique()),
             "window_training_years_initial": int(
                 window_df.loc[~window_df["is_portfolio_year"].astype(bool), "Year"].nunique()
             ),
         }
+
+        if window_row_filter_by_year is not None:
+            window_df, reference_diag = _filter_window_to_reference_rows(
+                window_df=window_df,
+                portfolio_year=int(port_year),
+                row_filter_by_year=window_row_filter_by_year,
+            )
+            year_diag.update(reference_diag)
+            print(
+                "Reference sample filter: "
+                f"{reference_diag['window_rows_before_reference_sample_filter']} -> "
+                f"{reference_diag['window_rows_after_reference_sample_filter']} rows"
+            )
+            if window_df.empty:
+                year_diag["skipped"] = True
+                year_diag["skip_reason"] = "no_reference_sample_rows"
+                window_diagnostics.append(year_diag)
+                print("SKIPPED — no rows in matched reference sample")
+                continue
 
         if cfo_t1_source == "external":
             try:
@@ -1136,6 +1259,16 @@ def _run_uncertainty_model_hb_single(
         else:
             raise ValueError(f"Unknown cfo_t1_source: {cfo_t1_source}")
 
+        window_df_fixed, portfolio_firm_diag = keep_firms_with_portfolio_year_rows(window_df_fixed)
+        year_diag.update(portfolio_firm_diag)
+        if window_df_fixed.empty:
+            year_diag["skipped"] = True
+            year_diag["skip_reason"] = "no_portfolio_year_rows_after_filters"
+            year_diag["portfolio_year_rows_final"] = 0
+            window_diagnostics.append(year_diag)
+            print("SKIPPED — no portfolio-year rows after CFO/sample filters")
+            continue
+
         window_df_fixed, training_diag = enforce_training_requirements_after_cfo_filter(
             window_df=window_df_fixed,
             min_train_years=min_train_years,
@@ -1150,12 +1283,19 @@ def _run_uncertainty_model_hb_single(
             print("SKIPPED — insufficient training data after CFO_t+1 source filter")
             continue
 
+        portfolio_year_rows_final = int(window_df_fixed["is_portfolio_year"].astype(bool).sum())
+        if portfolio_year_rows_final == 0:
+            year_diag["skipped"] = True
+            year_diag["skip_reason"] = "no_portfolio_year_rows_after_filters"
+            year_diag["portfolio_year_rows_final"] = 0
+            window_diagnostics.append(year_diag)
+            print("SKIPPED — no portfolio-year rows after CFO/sample filters")
+            continue
+
         year_diag["skipped"] = False
         year_diag["window_rows_final"] = int(len(window_df_fixed))
         year_diag["window_firms_final"] = int(window_df_fixed["Ticker"].nunique())
-        year_diag["portfolio_year_rows_final"] = int(
-            window_df_fixed["is_portfolio_year"].astype(bool).sum()
-        )
+        year_diag["portfolio_year_rows_final"] = portfolio_year_rows_final
         window_diagnostics.append(year_diag)
 
         # --------------------------------------------------
@@ -1215,7 +1355,18 @@ def _run_uncertainty_model_hb_single(
         if min(ess_sigma_bulk, ess_sigma_tail, ess_alpha_bulk) < 400:
             print("⚠ ESS < 400 for some parameter — credible intervals will be noisy")
 
-        year_results = extract_sigma_posteriors(trace, trace_info)
+        year_results_all = extract_sigma_posteriors(trace, trace_info)
+        portfolio_firm_indices = set(
+            window_df_fixed.loc[
+                window_df_fixed["is_portfolio_year"].astype(bool),
+                "firm_idx",
+            ].astype(int)
+        )
+        year_results = {
+            firm_idx: draws
+            for firm_idx, draws in year_results_all.items()
+            if int(firm_idx) in portfolio_firm_indices
+        }
         all_results[port_year] = year_results
 
         expected_accruals = extract_expected_accrual_summary(
@@ -1227,6 +1378,16 @@ def _run_uncertainty_model_hb_single(
         )
         if not expected_accruals.empty:
             expected_accrual_frames.append(expected_accruals)
+
+        window_rows_used_frames.append(
+            _window_rows_used_frame(
+                window_df=window_df_fixed,
+                portfolio_year=int(port_year),
+                cfo_t1_source=cfo_t1_source,
+                specification_label=specification_label,
+                reference_sample_label=window_row_filter_label,
+            )
+        )
 
         with open(checkpoint_path, "wb") as f:
             pickle.dump({port_year: year_results}, f)
@@ -1278,6 +1439,25 @@ def _run_uncertainty_model_hb_single(
     window_diag_path = output_dir / "hb_window_diagnostics.csv"
     window_diag_df.to_csv(window_diag_path, index=False)
     print(f"Saved window diagnostics: {window_diag_path}")
+
+    window_rows_used_path = output_dir / "hb_window_rows_used.csv"
+    if window_rows_used_frames:
+        window_rows_used_df = pd.concat(window_rows_used_frames, ignore_index=True)
+        window_rows_used_df.to_csv(window_rows_used_path, index=False)
+        print(f"Saved window rows used: {window_rows_used_path}")
+    elif not window_rows_used_path.exists():
+        pd.DataFrame(
+            columns=[
+                "portfolio_year",
+                "specification_label",
+                "cfo_t1_source",
+                "reference_sample_label",
+                "Ticker",
+                "Year",
+                "is_portfolio_year",
+            ]
+        ).to_csv(window_rows_used_path, index=False)
+        print(f"Saved empty window rows used: {window_rows_used_path}")
 
     expected_accruals_path = output_dir / "expected_accruals_summary.csv"
     if expected_accrual_frames:
@@ -1343,6 +1523,7 @@ def _run_uncertainty_model_hb_single(
         "use_analyst_cfo_forecast": bool(use_analyst_cfo_forecast),
         "analyst_cfo_forecast_csv": str(analyst_cfo_forecast_csv) if analyst_cfo_forecast_csv is not None else None,
         "specification_label": specification_label,
+        "window_row_filter_label": window_row_filter_label,
         "analyst_merge_diagnostics": analyst_merge_diagnostics,
         "rows_dropped_missing_analyst_forecast_across_windows": (
             int(window_diag_df.get("rows_dropped_missing_analyst_forecast", pd.Series(dtype=float)).sum())
@@ -1360,6 +1541,7 @@ def _run_uncertainty_model_hb_single(
         "n_sigma_rows": int(len(sigma_summary)),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
         "window_diagnostics_csv": str(window_diag_path),
+        "window_rows_used_csv": str(window_rows_used_path),
         "expected_accruals_summary_csv": str(expected_accruals_path),
     }
 
@@ -1374,6 +1556,7 @@ def _run_uncertainty_model_hb_single(
         "all_results_pkl": str(all_results_path),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
         "window_diagnostics_csv": str(window_diag_path),
+        "window_rows_used_csv": str(window_rows_used_path),
         "expected_accruals_summary_csv": str(expected_accruals_path),
         "analyst_cfo_forecast_yearly_coverage_csv": (
             analyst_merge_diagnostics.get("yearly_coverage_csv")
@@ -1403,6 +1586,8 @@ def create_hb_specification_comparison(
     baseline_result: dict,
     analyst_result: dict,
     output_dir: Path,
+    baseline_label: str = "no_cfo_lead",
+    analyst_label: str = "analyst_cfo",
 ) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1473,7 +1658,11 @@ def create_hb_specification_comparison(
     else:
         overlap_exp = pd.DataFrame()
 
-    yearly_path = output_dir / "hb_baseline_vs_analyst_cfo_by_year.csv"
+    yearly.insert(1, "baseline_model", baseline_label)
+    yearly.insert(2, "comparison_model", analyst_label)
+
+    comparison_name = f"hb_{baseline_label}_vs_{analyst_label}"
+    yearly_path = output_dir / f"{comparison_name}_by_year.csv"
     yearly.to_csv(yearly_path, index=False)
 
     def _distribution_rows(label: str, df: pd.DataFrame, value_col: str, sample: str) -> dict:
@@ -1500,26 +1689,26 @@ def create_hb_specification_comparison(
         }
 
     overall_rows = [
-        _distribution_rows("baseline", baseline_exp, "expected_wca_baseline", "full_available_sample"),
-        _distribution_rows("analyst_cfo", analyst_exp, "expected_wca_analyst_cfo", "full_available_sample"),
+        _distribution_rows(baseline_label, baseline_exp, "expected_wca_baseline", "full_available_sample"),
+        _distribution_rows(analyst_label, analyst_exp, "expected_wca_analyst_cfo", "full_available_sample"),
     ]
     if not overlap_exp.empty:
         overall_rows.extend(
             [
                 _distribution_rows(
-                    "baseline",
+                    baseline_label,
                     overlap_exp.rename(columns={"expected_wca_baseline": "expected_wca"}),
                     "expected_wca",
                     "overlapping_firm_year_sample",
                 ),
                 _distribution_rows(
-                    "analyst_cfo",
+                    analyst_label,
                     overlap_exp.rename(columns={"expected_wca_analyst_cfo": "expected_wca"}),
                     "expected_wca",
                     "overlapping_firm_year_sample",
                 ),
                 {
-                    "model": "baseline_vs_analyst_cfo",
+                    "model": f"{baseline_label}_vs_{analyst_label}",
                     "sample": "overlapping_firm_year_sample",
                     "n_firm_years": int(len(overlap_exp)),
                     "n_firms": int(overlap_exp["Ticker"].nunique()),
@@ -1540,10 +1729,10 @@ def create_hb_specification_comparison(
         )
 
     overall = pd.DataFrame(overall_rows)
-    overall_path = output_dir / "hb_baseline_vs_analyst_cfo_overall_summary.csv"
+    overall_path = output_dir / f"{comparison_name}_overall_summary.csv"
     overall.to_csv(overall_path, index=False)
 
-    overlap_path = output_dir / "hb_baseline_vs_analyst_cfo_overlap_firm_years.csv"
+    overlap_path = output_dir / f"{comparison_name}_overlap_firm_years.csv"
     overlap_exp.to_csv(overlap_path, index=False)
 
     return {
@@ -1571,7 +1760,7 @@ def run_uncertainty_model_hb(
     cfo_draws: int = 1000,
     cfo_tune: int = 1500,
     cfo_prediction_mode: str = "mean",
-    cfo_lead_mode: str = "best_external",
+    cfo_lead_mode: str = "none",
     use_analyst_cfo_forecast: bool = False,
     cfo_t1_source: str | None = None,
     analyst_cfo_forecast_csv: str | Path | None = None,
@@ -1606,47 +1795,69 @@ def run_uncertainty_model_hb(
 
     output_dir = Path(output_dir)
     if spec == "baseline":
-        source = cfo_t1_source or ("analyst" if use_analyst_cfo_forecast else "realized")
+        source = cfo_t1_source
+        if source is None and use_analyst_cfo_forecast:
+            source = "hybrid"
+        source_canon = _canonical_cfo_source(
+            source,
+            cfo_lead_mode=cfo_lead_mode,
+            use_analyst=use_analyst_cfo_forecast,
+        )
+        label = "baseline"
+        if source_canon == "hybrid":
+            label = "analyst_cfo_hybrid"
+        elif source_canon == "analyst":
+            label = "analyst_cfo"
         return _run_uncertainty_model_hb_single(
             output_dir=output_dir,
-            cfo_t1_source=source,
+            cfo_t1_source=source_canon,
             use_analyst_cfo_forecast=use_analyst_cfo_forecast,
-            specification_label="baseline",
+            specification_label=label,
             **common_kwargs,
         )
 
     if spec == "analyst_cfo":
-        source = cfo_t1_source or "analyst"
+        source = cfo_t1_source or "hybrid"
+        source_canon = _canonical_cfo_source(source, cfo_lead_mode=cfo_lead_mode, use_analyst=True)
+        if source_canon not in {"analyst", "hybrid"}:
+            raise ValueError(
+                "run_model_specification='analyst_cfo' requires cfo_t1_source='hybrid', "
+                "cfo_t1_source='analyst', or no explicit cfo_t1_source."
+            )
         return _run_uncertainty_model_hb_single(
             output_dir=output_dir,
-            cfo_t1_source=source,
+            cfo_t1_source=source_canon,
             use_analyst_cfo_forecast=True,
-            specification_label="analyst_cfo" if source == "analyst" else source,
+            specification_label="analyst_cfo_hybrid" if source_canon == "hybrid" else "analyst_cfo",
             **common_kwargs,
         )
 
-    baseline_dir = output_dir / "hb_results_baseline"
+    baseline_dir = output_dir / "hb_results_no_cfo_lead_matched_sample"
     analyst_dir = output_dir / "hb_results_analyst_cfo"
     comparison_dir = output_dir / "hb_results_comparison"
 
-    baseline_result = _run_uncertainty_model_hb_single(
-        output_dir=baseline_dir,
-        cfo_t1_source="realized",
-        use_analyst_cfo_forecast=False,
-        specification_label="baseline",
-        **common_kwargs,
-    )
     analyst_result = _run_uncertainty_model_hb_single(
         output_dir=analyst_dir,
-        cfo_t1_source="analyst",
+        cfo_t1_source="hybrid",
         use_analyst_cfo_forecast=True,
-        specification_label="analyst_cfo",
+        specification_label="analyst_cfo_hybrid",
+        **common_kwargs,
+    )
+    baseline_result = _run_uncertainty_model_hb_single(
+        output_dir=baseline_dir,
+        cfo_t1_source="none",
+        use_analyst_cfo_forecast=False,
+        specification_label="no_cfo_lead_matched_sample",
+        window_row_filter_by_year=analyst_result.get("window_rows_used_csv"),
+        window_row_filter_label="analyst_cfo_hybrid_window_rows",
         **common_kwargs,
     )
     comparison_result = create_hb_specification_comparison(
         baseline_result=baseline_result,
         analyst_result=analyst_result,
         output_dir=comparison_dir,
+        baseline_label="no_cfo_lead_matched_sample",
+        analyst_label="analyst_cfo_hybrid",
     )
 
     return {
@@ -1656,9 +1867,11 @@ def run_uncertainty_model_hb(
         "sigma_summary_csv": analyst_result.get("sigma_summary_csv"),
         "all_results_pkl": analyst_result.get("all_results_pkl"),
         "config_json": analyst_result.get("config_json"),
-        "selected_specification_for_downstream": "analyst_cfo",
+        "selected_specification_for_downstream": "analyst_cfo_hybrid",
         "baseline": baseline_result,
+        "no_cfo_lead_matched_sample": baseline_result,
         "analyst_cfo": analyst_result,
+        "analyst_cfo_hybrid": analyst_result,
         "comparison": comparison_result,
     }
 
@@ -1687,9 +1900,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfo_lead_mode",
         type=str,
-        default="best_external",
+        default="none",
         choices=["best_external", "none"],
-        help="How to handle CFO_{t+1} in the accrual model.",
+        help=(
+            "Legacy CFO_{t+1} handling when --cfo_t1_source is unset. "
+            "Default 'none' matches the no-look-ahead main specification."
+        ),
     )
     parser.add_argument(
         "--cfo_t1_source",
@@ -1697,14 +1913,16 @@ def parse_args() -> argparse.Namespace:
         default=None,
         choices=["realized", "realised", "analyst", "analyst_cfo", "hybrid", "external", "none"],
         help=(
-            "Source for CFO_{t+1}: realized, analyst, hybrid, external, or none. "
-            "Hybrid uses realized CFO_{t+1} in training rows and analyst forecasts in portfolio-year rows."
+            "Source for CFO_{t+1}: none, analyst, hybrid, external, or explicit realized. "
+            "Use realized only for diagnostics/backtests because it can create look-ahead bias "
+            "in portfolio-year rows. Hybrid uses realized CFO_{t+1} in training rows and "
+            "analyst forecasts in portfolio-year rows."
         ),
     )
     parser.add_argument(
         "--use_analyst_cfo_forecast",
         action="store_true",
-        help="Convenience switch equivalent to --cfo_t1_source analyst unless cfo_t1_source is set.",
+        help="Use analyst CFO forecasts for CFO_{t+1}; defaults to hybrid source handling.",
     )
     parser.add_argument(
         "--analyst_cfo_forecast_csv",
@@ -1720,7 +1938,11 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="baseline",
         choices=["baseline", "analyst_cfo", "analystcfo", "both"],
-        help="Run baseline only, analyst-CFO only, or both with comparison tables.",
+        help=(
+            "Run baseline only, analyst-CFO only, or both with comparison tables. "
+            "'analyst_cfo' defaults to hybrid CFO handling; 'both' compares analyst-CFO "
+            "hybrid with a no-lead HB model matched to the analyst-CFO estimation sample."
+        ),
     )
     parser.add_argument("--no_full_posteriors", action="store_true")
     parser.add_argument("--no_plots", action="store_true")

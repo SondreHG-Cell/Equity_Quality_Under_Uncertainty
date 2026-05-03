@@ -83,20 +83,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfo_lead_mode",
         type=str,
-        default="best_external",
+        default="none",
         choices=["best_external", "none"],
+        help=(
+            "Legacy CFO_{t+1} handling when --cfo_t1_source is unset. "
+            "Default 'none' matches the no-look-ahead main specification."
+        ),
     )
     parser.add_argument(
         "--cfo_t1_source",
         type=str,
         default=None,
         choices=["realized", "realised", "analyst", "analyst_cfo", "hybrid", "external", "none"],
-        help="Source for CFO_{t+1} in HB: realized, analyst, hybrid, external, or none.",
+        help=(
+            "Source for CFO_{t+1} in HB: none, analyst, hybrid, external, or explicit realized. "
+            "Use realized only for diagnostics/backtests because it can create look-ahead bias "
+            "in portfolio-year rows. Hybrid uses realized CFO_{t+1} in training rows and "
+            "analyst forecasts in portfolio-year rows."
+        ),
     )
     parser.add_argument(
         "--use_analyst_cfo_forecast",
         action="store_true",
-        help="Use analyst CFO forecasts for CFO_{t+1}.",
+        help="Use analyst CFO forecasts for CFO_{t+1}; defaults to hybrid source handling.",
     )
     parser.add_argument(
         "--analyst_cfo_forecast_csv",
@@ -109,7 +118,11 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="baseline",
         choices=["baseline", "analyst_cfo", "analystcfo", "both"],
-        help="Run baseline, analyst-CFO, or both HB specifications.",
+        help=(
+            "Run baseline, analyst-CFO, or both HB specifications. 'analyst_cfo' defaults "
+            "to hybrid CFO handling; 'both' compares analyst-CFO hybrid with a no-lead HB "
+            "model matched to the analyst-CFO estimation sample."
+        ),
     )
 
     # OLS-specific passthrough arguments
