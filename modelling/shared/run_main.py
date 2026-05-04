@@ -30,7 +30,7 @@ class RunConfig:
     factors_csv: str = "results/extraction_static/factor_data.csv"
     results_root: str = "results"
     run_name: Optional[str] = None
-    uncertainty_method: str = "OLS"
+    uncertainty_method: str = "HB"
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True

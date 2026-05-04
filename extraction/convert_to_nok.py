@@ -12,7 +12,6 @@ FX inputs:
 
 Outputs:
     total_returns_nok.csv
-    total_returns_nok_monthly_returns.csv
     historical_market_cap_nok.csv
     fx_conversion_audit.csv
 """
@@ -266,6 +265,9 @@ def convert_total_returns_to_nok(
     """
     df_local = pd.read_csv(total_returns_local_csv, index_col="Ticker")
     df_local = df_local.apply(pd.to_numeric, errors="coerce")
+
+    # Convert to percentage-point returns
+    df_local = df_local / 100.0
 
     print(
         f"\nConverting total returns: "
