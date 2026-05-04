@@ -426,7 +426,8 @@ def convert_dividends_to_nok(
         df = df.loc[df["ExDate"] >= OUTPUT_START_DATE].copy()
     if "AdjustmentBasis" in df.columns:
         df["AdjustmentBasis"] = df["AdjustmentBasis"].replace({
-            "missing_adjustment_factor_default_1": "TR.DivAdjustmentFactor_blank_assumed_1",
+            "missing_adjustment_factor_default_1": "unverified_missing_adjustment_factor_default_1",
+            "factor_field_missing_default_1": "unverified_missing_adjustment_factor_default_1",
         })
 
     rates = []
@@ -486,11 +487,15 @@ def convert_dividends_to_nok(
         "Ticker",
         "ExDate",
         "DPS_UNADJUSTED",
+        "DPS_ADJUSTED_GROSS",
         "AdjustmentFactor",
         "DPS_LOCAL",
         "Currency",
         "InstrumentCurrency",
         "AdjustmentBasis",
+        "SplitFallbackSource",
+        "SplitFallbackEventCount",
+        "SplitFallbackEvents",
         "FXRate",
         "FXDate",
         "FXSource",
