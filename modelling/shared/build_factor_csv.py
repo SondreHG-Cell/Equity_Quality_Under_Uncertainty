@@ -273,7 +273,46 @@ def load_nibor(path: Path, method: str = "simple") -> pd.DataFrame:
     return df[["Date", "RF"]].reset_index(drop=True)
 
 
-def load_prices_and_build_returns(path: Path) -> pd.DataFrame:
+def load_monthly_dividends(path: Path) -> pd.DataFrame:
+    df = pd.read_csv(path)
+
+    if "Ticker" not in df.columns:
+        raise ValueError("dividends_monthly_nok.csv must contain a 'Ticker' column.")
+
+    month_cols = [c for c in df.columns if re.fullmatch(r"\d{4}-\d{2}", str(c).strip())]
+    if not month_cols:
+        raise ValueError("Could not detect monthly dividend columns like '2010-01' in dividends_monthly_nok.csv.")
+
+    long_df = df.melt(
+        id_vars="Ticker",
+        value_vars=month_cols,
+        var_name="Month",
+        value_name="Dividend",
+    ).copy()
+
+    long_df["Ticker"] = long_df["Ticker"].astype(str).str.strip()
+    long_df["Date"] = parse_month_series(long_df["Month"])
+    long_df["Dividend"] = pd.to_numeric(long_df["Dividend"], errors="coerce")
+
+    long_df = (
+        long_df.dropna(subset=["Ticker", "Date"])
+        .groupby(["Ticker", "Date"], as_index=False)["Dividend"]
+        .sum(min_count=1)
+        .sort_values(["Ticker", "Date"])
+        .reset_index(drop=True)
+    )
+
+    return long_df
+
+
+def load_prices_and_build_returns(
+    path: Path,
+    dividends_csv: Path | None = Path("data/processed_data_lseg/dividends_monthly_nok.csv"),
+) -> pd.DataFrame:
+    if dividends_csv is not None:
+        project_root = find_project_root()
+        dividends_csv = resolve_path(dividends_csv, project_root)
+
     df = pd.read_csv(path)
 
     if "Ticker" not in df.columns:
@@ -301,10 +340,42 @@ def load_prices_and_build_returns(path: Path) -> pd.DataFrame:
         .reset_index(drop=True)
     )
 
-    long_df["Return"] = long_df.groupby("Ticker")["Price"].pct_change()
+    if dividends_csv is not None:
+        dividends_df = load_monthly_dividends(dividends_csv)
+        long_df = long_df.merge(
+            dividends_df,
+            on=["Ticker", "Date"],
+            how="left",
+            validate="1:1",
+        )
+    else:
+        long_df["Dividend"] = 0.0
 
-    returns_df = long_df.dropna(subset=["Return"]).copy()
-    return returns_df[["Ticker", "Date", "Return"]].reset_index(drop=True)
+    long_df["Dividend"] = long_df["Dividend"].fillna(0.0)
+    long_df["LagPrice"] = long_df.groupby("Ticker")["Price"].shift(1)
+    long_df["PriceReturn"] = long_df["Price"] / long_df["LagPrice"] - 1.0
+    long_df["DividendYield"] = long_df["Dividend"] / long_df["LagPrice"]
+    long_df["Return"] = (long_df["Price"] + long_df["Dividend"]) / long_df["LagPrice"] - 1.0
+
+    valid_return = (
+        long_df["Price"].notna()
+        & long_df["LagPrice"].notna()
+        & (long_df["LagPrice"] > 0)
+        & long_df["Return"].notna()
+    )
+    returns_df = long_df.loc[valid_return].copy()
+    return returns_df[
+        [
+            "Ticker",
+            "Date",
+            "Return",
+            "Price",
+            "LagPrice",
+            "Dividend",
+            "PriceReturn",
+            "DividendYield",
+        ]
+    ].reset_index(drop=True)
 
 
 # =============================================================================
@@ -580,6 +651,7 @@ def build_momentum_factor(monthly_df: pd.DataFrame) -> pd.Series:
 def build_factor_csv(
     prepared_input_csv: str | Path = "results/extraction_static/prepared_step2_input.csv",
     stock_prices_csv: str | Path = "data/processed_data_lseg/all_stock_prices_nok.csv",
+    dividends_csv: str | Path = "data/processed_data_lseg/dividends_monthly_nok.csv",
     market_cap_monthly_csv: str | Path = "data/processed_data_lseg/historical_market_cap_nok.csv",
     nibor_csv: str | Path = "data/nibor_monthly.csv",
     output_dir: str | Path = "results/extraction_static",
@@ -589,6 +661,7 @@ def build_factor_csv(
 
     prepared_input_csv = resolve_path(prepared_input_csv, project_root)
     stock_prices_csv = resolve_path(stock_prices_csv, project_root)
+    dividends_csv = resolve_path(dividends_csv, project_root)
     market_cap_monthly_csv = resolve_path(market_cap_monthly_csv, project_root)
     nibor_csv = resolve_path(nibor_csv, project_root)
     output_dir = resolve_path(output_dir, project_root)
@@ -598,7 +671,7 @@ def build_factor_csv(
     prepared_df = load_prepared_panel(prepared_input_csv)
     mcap_df = load_market_cap_monthly(market_cap_monthly_csv)
     rf_df = load_nibor(nibor_csv, method=rf_method)
-    returns_df = load_prices_and_build_returns(stock_prices_csv)
+    returns_df = load_prices_and_build_returns(stock_prices_csv, dividends_csv=dividends_csv)
 
     analysis_tickers = prepared_df["Ticker"].dropna().astype(str).str.strip().unique()
 
@@ -652,6 +725,7 @@ def build_factor_csv(
     diagnostics = {
         "prepared_input_csv": str(prepared_input_csv),
         "stock_prices_csv": str(stock_prices_csv),
+        "dividends_csv": str(dividends_csv),
         "market_cap_monthly_csv": str(market_cap_monthly_csv),
         "nibor_csv": str(nibor_csv),
         "output_csv": str(factor_csv_path),
@@ -665,6 +739,7 @@ def build_factor_csv(
         "rf_method": rf_method,
         "notes": [
             "MKT is the value-weighted market return of firms in the analysis universe minus RF.",
+            "Monthly returns include dividends from dividends_monthly_nok.csv.",
             "SMB/HML/RMW/CMA use annual July-June style holding periods with June size sorts and lagged annual accounting.",
             "MOM uses monthly 2x3 size-momentum sorts with momentum measured from t-12 to t-2.",
             "Assumes market caps are comparable across firms for sorting and weighting.",
@@ -698,6 +773,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="data/processed_data_lseg/all_stock_prices_nok.csv",
         help="Path to monthly stock prices CSV",
+    )
+    parser.add_argument(
+        "--dividends_csv",
+        type=str,
+        default="data/processed_data_lseg/dividends_monthly_nok.csv",
+        help="Path to monthly dividends CSV",
     )
     parser.add_argument(
         "--market_cap_monthly_csv",
@@ -734,6 +815,7 @@ if __name__ == "__main__":
     result = build_factor_csv(
         prepared_input_csv=args.prepared_input_csv,
         stock_prices_csv=args.stock_prices_csv,
+        dividends_csv=args.dividends_csv,
         market_cap_monthly_csv=args.market_cap_monthly_csv,
         nibor_csv=args.nibor_csv,
         output_dir=args.output_dir,

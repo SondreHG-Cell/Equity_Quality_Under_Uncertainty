@@ -31,6 +31,7 @@ def run_portfolio_evaluation(
     factors_csv: str | Path,
     output_dir: str | Path,
     market_cap_csv: str | Path = "data/processed_data_lseg/historical_market_cap_nok.csv",
+    dividends_csv: str | Path | None = "data/processed_data_lseg/dividends_monthly_nok.csv",
     n_portfolios: int = 5,
     nw_lags: int = 12,
 ) -> dict:
@@ -43,6 +44,7 @@ def run_portfolio_evaluation(
     assignments_csv = Path(assignments_csv)
     stock_prices_csv = Path(stock_prices_csv)
     market_cap_csv = Path(market_cap_csv)
+    dividends_csv = Path(dividends_csv) if dividends_csv is not None else None
     factors_csv = Path(factors_csv)
 
     # --------------------------------------------------
@@ -54,7 +56,7 @@ def run_portfolio_evaluation(
     # --------------------------------------------------
     # Build monthly portfolio returns using:
     # - fixed annual membership from assignments
-    # - monthly returns from stock prices
+    # - monthly total returns from stock prices plus dividends
     # - monthly value weights from lagged monthly market cap
     # --------------------------------------------------
     prepared = build_monthly_portfolio_returns(
@@ -63,6 +65,7 @@ def run_portfolio_evaluation(
         market_cap_csv=market_cap_csv,
         factors=factors,
         n_portfolios=n_portfolios,
+        dividends_csv=dividends_csv,
     )
 
     returns_wide = prepared["returns_wide"]
@@ -146,6 +149,7 @@ def run_portfolio_evaluation(
     y_true, y_prob = build_probabilistic_targets(
         assignments=assignments,
         stock_prices_csv=stock_prices_csv,
+        dividends_csv=dividends_csv,
     )
 
     prob_metrics = probabilistic_evaluation(y_true=y_true, y_prob=y_prob)
