@@ -183,10 +183,17 @@ def build_month_end_fx_levels(
     """
     Build month-end FX level series for each currency.
 
+    Keeps one extra previous month so the first stock-return month can use:
+        FX_t / FX_{t-1} - 1
+
     FX level means:
         NOK per 1 unit of local currency
     """
     out = {}
+
+    month_periods = pd.PeriodIndex(months, freq="M")
+    first_lag_month = (month_periods.min() - 1).strftime("%Y-%m")
+    months_with_lag = [first_lag_month] + list(months)
 
     for ccy, df_daily in fx.items():
         if ccy == "NOK":
@@ -197,7 +204,7 @@ def build_month_end_fx_levels(
             continue
 
         monthly_fx = get_month_end_fx(df_daily)
-        out[ccy] = monthly_fx.reindex(months)
+        out[ccy] = monthly_fx.reindex(months_with_lag)
 
     return out
 
@@ -226,7 +233,10 @@ def build_monthly_fx_returns(
             out[ccy] = pd.Series(np.nan, index=months)
             continue
 
-        out[ccy] = level_series.pct_change()
+        fx_return = level_series.pct_change()
+
+        # Keep only the months matching the stock-return file.
+        out[ccy] = fx_return.reindex(months)
 
     return out
 
