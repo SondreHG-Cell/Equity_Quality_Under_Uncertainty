@@ -325,10 +325,24 @@ def summarize_convergence(trace, var_name: str = "sigma_firm") -> dict:
         "min_ess_tail":  float(ess_tail.min()),
     }
 
-def extract_sigma_posteriors(trace, trace_info: dict) -> dict[int, np.ndarray]:
-    """Flatten sigma_firm posterior across chains/draws,
-    return {orig_firm_idx: 1D array of draws}."""
-    sigma_samples = trace.posterior["sigma_firm"].values
+def extract_sigma_posteriors(
+    trace,
+    trace_info: dict,
+    var_name: str = "sigma_firm",
+) -> dict[int, np.ndarray]:
+    """Flatten a firm-level sigma posterior across chains/draws.
+
+    ``sigma_firm`` is the Student-t scale parameter. ``sigma_firm_sd`` is the
+    implied Student-t residual standard deviation and is the preferred Step 2
+    accounting-uncertainty measure when available.
+    """
+    if var_name not in trace.posterior:
+        available = sorted(str(v) for v in trace.posterior.data_vars)
+        raise KeyError(
+            f"Posterior variable '{var_name}' not found. Available variables: {available}"
+        )
+
+    sigma_samples = trace.posterior[var_name].values
     sigma_samples = sigma_samples.reshape(-1, sigma_samples.shape[-1])
     return {
         orig: sigma_samples[:, w]
@@ -353,4 +367,3 @@ def build_sigma_summary(all_results: dict, firm_map: dict) -> pd.DataFrame:
                 "n_draws":      len(draws),
             })
     return pd.DataFrame(rows)
-

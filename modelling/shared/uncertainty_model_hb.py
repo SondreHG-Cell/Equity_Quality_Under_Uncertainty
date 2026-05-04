@@ -767,7 +767,7 @@ def build_hb_accrual_model_fixed_lead(
             dims="obs",
         )
 
-        sigma_firm_sd = pm.Deterministic(
+        pm.Deterministic(
             "sigma_firm_sd",
             sigma_firm * pm.math.sqrt(nu / (nu - 2)),
             dims="firm",
@@ -1036,6 +1036,21 @@ def extract_expected_accrual_summary(
     return pd.DataFrame(rows)
 
 
+def _rename_sigma_summary_columns(
+    df: pd.DataFrame,
+    prefix: str,
+) -> pd.DataFrame:
+    rename = {
+        "sigma_mean": f"{prefix}_mean",
+        "sigma_median": f"{prefix}_median",
+        "sigma_std": f"{prefix}_std",
+        "sigma_q05": f"{prefix}_q05",
+        "sigma_q95": f"{prefix}_q95",
+        "n_draws": f"{prefix}_n_draws",
+    }
+    return df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+
+
 # =============================================================================
 # Main pipeline function
 # =============================================================================
@@ -1128,6 +1143,7 @@ def _run_uncertainty_model_hb_single(
     )
 
     all_results = {}
+    all_results_scale = {}
     expected_accrual_frames = []
     window_rows_used_frames = []
     window_diagnostics = []
@@ -1136,12 +1152,24 @@ def _run_uncertainty_model_hb_single(
     last_window_df = None
 
     for port_year in portfolio_years_to_run:
-        checkpoint_path = checkpoint_dir / f"hb_checkpoint_{specification_label}_{port_year}.pkl"
+        checkpoint_path = checkpoint_dir / f"hb_checkpoint_{specification_label}_{port_year}_sigma_sd.pkl"
 
         if checkpoint_path.exists():
             print(f"Loading checkpoint for {port_year}")
             with open(checkpoint_path, "rb") as f:
-                all_results[port_year] = pickle.load(f)[port_year]
+                checkpoint_payload = pickle.load(f)
+            if (
+                isinstance(checkpoint_payload, dict)
+                and "sigma_sd" in checkpoint_payload
+                and "sigma_scale" in checkpoint_payload
+            ):
+                all_results[port_year] = checkpoint_payload["sigma_sd"][port_year]
+                all_results_scale[port_year] = checkpoint_payload["sigma_scale"][port_year]
+            else:
+                raise ValueError(
+                    f"Checkpoint {checkpoint_path} does not contain sigma_sd/sigma_scale payload. "
+                    "Remove old checkpoints or rerun in a fresh output directory."
+                )
             continue
 
         print(f"\n{'=' * 60}")
@@ -1328,22 +1356,34 @@ def _run_uncertainty_model_hb_single(
             print(f"ERROR sampling accrual model: {e}")
             continue
 
-        sigma_conv = summarize_convergence(trace, var_name="sigma_firm")
+        sigma_sd_conv = summarize_convergence(trace, var_name="sigma_firm_sd")
+        sigma_scale_conv = summarize_convergence(trace, var_name="sigma_firm")
         alpha_conv = summarize_convergence(trace, var_name="alpha_firm")
 
-        n_divergent = sigma_conv["n_divergent"]
-        rhat_sigma = sigma_conv["max_rhat"]
-        ess_sigma_bulk = sigma_conv["min_ess_bulk"]
-        ess_sigma_tail = sigma_conv["min_ess_tail"]
+        n_divergent = sigma_sd_conv["n_divergent"]
+        rhat_sigma_sd = sigma_sd_conv["max_rhat"]
+        ess_sigma_sd_bulk = sigma_sd_conv["min_ess_bulk"]
+        ess_sigma_sd_tail = sigma_sd_conv["min_ess_tail"]
+
+        rhat_sigma_scale = sigma_scale_conv["max_rhat"]
+        ess_sigma_scale_bulk = sigma_scale_conv["min_ess_bulk"]
+        ess_sigma_scale_tail = sigma_scale_conv["min_ess_tail"]
 
         rhat_alpha = alpha_conv["max_rhat"]
         ess_alpha_bulk = alpha_conv["min_ess_bulk"]
 
         print(f"Divergences:          {n_divergent}")
-        print(f"σ_firm  R̂ / ESS(b) / ESS(t):  {rhat_sigma:.3f} / {ess_sigma_bulk:.0f} / {ess_sigma_tail:.0f}")
+        print(
+            "σ_firm_sd  R̂ / ESS(b) / ESS(t):  "
+            f"{rhat_sigma_sd:.3f} / {ess_sigma_sd_bulk:.0f} / {ess_sigma_sd_tail:.0f}"
+        )
+        print(
+            "σ_firm scale R̂ / ESS(b) / ESS(t): "
+            f"{rhat_sigma_scale:.3f} / {ess_sigma_scale_bulk:.0f} / {ess_sigma_scale_tail:.0f}"
+        )
         print(f"α_firm  R̂ / ESS(b):            {rhat_alpha:.3f} / {ess_alpha_bulk:.0f}")
 
-        max_rhat = max(rhat_sigma, rhat_alpha)
+        max_rhat = max(rhat_sigma_sd, rhat_sigma_scale, rhat_alpha)
         if n_divergent > 0:
             print(f"⚠ {n_divergent} divergences — consider raising target_accept")
         if max_rhat > 1.05:
@@ -1352,10 +1392,25 @@ def _run_uncertainty_model_hb_single(
             print("⚠ R̂ > 1.01 — investigate convergence before trusting")
         else:
             print("✓ Convergence good")
-        if min(ess_sigma_bulk, ess_sigma_tail, ess_alpha_bulk) < 400:
+        if min(
+            ess_sigma_sd_bulk,
+            ess_sigma_sd_tail,
+            ess_sigma_scale_bulk,
+            ess_sigma_scale_tail,
+            ess_alpha_bulk,
+        ) < 400:
             print("⚠ ESS < 400 for some parameter — credible intervals will be noisy")
 
-        year_results_all = extract_sigma_posteriors(trace, trace_info)
+        year_results_all = extract_sigma_posteriors(
+            trace,
+            trace_info,
+            var_name="sigma_firm_sd",
+        )
+        year_results_scale_all = extract_sigma_posteriors(
+            trace,
+            trace_info,
+            var_name="sigma_firm",
+        )
         portfolio_firm_indices = set(
             window_df_fixed.loc[
                 window_df_fixed["is_portfolio_year"].astype(bool),
@@ -1367,7 +1422,13 @@ def _run_uncertainty_model_hb_single(
             for firm_idx, draws in year_results_all.items()
             if int(firm_idx) in portfolio_firm_indices
         }
+        year_results_scale = {
+            firm_idx: draws
+            for firm_idx, draws in year_results_scale_all.items()
+            if int(firm_idx) in portfolio_firm_indices
+        }
         all_results[port_year] = year_results
+        all_results_scale[port_year] = year_results_scale
 
         expected_accruals = extract_expected_accrual_summary(
             trace=trace,
@@ -1390,7 +1451,15 @@ def _run_uncertainty_model_hb_single(
         )
 
         with open(checkpoint_path, "wb") as f:
-            pickle.dump({port_year: year_results}, f)
+            pickle.dump(
+                {
+                    "sigma_measure": "student_t_residual_sd",
+                    "sigma_scale_measure": "student_t_scale",
+                    "sigma_sd": {port_year: year_results},
+                    "sigma_scale": {port_year: year_results_scale},
+                },
+                f,
+            )
         print(f"Checkpoint saved: {checkpoint_path.name}")
 
         last_model = model
@@ -1404,7 +1473,27 @@ def _run_uncertainty_model_hb_single(
         pickle.dump(all_results, f)
     print(f"Consolidated results saved to {all_results_path}")
 
+    all_results_scale_path = output_dir / "hb_all_results_sigma_scale.pkl"
+    with open(all_results_scale_path, "wb") as f:
+        pickle.dump(all_results_scale, f)
+    print(f"Consolidated scale audit results saved to {all_results_scale_path}")
+
     sigma_summary = build_sigma_summary(all_results, firm_map)
+    sigma_summary["sigma_measure"] = "student_t_residual_sd"
+
+    sigma_scale_summary = build_sigma_summary(all_results_scale, firm_map)
+    if not sigma_scale_summary.empty:
+        sigma_scale_summary = _rename_sigma_summary_columns(
+            sigma_scale_summary,
+            prefix="sigma_scale",
+        )
+        sigma_summary = sigma_summary.merge(
+            sigma_scale_summary,
+            on=["Year", "Ticker", "firm_idx"],
+            how="left",
+            validate="1:1",
+        )
+
     sigma_summary_path = output_dir / "sigma_posteriors_summary.csv"
     sigma_summary.to_csv(sigma_summary_path, index=False)
 
@@ -1415,8 +1504,11 @@ def _run_uncertainty_model_hb_single(
             f"{sigma_summary['Ticker'].nunique()} unique firms, "
             f"{sigma_summary['Year'].min()}–{sigma_summary['Year'].max()}"
         )
-        print("\nPosterior mean σ_i distribution:")
+        print("\nPosterior mean σ_i distribution (Student-t residual SD):")
         print(sigma_summary["sigma_mean"].describe().round(4).to_string())
+        if "sigma_scale_mean" in sigma_summary.columns:
+            print("\nPosterior mean σ_i distribution (Student-t scale audit):")
+            print(sigma_summary["sigma_scale_mean"].describe().round(4).to_string())
 
     full_post_path = None
     if save_full_posteriors:
@@ -1432,7 +1524,10 @@ def _run_uncertainty_model_hb_single(
         sigma_full = pd.DataFrame(full_rows)
         full_post_path = output_dir / "sigma_posteriors_full.parquet"
         sigma_full.to_parquet(full_post_path, index=False)
-        print(f"Saved full posteriors: {full_post_path}")
+        print(
+            "Saved full posteriors: "
+            f"{full_post_path} (Student-t residual SD used by Step 3)"
+        )
         print(f"Shape: {sigma_full.shape} ({sigma_full.shape[1] - 3} draws per firm-year)")
 
     window_diag_df = pd.DataFrame(window_diagnostics)
@@ -1477,6 +1572,7 @@ def _run_uncertainty_model_hb_single(
     ).copy()
 
     sigma_merged["sigma_acc"] = sigma_merged["sigma_mean"]
+    sigma_merged["sigma_acc_measure"] = "student_t_residual_sd"
 
     merged_output_path = output_dir / "uncertainty_firm_year.csv"
     sigma_merged.to_csv(merged_output_path, index=False)
@@ -1539,7 +1635,10 @@ def _run_uncertainty_model_hb_single(
         ),
         "n_portfolio_years_completed": len(all_results),
         "n_sigma_rows": int(len(sigma_summary)),
+        "sigma_acc_measure": "student_t_residual_sd",
+        "sigma_scale_audit_columns": bool("sigma_scale_mean" in sigma_summary.columns),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
+        "scale_audit_results_pkl": str(all_results_scale_path),
         "window_diagnostics_csv": str(window_diag_path),
         "window_rows_used_csv": str(window_rows_used_path),
         "expected_accruals_summary_csv": str(expected_accruals_path),
@@ -1554,6 +1653,7 @@ def _run_uncertainty_model_hb_single(
         "firm_year_csv": str(merged_output_path),
         "sigma_summary_csv": str(sigma_summary_path),
         "all_results_pkl": str(all_results_path),
+        "scale_audit_results_pkl": str(all_results_scale_path),
         "full_posterior_parquet": str(full_post_path) if full_post_path is not None else None,
         "window_diagnostics_csv": str(window_diag_path),
         "window_rows_used_csv": str(window_rows_used_path),
