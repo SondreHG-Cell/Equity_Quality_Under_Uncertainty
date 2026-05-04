@@ -6,6 +6,9 @@ import numpy as np
 import pandas as pd
 
 
+MAX_MONTHLY_DIVIDEND_YIELD = 1.0
+
+
 # ============================================================
 # Generic helpers
 # ============================================================
@@ -187,8 +190,26 @@ def load_prices_and_build_returns(
         long_df["Dividend"] = 0.0
 
     long_df["Dividend"] = long_df["Dividend"].fillna(0.0)
+    long_df["DividendRaw"] = long_df["Dividend"]
     long_df["LagPrice"] = long_df.groupby("Ticker")["Price"].shift(1)
     long_df["PriceReturn"] = long_df["Price"] / long_df["LagPrice"] - 1.0
+    long_df["DividendYieldRaw"] = long_df["DividendRaw"] / long_df["LagPrice"]
+
+    # A dividend larger than the prior month-end price is almost always a
+    # split/currency/unit mismatch. Keep the price return, but exclude the
+    # anomalous dividend from portfolio returns and expose the flag downstream.
+    dividend_sanity_mask = (
+        long_df["DividendRaw"].gt(0)
+        & long_df["LagPrice"].gt(0)
+        & long_df["DividendYieldRaw"].gt(MAX_MONTHLY_DIVIDEND_YIELD)
+    )
+    long_df["DividendSanityFlag"] = "ok"
+    long_df.loc[
+        dividend_sanity_mask,
+        "DividendSanityFlag",
+    ] = f"dividend_yield_gt_{MAX_MONTHLY_DIVIDEND_YIELD:g}_excluded"
+    long_df.loc[dividend_sanity_mask, "Dividend"] = 0.0
+
     long_df["DividendYield"] = long_df["Dividend"] / long_df["LagPrice"]
     long_df["Return"] = (long_df["Price"] + long_df["Dividend"]) / long_df["LagPrice"] - 1.0
 
@@ -207,8 +228,11 @@ def load_prices_and_build_returns(
             "Price",
             "LagPrice",
             "Dividend",
+            "DividendRaw",
             "PriceReturn",
             "DividendYield",
+            "DividendYieldRaw",
+            "DividendSanityFlag",
         ]
     ].reset_index(drop=True)
 

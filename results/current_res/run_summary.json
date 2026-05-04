@@ -82,7 +82,8 @@
       "grs_test_json": "results/current_res/portfolio_evaluation/grs_test.json",
       "probabilistic_metrics_csv": "results/current_res/portfolio_evaluation/probabilistic_metrics.csv",
       "calibration_plot_png": "results/current_res/portfolio_evaluation/plots/calibration_plot.png",
-      "sharpness_plot_png": "results/current_res/portfolio_evaluation/plots/sharpness_plot.png"
+      "sharpness_plot_png": "results/current_res/portfolio_evaluation/plots/sharpness_plot.png",
+      "dividend_sanity_exclusions_csv": "results/current_res/portfolio_evaluation/dividend_sanity_exclusions.csv"
     },
     "post_latent_rerun": {
       "rerun_at": "2026-05-04T16:08:49",
@@ -95,5 +96,38 @@
     }
   },
   "error": null,
-  "updated_at": "2026-05-04T16:08:49"
+  "updated_at": "2026-05-04T19:52:55",
+  "last_downstream_refresh": {
+    "refreshed_at": "2026-05-04T19:52:55",
+    "reason": "Rebuilt after detecting impossible dividend-adjusted monthly returns from split/adjustment-factor outliers; applied dividend sanity guard before portfolio returns.",
+    "reran_steps": [
+      "results/extraction_static/factor_data.csv",
+      "portfolio_evaluation with dividend sanity exclusions",
+      "run_all_generate_outputs.py --profile all"
+    ],
+    "not_reran": [
+      "uncertainty_model",
+      "latent_prof_model",
+      "portfolio_formation after 2026-05-04 19:25 refresh"
+    ],
+    "dividend_sanity": {
+      "rule": "Exclude dividend component when DividendRaw / LagPrice > 1.0; keep price return.",
+      "normal_flag": "ok",
+      "exclusion_flag": "dividend_yield_gt_1_excluded",
+      "audit_csv": "results/current_res/portfolio_evaluation/dividend_sanity_exclusions.csv",
+      "flagged_holding_rows": 52,
+      "audit_rows_unique_ticker_months": 15,
+      "note": "The full return builder identified 47 ticker-month dividend outliers in the price/dividend panel; 15 unique ticker-months are present in current portfolio holdings."
+    },
+    "generate_outputs_profile_all": {
+      "completed": 11,
+      "failed": 0
+    },
+    "verification": {
+      "equal_weighted_longshort_worst_monthly_return": -0.118593,
+      "equal_weighted_longshort_worst_date": "2016-12-31",
+      "value_weighted_longshort_worst_monthly_return": -0.134235,
+      "ucits_longshort_worst_monthly_return": -0.127181
+    }
+  }
 }
