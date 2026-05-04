@@ -81,8 +81,40 @@ def run_portfolio_evaluation(
     if monthly_holdings is not None:
         monthly_holdings_csv = output_dir / "monthly_holdings.csv"
         monthly_holdings.to_csv(monthly_holdings_csv, index=False)
+
+        dividend_sanity_csv = output_dir / "dividend_sanity_exclusions.csv"
+        if "DividendSanityFlag" in monthly_holdings.columns:
+            flags = monthly_holdings["DividendSanityFlag"].fillna("ok").astype(str)
+            sanity = monthly_holdings.loc[flags.ne("ok")].copy()
+            sanity_cols = [
+                col
+                for col in [
+                    "Ticker",
+                    "Date",
+                    "Price",
+                    "LagPrice",
+                    "DividendRaw",
+                    "DividendYieldRaw",
+                    "Dividend",
+                    "DividendYield",
+                    "PriceReturn",
+                    "Return",
+                    "DividendSanityFlag",
+                ]
+                if col in sanity.columns
+            ]
+            sanity = (
+                sanity[sanity_cols]
+                .drop_duplicates()
+                .sort_values(["Date", "Ticker"])
+                .reset_index(drop=True)
+            )
+            sanity.to_csv(dividend_sanity_csv, index=False)
+        else:
+            pd.DataFrame().to_csv(dividend_sanity_csv, index=False)
     else:
         monthly_holdings_csv = None
+        dividend_sanity_csv = None
 
     # --------------------------------------------------
     # 5.1 Raw performance
@@ -176,6 +208,7 @@ def run_portfolio_evaluation(
         "output_dir": str(output_dir),
         "monthly_portfolio_returns_csv": str(monthly_portfolio_returns_csv),
         "monthly_holdings_csv": str(monthly_holdings_csv) if monthly_holdings_csv else None,
+        "dividend_sanity_exclusions_csv": str(dividend_sanity_csv) if dividend_sanity_csv else None,
         "raw_performance_csv": str(raw_csv),
         "risk_adjusted_performance_csv": str(risk_csv),
         "alpha_differences_csv": str(alpha_diff_csv),
