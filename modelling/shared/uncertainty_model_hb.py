@@ -767,7 +767,7 @@ def build_hb_accrual_model_fixed_lead(
             dims="obs",
         )
 
-        sigma_firm_sd = pm.Deterministic(
+        pm.Deterministic(
             "sigma_firm_sd",
             sigma_firm * pm.math.sqrt(nu / (nu - 2)),
             dims="firm",
