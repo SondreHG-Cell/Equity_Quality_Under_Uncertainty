@@ -9,10 +9,10 @@ try:
 
     ld.open_session()
 
-    test_ric = "AAK.ST"
+    test_ric = "EQNR.OL"
 
     fields = [
-        "TR.DivAdjustmentFactor"
+        "TR.OFF_CLOSE"
     ]
 
     rows = []
@@ -54,9 +54,6 @@ try:
 
     result = pd.DataFrame(rows)
     print(result.to_string(index=False))
-
-    result.to_csv("lseg_field_access_check.csv", index=False)
-    print("\nSaved to lseg_field_access_check.csv")
 
     ld.close_session()
 
