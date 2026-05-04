@@ -23,6 +23,9 @@ Outputs (in OUTPUT directory: data/raw_data_lseg)
     shares_outstanding.csv            Wide: same shape, count (no currency)
     dividends_raw_long_local.csv      Long dividend events. DPS_LOCAL is split-
                                       adjusted gross DPS in Currency.
+    yahoo_split_events.csv            Optional cache used when dividend
+                                      adjustment factors are missing.
+    yahoo_split_fetch_status.csv      Audit status for Yahoo split fallback.
     cfo_forecasts_monthly_raw.csv     Long: Ticker, snapshot_date, cfo_forecast
     announcement_dates.csv            Earnings announcement dates per fiscal year
     missing_*.csv                     Tickers where extraction failed
@@ -37,6 +40,12 @@ import lseg.data as lseg
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
+
+from dividend_adjustment_fallbacks import (
+    apply_split_fallback,
+    build_yahoo_split_cache,
+    load_split_events,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -54,6 +63,17 @@ OUTPUT = BASE / "data" / "raw_data_lseg"
 
 START = "2005-01-03"
 END = "2026-03-31"
+
+ENABLE_YAHOO_SPLIT_FALLBACK = os.getenv("ENABLE_YAHOO_SPLIT_FALLBACK", "1").lower() not in {
+    "0",
+    "false",
+    "no",
+}
+YAHOO_SPLIT_SLEEP_SECONDS = float(os.getenv("YAHOO_SPLIT_SLEEP_SECONDS", "1.0"))
+YAHOO_SPLIT_REFRESH = os.getenv("YAHOO_SPLIT_REFRESH", "0").lower() in {"1", "true", "yes"}
+SPLIT_EVENTS_CSV = OUTPUT / "split_events.csv"
+YAHOO_SPLIT_EVENTS_CSV = OUTPUT / "yahoo_split_events.csv"
+YAHOO_SPLIT_STATUS_CSV = OUTPUT / "yahoo_split_fetch_status.csv"
 
 # Fallback only - we prefer LSEG's currency metadata when available.
 EXCHANGE_CCY_FALLBACK = {
@@ -360,6 +380,7 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
     fields = [
         "TR.DivExDate",
         "TR.DivUnadjustedGross",
+        "TR.DivAdjustedGross",
         "TR.DivCurr",
         "TR.DivAdjustmentFactor",
     ]
@@ -414,6 +435,11 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
             "TR.DivUnadjustedGross",
             [("div", "unadjusted", "gross"), ("unadjusted", "gross"), ("div", "gross")],
         )
+        adjusted_gross_col = find_col(
+            df,
+            "TR.DivAdjustedGross",
+            [("div", "adjusted", "gross"), ("adjusted", "gross")],
+        )
         currency_col = find_col(
             df,
             "TR.DivCurr",
@@ -438,6 +464,10 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
             "ExDate": df[exdate_col],
             "DPS_UNADJUSTED": df[dividend_col],
         })
+        if adjusted_gross_col is not None:
+            sub["DPS_ADJUSTED_GROSS"] = df[adjusted_gross_col]
+        else:
+            sub["DPS_ADJUSTED_GROSS"] = np.nan
 
         if currency_col is not None:
             sub["Currency"] = df[currency_col].map(normalize_currency_code)
@@ -450,14 +480,15 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
             sub["AdjustmentBasis"] = np.where(
                 raw_factor.notna(),
                 "TR.DivUnadjustedGross_x_TR.DivAdjustmentFactor",
-                "missing_adjustment_factor_default_1",
+                "missing_adjustment_factor_needs_fallback",
             )
         else:
             sub["AdjustmentFactor"] = np.nan
-            sub["AdjustmentBasis"] = "factor_field_missing_default_1"
+            sub["AdjustmentBasis"] = "factor_field_missing_needs_fallback"
 
         sub["ExDate"] = pd.to_datetime(sub["ExDate"], errors="coerce")
         sub["DPS_UNADJUSTED"] = pd.to_numeric(sub["DPS_UNADJUSTED"], errors="coerce")
+        sub["DPS_ADJUSTED_GROSS"] = pd.to_numeric(sub["DPS_ADJUSTED_GROSS"], errors="coerce")
 
         valid_dividend = (
             sub["ExDate"].notna()
@@ -472,13 +503,20 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
         )
         if missing_factor.any() or invalid_factor.any():
             missing_factor_tickers.add(ticker)
-            sub.loc[missing_factor, "AdjustmentFactor"] = 1.0
-            sub.loc[invalid_factor, "AdjustmentFactor"] = 1.0
-            sub.loc[invalid_factor, "AdjustmentBasis"] = "invalid_adjustment_factor_default_1"
+            sub.loc[invalid_factor, "AdjustmentFactor"] = np.nan
+            sub.loc[invalid_factor, "AdjustmentBasis"] = "invalid_adjustment_factor_needs_fallback"
 
-        sub["DPS_LOCAL"] = sub["DPS_UNADJUSTED"] * sub["AdjustmentFactor"]
-        sub = sub.dropna(subset=["ExDate", "DPS_UNADJUSTED", "DPS_LOCAL"])
-        sub = sub.loc[(sub["DPS_UNADJUSTED"] > 0) & (sub["DPS_LOCAL"] > 0)]
+        # Second-best LSEG source: if LSEG exposes the adjusted gross dividend
+        # but not the explicit adjustment factor, the ratio is the implied
+        # split-adjustment factor needed to align with adjusted prices.
+        unresolved = valid_dividend & sub["AdjustmentFactor"].isna()
+        implied_factor = sub["DPS_ADJUSTED_GROSS"] / sub["DPS_UNADJUSTED"]
+        valid_implied = unresolved & implied_factor.notna() & np.isfinite(implied_factor) & (implied_factor > 0)
+        sub.loc[valid_implied, "AdjustmentFactor"] = implied_factor.loc[valid_implied]
+        sub.loc[valid_implied, "AdjustmentBasis"] = "TR.DivAdjustedGross_over_TR.DivUnadjustedGross"
+
+        sub = sub.dropna(subset=["ExDate", "DPS_UNADJUSTED"])
+        sub = sub.loc[sub["DPS_UNADJUSTED"] > 0]
         sub["Ticker"] = ticker
 
         if not sub.empty:
@@ -488,8 +526,8 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
                         "Ticker",
                         "ExDate",
                         "DPS_UNADJUSTED",
+                        "DPS_ADJUSTED_GROSS",
                         "AdjustmentFactor",
-                        "DPS_LOCAL",
                         "Currency",
                         "AdjustmentBasis",
                     ]
@@ -504,6 +542,7 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
                 "Ticker",
                 "ExDate",
                 "DPS_UNADJUSTED",
+                "DPS_ADJUSTED_GROSS",
                 "AdjustmentFactor",
                 "DPS_LOCAL",
                 "Currency",
@@ -512,12 +551,90 @@ def get_dividends_local(tickers: list[str], start: str, end: str) -> pd.DataFram
         )
 
     out = pd.concat(rows, ignore_index=True).sort_values(["Ticker", "ExDate"]).reset_index(drop=True)
+
+    for col, default in [
+        ("SplitFallbackSource", ""),
+        ("SplitFallbackEventCount", 0),
+        ("SplitFallbackEvents", ""),
+    ]:
+        if col not in out.columns:
+            out[col] = default
+
+    unresolved = out["AdjustmentFactor"].isna() | (pd.to_numeric(out["AdjustmentFactor"], errors="coerce") <= 0)
+
+    # Third source in the hierarchy: split/corporate-action events exported to
+    # split_events.csv. This lets us use an audited LSEG corporate-action split
+    # file without guessing field names inside this dividend pull.
+    split_events = load_split_events(SPLIT_EVENTS_CSV)
+    if unresolved.any() and not split_events.empty:
+        print(f"\nApplying split-event fallback from {SPLIT_EVENTS_CSV}...")
+        out = apply_split_fallback(
+            out,
+            unresolved,
+            split_events,
+            split_status=None,
+            source_label="split_events_csv",
+        )
+        unresolved = out["AdjustmentFactor"].isna() | (pd.to_numeric(out["AdjustmentFactor"], errors="coerce") <= 0)
+
+    # Fourth source: Yahoo stock-split events. We use this only for rows that
+    # still lack a usable LSEG factor or implied adjusted/unadjusted ratio.
+    if unresolved.any() and ENABLE_YAHOO_SPLIT_FALLBACK:
+        tickers_need_yahoo = sorted(out.loc[unresolved, "Ticker"].unique())
+        print(
+            "\nApplying Yahoo split fallback for dividend rows with unresolved "
+            f"adjustment factors ({len(tickers_need_yahoo)} tickers)..."
+        )
+        yahoo_events, yahoo_status = build_yahoo_split_cache(
+            tickers_need_yahoo,
+            start,
+            end,
+            YAHOO_SPLIT_EVENTS_CSV,
+            YAHOO_SPLIT_STATUS_CSV,
+            refresh=YAHOO_SPLIT_REFRESH,
+            sleep_seconds=YAHOO_SPLIT_SLEEP_SECONDS,
+        )
+        out = apply_split_fallback(
+            out,
+            unresolved,
+            yahoo_events,
+            split_status=yahoo_status,
+            source_label="yahoo",
+        )
+        unresolved = out["AdjustmentFactor"].isna() | (pd.to_numeric(out["AdjustmentFactor"], errors="coerce") <= 0)
+
+    if unresolved.any():
+        out.loc[unresolved, "AdjustmentFactor"] = 1.0
+        out.loc[unresolved, "AdjustmentBasis"] = "unverified_missing_adjustment_factor_default_1"
+
+    out["AdjustmentFactor"] = pd.to_numeric(out["AdjustmentFactor"], errors="coerce")
+    out["DPS_LOCAL"] = out["DPS_UNADJUSTED"] * out["AdjustmentFactor"]
+    out = out.dropna(subset=["ExDate", "DPS_UNADJUSTED", "DPS_LOCAL"])
+    out = out.loc[(out["DPS_UNADJUSTED"] > 0) & (out["DPS_LOCAL"] > 0)]
+
+    ordered_cols = [
+        "Ticker",
+        "ExDate",
+        "DPS_UNADJUSTED",
+        "DPS_ADJUSTED_GROSS",
+        "AdjustmentFactor",
+        "DPS_LOCAL",
+        "Currency",
+        "AdjustmentBasis",
+        "SplitFallbackSource",
+        "SplitFallbackEventCount",
+        "SplitFallbackEvents",
+    ]
+    out = out[[c for c in ordered_cols if c in out.columns] + [c for c in out.columns if c not in ordered_cols]]
+
     print(f"\nDividends: {len(out):,} events across {out['Ticker'].nunique()} tickers.")
     print(f"  Date range: {out['ExDate'].min().date()} to {out['ExDate'].max().date()}")
     n_adjusted = (out["AdjustmentFactor"].round(12) != 1.0).sum()
     n_default_factor = out["AdjustmentBasis"].str.contains("default_1", na=False).sum()
+    n_unverified_default = out["AdjustmentBasis"].eq("unverified_missing_adjustment_factor_default_1").sum()
     print(f"  Events with adjustment factor != 1: {n_adjusted:,}")
     print(f"  Events defaulting adjustment factor to 1: {n_default_factor:,}")
+    print(f"  Events with unverified default factor: {n_unverified_default:,}")
     if missing_factor_tickers:
         print(
             "  WARNING: Some dividend rows had missing/invalid adjustment factors. "
