@@ -26,6 +26,7 @@ from portfolio_evaluation import run_portfolio_evaluation
 class RunConfig:
     extracted_input_csv: str = "results/extraction_static/prepared_step2_input.csv"
     returns_csv: str = "data/processed_data_lseg/all_stock_prices_nok.csv"
+    dividends_csv: str = "data/processed_data_lseg/dividends_monthly_nok.csv"
     market_cap_csv: str = "data/processed_data_lseg/historical_market_cap_nok.csv"
     factors_csv: str = "results/extraction_static/factor_data.csv"
     results_root: str = "results"
@@ -183,7 +184,11 @@ def run_pipeline(config: RunConfig) -> Path:
         )
         returns_csv = ensure_file_exists(
             resolve_path(config.returns_csv, project_root),
-            "Returns CSV",
+            "Stock prices CSV",
+        )
+        dividends_csv = ensure_file_exists(
+            resolve_path(config.dividends_csv, project_root),
+            "Monthly dividends CSV",
         )
         market_cap_csv = ensure_file_exists(
             resolve_path(config.market_cap_csv, project_root),
@@ -198,6 +203,7 @@ def run_pipeline(config: RunConfig) -> Path:
             "project_root": str(project_root),
             "extracted_input_csv": str(extracted_input_csv),
             "returns_csv": str(returns_csv),
+            "dividends_csv": str(dividends_csv),
             "market_cap_csv": str(market_cap_csv),
             "factors_csv": str(factors_csv),
         }
@@ -308,6 +314,7 @@ def run_pipeline(config: RunConfig) -> Path:
         evaluation_result = run_portfolio_evaluation(
             assignments_csv=portfolio_long_csv,
             stock_prices_csv=returns_csv,
+            dividends_csv=dividends_csv,
             market_cap_csv=market_cap_csv,
             factors_csv=factors_csv,
             output_dir=step_dirs["portfolio_evaluation"],
@@ -381,7 +388,13 @@ def parse_args() -> argparse.Namespace:
         "--returns_csv",
         type=str,
         default=RunConfig.returns_csv,
-        help="CSV containing stock prices / returns used in portfolio evaluation.",
+        help="CSV containing monthly stock prices used in total-return portfolio evaluation.",
+    )
+    parser.add_argument(
+        "--dividends_csv",
+        type=str,
+        default=RunConfig.dividends_csv,
+        help="CSV containing monthly dividends used in total-return portfolio evaluation.",
     )
     parser.add_argument(
         "--market_cap_csv",
@@ -534,6 +547,7 @@ def main() -> None:
     config = RunConfig(
         extracted_input_csv=args.extracted_input_csv,
         returns_csv=args.returns_csv,
+        dividends_csv=args.dividends_csv,
         market_cap_csv=args.market_cap_csv,
         factors_csv=args.factors_csv,
         results_root=args.results_root,

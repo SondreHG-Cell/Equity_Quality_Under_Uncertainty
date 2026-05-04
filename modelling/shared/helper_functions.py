@@ -107,7 +107,45 @@ def load_factor_data(factors_csv: str | Path) -> pd.DataFrame:
     return df
 
 
-def load_prices_and_build_returns(path: str | Path) -> pd.DataFrame:
+def load_monthly_dividends(path: str | Path) -> pd.DataFrame:
+    project_root = find_project_root()
+    path = resolve_path(path, project_root)
+
+    df = pd.read_csv(path)
+
+    if "Ticker" not in df.columns:
+        raise ValueError("Dividend CSV must contain a 'Ticker' column.")
+
+    month_cols = [c for c in df.columns if re.fullmatch(r"\d{4}-\d{2}", str(c).strip())]
+    if not month_cols:
+        raise ValueError("Could not detect monthly columns like '2010-01' in dividend CSV.")
+
+    long_df = df.melt(
+        id_vars="Ticker",
+        value_vars=month_cols,
+        var_name="Month",
+        value_name="Dividend",
+    ).copy()
+
+    long_df["Ticker"] = long_df["Ticker"].astype(str).str.strip()
+    long_df["Date"] = parse_month_series(long_df["Month"])
+    long_df["Dividend"] = pd.to_numeric(long_df["Dividend"], errors="coerce")
+
+    long_df = (
+        long_df.dropna(subset=["Ticker", "Date"])
+        .groupby(["Ticker", "Date"], as_index=False)["Dividend"]
+        .sum(min_count=1)
+        .sort_values(["Ticker", "Date"])
+        .reset_index(drop=True)
+    )
+
+    return long_df
+
+
+def load_prices_and_build_returns(
+    path: str | Path,
+    dividends_csv: str | Path | None = "data/processed_data_lseg/dividends_monthly_nok.csv",
+) -> pd.DataFrame:
     project_root = find_project_root()
     path = resolve_path(path, project_root)
 
@@ -137,10 +175,42 @@ def load_prices_and_build_returns(path: str | Path) -> pd.DataFrame:
         .reset_index(drop=True)
     )
 
-    long_df["Return"] = long_df.groupby("Ticker")["Price"].pct_change()
+    if dividends_csv is not None:
+        dividends_df = load_monthly_dividends(dividends_csv)
+        long_df = long_df.merge(
+            dividends_df,
+            on=["Ticker", "Date"],
+            how="left",
+            validate="1:1",
+        )
+    else:
+        long_df["Dividend"] = 0.0
 
-    returns_df = long_df.dropna(subset=["Return"]).copy()
-    return returns_df[["Ticker", "Date", "Return"]].reset_index(drop=True)
+    long_df["Dividend"] = long_df["Dividend"].fillna(0.0)
+    long_df["LagPrice"] = long_df.groupby("Ticker")["Price"].shift(1)
+    long_df["PriceReturn"] = long_df["Price"] / long_df["LagPrice"] - 1.0
+    long_df["DividendYield"] = long_df["Dividend"] / long_df["LagPrice"]
+    long_df["Return"] = (long_df["Price"] + long_df["Dividend"]) / long_df["LagPrice"] - 1.0
+
+    valid_return = (
+        long_df["Price"].notna()
+        & long_df["LagPrice"].notna()
+        & (long_df["LagPrice"] > 0)
+        & long_df["Return"].notna()
+    )
+    returns_df = long_df.loc[valid_return].copy()
+    return returns_df[
+        [
+            "Ticker",
+            "Date",
+            "Return",
+            "Price",
+            "LagPrice",
+            "Dividend",
+            "PriceReturn",
+            "DividendYield",
+        ]
+    ].reset_index(drop=True)
 
 
 def load_market_cap_monthly(path: str | Path) -> pd.DataFrame:
@@ -199,11 +269,12 @@ def build_monthly_portfolio_returns(
     market_cap_csv: str | Path,
     factors: pd.DataFrame,
     n_portfolios: int = 5,
+    dividends_csv: str | Path | None = "data/processed_data_lseg/dividends_monthly_nok.csv",
 ) -> dict:
     """
     Uses:
     - yearly portfolio membership from assignments
-    - monthly stock returns from stock_prices_csv
+    - monthly stock total returns from stock_prices_csv plus dividends_csv
     - monthly lagged market cap weights from market_cap_csv
 
     Assumption:
@@ -224,7 +295,7 @@ def build_monthly_portfolio_returns(
     assignments = assignments.dropna(subset=["Ticker", "FormationYear", "Method", "PortfolioNum"]).copy()
     assignments["FormationYear"] = assignments["FormationYear"].astype(int)
 
-    returns_df = load_prices_and_build_returns(stock_prices_csv)
+    returns_df = load_prices_and_build_returns(stock_prices_csv, dividends_csv=dividends_csv)
     mcap_df = load_market_cap_monthly(market_cap_csv)
 
     stock_panel = returns_df.merge(
@@ -313,6 +384,7 @@ def build_monthly_portfolio_returns(
 def build_probabilistic_targets(
     assignments: pd.DataFrame,
     stock_prices_csv: str | Path,
+    dividends_csv: str | Path | None = "data/processed_data_lseg/dividends_monthly_nok.csv",
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Build:
@@ -326,7 +398,7 @@ def build_probabilistic_targets(
     if "p_q5" not in assignments.columns:
         raise ValueError("Assignments must contain 'p_q5' for probabilistic evaluation.")
 
-    returns_df = load_prices_and_build_returns(stock_prices_csv)
+    returns_df = load_prices_and_build_returns(stock_prices_csv, dividends_csv=dividends_csv)
 
     monthly = returns_df.copy()
     monthly["FormationYear"] = assign_june_formation_year(monthly["Date"])
