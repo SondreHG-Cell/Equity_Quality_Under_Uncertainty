@@ -10,7 +10,8 @@ Inputs (in RAW_DATA directory, produced by extract_lseg.py):
                                       adjusted gross DPS in Currency.
 
 FX inputs (in FX_DATA directory):
-    NOK_EUR.xlsx, NOK_USD.xlsx, NOK_SEK.xlsx, NOK_DKK.xlsx, NOK_ISK.xlsx
+    NOK_EUR.xlsx, NOK_USD.xlsx, NOK_SEK.xlsx, NOK_DKK.xlsx, NOK_ISK.xlsx,
+    plus any extra dividend currencies listed in FX_FILES below.
     Each: a Norges Bank EXR Excel export with metadata in rows 1-20,
           dates in row 22, daily rates in row 23.
 
@@ -32,6 +33,7 @@ Conventions
 """
 
 from pathlib import Path
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -47,6 +49,9 @@ BASE = HERE.parents[1]
 RAW_DATA = BASE / "data" / "raw_data_lseg"
 PROCESSED_DATA = BASE / "data" / "processed_data_lseg"
 FX_DATA = HERE
+MONTHLY_FX_FALLBACK = RAW_DATA / "fx_rates.csv"
+OUTPUT_START_DATE = pd.Timestamp("2005-01-01")
+OUTPUT_START_MONTH = OUTPUT_START_DATE.strftime("%Y-%m")
 
 # Map from currency code to Norges Bank file name (in the same folder).
 FX_FILES = {
@@ -151,6 +156,41 @@ def load_all_fx() -> dict[str, pd.DataFrame]:
     return fx
 
 
+def load_monthly_fx_fallback(path: Path) -> dict[str, pd.DataFrame]:
+    """
+    Load optional monthly FX fallback rates.
+
+    This is only used where the preferred Norges Bank daily series has no
+    available observation. The expected shape is the legacy fx_rates.csv:
+        Date,SEK,DKK,EUR,ISK,NOK
+    with rates already expressed as NOK per one unit of local currency.
+    """
+    if not path.exists():
+        print(f"\nMonthly FX fallback not found at {path}; continuing without fallback.")
+        return {}
+
+    df = pd.read_csv(path)
+    if "Date" not in df.columns:
+        print(f"\nMonthly FX fallback at {path} has no Date column; ignoring.")
+        return {}
+
+    df["date"] = pd.to_datetime(df["Date"], errors="coerce") + pd.offsets.MonthEnd(0)
+    df = df.dropna(subset=["date"]).sort_values("date")
+
+    fallback = {}
+    for ccy in [c for c in df.columns if c not in {"Date", "date"}]:
+        ccy_norm = str(ccy).strip().upper()
+        rates = pd.to_numeric(df[ccy], errors="coerce")
+        sub = pd.DataFrame({"date": df["date"], "rate": rates}).dropna()
+        if not sub.empty:
+            fallback[ccy_norm] = sub.drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+
+    if fallback:
+        covered = ", ".join(sorted(fallback))
+        print(f"\nLoaded monthly FX fallback from {path}: {covered}")
+    return fallback
+
+
 # =============================================================================
 # FX lookup helpers
 # =============================================================================
@@ -184,6 +224,18 @@ def get_rate_for_date(
     return float(last["rate"]), last["date"]
 
 
+def get_fallback_rate_for_date(
+    target_date: pd.Timestamp,
+    fx_monthly: pd.DataFrame,
+) -> tuple[float, pd.Timestamp]:
+    """Get the latest fallback monthly FX rate on or before target_date."""
+    sub = fx_monthly.loc[fx_monthly["date"] <= target_date]
+    if sub.empty:
+        return np.nan, pd.NaT
+    last = sub.iloc[-1]
+    return float(last["rate"]), last["date"]
+
+
 # =============================================================================
 # Conversion functions
 # =============================================================================
@@ -193,6 +245,7 @@ def convert_wide_monthly_to_nok(
     currencies: pd.DataFrame,
     fx: dict[str, pd.DataFrame],
     label: str,
+    monthly_fx_fallback: dict[str, pd.DataFrame] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Convert a wide monthly file (rows=tickers, cols=YYYY-MM) from local currency
@@ -205,6 +258,11 @@ def convert_wide_monthly_to_nok(
         for spot-checking.
     """
     df_local = pd.read_csv(local_csv, index_col="Ticker")
+    month_cols = [
+        c for c in df_local.columns
+        if pd.notna(pd.to_datetime(f"{c}-01", errors="coerce")) and str(c) >= OUTPUT_START_MONTH
+    ]
+    df_local = df_local[month_cols].copy()
     print(f"\nConverting {label}: {df_local.shape[0]} tickers × {df_local.shape[1]} months")
 
     ccy_map = currencies.set_index("Ticker")["Currency"].to_dict()
@@ -221,10 +279,17 @@ def convert_wide_monthly_to_nok(
 
     converted = df_local.copy().astype(float)
     audit_rows = []
+    monthly_fx_fallback = monthly_fx_fallback or {}
+    fallback_monthly = {}
+    for ccy, df_fallback in monthly_fx_fallback.items():
+        fallback_series = df_fallback.set_index("date").sort_index()["rate"]
+        fallback_series.index = fallback_series.index.strftime("%Y-%m")
+        fallback_monthly[ccy] = fallback_series
 
     n_no_currency = 0
     n_unsupported_ccy = 0
     n_missing_fx = 0
+    n_fallback_fx = 0
 
     # Determine which (ticker, month) cells need conversion.
     for ticker in df_local.index:
@@ -240,11 +305,14 @@ def convert_wide_monthly_to_nok(
             continue
 
         if ccy not in eom_fx:
-            converted.loc[ticker] = np.nan
-            n_unsupported_ccy += 1
-            continue
+            if ccy not in fallback_monthly:
+                converted.loc[ticker] = np.nan
+                n_unsupported_ccy += 1
+                continue
+            rate_series = pd.Series(dtype=float)
+        else:
+            rate_series = eom_fx[ccy]
 
-        rate_series = eom_fx[ccy]
         # Multiply each month's value by that month's FX rate.
         for month in df_local.columns:
             local_val = df_local.loc[ticker, month]
@@ -253,14 +321,24 @@ def convert_wide_monthly_to_nok(
             if month in rate_series.index:
                 rate = rate_series.loc[month]
                 if pd.isna(rate):
-                    converted.loc[ticker, month] = np.nan
-                    n_missing_fx += 1
+                    fallback_rate = fallback_monthly.get(ccy, pd.Series(dtype=float)).get(month, np.nan)
+                    if pd.notna(fallback_rate):
+                        converted.loc[ticker, month] = local_val * fallback_rate
+                        n_fallback_fx += 1
+                    else:
+                        converted.loc[ticker, month] = np.nan
+                        n_missing_fx += 1
                 else:
                     converted.loc[ticker, month] = local_val * rate
             else:
-                # Month outside FX coverage.
-                converted.loc[ticker, month] = np.nan
-                n_missing_fx += 1
+                fallback_rate = fallback_monthly.get(ccy, pd.Series(dtype=float)).get(month, np.nan)
+                if pd.notna(fallback_rate):
+                    converted.loc[ticker, month] = local_val * fallback_rate
+                    n_fallback_fx += 1
+                else:
+                    # Month outside FX coverage.
+                    converted.loc[ticker, month] = np.nan
+                    n_missing_fx += 1
 
     # Build a small audit sample. For each currency present, take 1-2 sample
     # tickers and 3 sample months (early, mid, late).
@@ -287,9 +365,14 @@ def convert_wide_monthly_to_nok(
             if ccy == "NOK":
                 rate_used = 1.0
                 nok_val = local_val
+                fx_source = "identity"
             else:
                 rate_series = eom_fx.get(ccy)
                 rate_used = rate_series.loc[month] if (rate_series is not None and month in rate_series.index) else np.nan
+                fx_source = "month_end_norges_bank"
+                if pd.isna(rate_used):
+                    rate_used = fallback_monthly.get(ccy, pd.Series(dtype=float)).get(month, np.nan)
+                    fx_source = "monthly_fx_fallback" if pd.notna(rate_used) else "missing_fx"
                 nok_val = local_val * rate_used if pd.notna(rate_used) else np.nan
             audit_rows.append({
                 "Source": label,
@@ -298,6 +381,7 @@ def convert_wide_monthly_to_nok(
                 "Currency": ccy,
                 "LocalValue": local_val,
                 "FXRate_EoM": rate_used,
+                "FXSource_EoM": fx_source,
                 "NOKValue": nok_val,
             })
         seen_ccy.add(ccy)
@@ -308,6 +392,7 @@ def convert_wide_monthly_to_nok(
 
     print(f"  Tickers with no currency:  {n_no_currency}")
     print(f"  Tickers with unsupported currency: {n_unsupported_ccy}")
+    print(f"  Cells converted with monthly fallback FX: {n_fallback_fx}")
     print(f"  Cells with missing FX:     {n_missing_fx}")
 
     return converted, audit_df
@@ -316,6 +401,7 @@ def convert_wide_monthly_to_nok(
 def convert_dividends_to_nok(
     long_csv: Path,
     fx: dict[str, pd.DataFrame],
+    monthly_fx_fallback: dict[str, pd.DataFrame] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Convert long-format dividends to NOK using ex-date FX.
@@ -334,10 +420,19 @@ def convert_dividends_to_nok(
     df["ExDate"] = pd.to_datetime(df["ExDate"], errors="coerce")
     df["DPS_LOCAL"] = pd.to_numeric(df["DPS_LOCAL"], errors="coerce")
     df["Currency"] = df["Currency"].astype(str).str.strip().str.upper()
+    n_pre_start = (df["ExDate"] < OUTPUT_START_DATE).sum()
+    if n_pre_start > 0:
+        print(f"  Dropping {n_pre_start:,} dividend rows before {OUTPUT_START_DATE.date()}.")
+        df = df.loc[df["ExDate"] >= OUTPUT_START_DATE].copy()
+    if "AdjustmentBasis" in df.columns:
+        df["AdjustmentBasis"] = df["AdjustmentBasis"].replace({
+            "missing_adjustment_factor_default_1": "TR.DivAdjustmentFactor_blank_assumed_1",
+        })
 
     rates = []
     fx_dates = []
     fx_sources = []
+    monthly_fx_fallback = monthly_fx_fallback or {}
 
     for _, row in df.iterrows():
         ccy = row["Currency"]
@@ -350,12 +445,30 @@ def convert_dividends_to_nok(
             continue
 
         if ccy not in fx or fx[ccy] is None:
+            fallback_series = monthly_fx_fallback.get(ccy)
+            if fallback_series is not None:
+                rate, date_used = get_fallback_rate_for_date(ex_date, fallback_series)
+                rates.append(rate)
+                fx_dates.append(date_used)
+                fx_sources.append("monthly_fx_fallback_prior_month_end" if pd.notna(rate) else "missing_fx_series")
+                continue
+
             rates.append(np.nan)
             fx_dates.append(pd.NaT)
             fx_sources.append("missing_fx_series")
             continue
 
         rate, date_used = get_rate_for_date(ex_date, fx[ccy])
+        if pd.isna(rate):
+            fallback_series = monthly_fx_fallback.get(ccy)
+            if fallback_series is not None:
+                fallback_rate, fallback_date = get_fallback_rate_for_date(ex_date, fallback_series)
+                if pd.notna(fallback_rate):
+                    rates.append(fallback_rate)
+                    fx_dates.append(fallback_date)
+                    fx_sources.append("monthly_fx_fallback_prior_month_end")
+                    continue
+
         rates.append(rate)
         fx_dates.append(date_used)
         fx_sources.append("ex_date_or_prior_business_day" if pd.notna(rate) else "no_rate_found")
@@ -438,9 +551,11 @@ def main():
 
     # 2. Load FX series.
     fx = load_all_fx()
+    monthly_fx_fallback = load_monthly_fx_fallback(MONTHLY_FX_FALLBACK)
 
     needed = set(currencies["Currency"]) - {"NOK", "UNKNOWN", "NAN", ""}
-    missing_fx = needed - set([c for c in fx if fx[c] is not None])
+    available_fx = set([c for c in fx if fx[c] is not None]) | set(monthly_fx_fallback)
+    missing_fx = needed - available_fx
     if missing_fx:
         print(f"\nWARNING: missing FX series for currencies: {missing_fx}")
         print("Tickers in those currencies will be NaN in NOK output.")
@@ -449,7 +564,7 @@ def main():
     prices_local_path = RAW_DATA / "all_stock_prices_local.csv"
     if prices_local_path.exists():
         prices_nok, audit_prices = convert_wide_monthly_to_nok(
-            prices_local_path, currencies, fx, label="prices",
+            prices_local_path, currencies, fx, label="prices", monthly_fx_fallback=monthly_fx_fallback,
         )
         prices_nok.to_csv(PROCESSED_DATA / "all_stock_prices_nok.csv")
         print(f"Saved all_stock_prices_nok.csv: {prices_nok.shape}")
@@ -461,7 +576,7 @@ def main():
     mktcap_local_path = RAW_DATA / "historical_market_cap_local.csv"
     if mktcap_local_path.exists():
         mktcap_nok, audit_mktcap = convert_wide_monthly_to_nok(
-            mktcap_local_path, currencies, fx, label="market_cap",
+            mktcap_local_path, currencies, fx, label="market_cap", monthly_fx_fallback=monthly_fx_fallback,
         )
         mktcap_nok.to_csv(PROCESSED_DATA / "historical_market_cap_nok.csv")
         print(f"Saved historical_market_cap_nok.csv: {mktcap_nok.shape}")
@@ -472,7 +587,11 @@ def main():
     # 5. Convert dividends (long format with ex-date FX).
     divs_long_local_path = RAW_DATA / "dividends_raw_long_local.csv"
     if divs_long_local_path.exists():
-        divs_long_nok, divs_full = convert_dividends_to_nok(divs_long_local_path, fx)
+        divs_long_nok, divs_full = convert_dividends_to_nok(
+            divs_long_local_path,
+            fx,
+            monthly_fx_fallback=monthly_fx_fallback,
+        )
         divs_long_nok.to_csv(PROCESSED_DATA / "dividends_raw_long_nok.csv", index=False)
         print(f"Saved dividends_raw_long_nok.csv: {len(divs_long_nok):,} rows")
 
@@ -488,7 +607,16 @@ def main():
         print(f"SKIP dividends: {divs_long_local_path} not found")
         audit_divs = pd.DataFrame()
 
-    # 6. Combine audit outputs.
+    # 6. CFO forecasts are extracted directly in NOK by extract_lseg.py.
+    cfo_raw_path = RAW_DATA / "cfo_forecasts_monthly_raw.csv"
+    if cfo_raw_path.exists():
+        cfo_out_path = PROCESSED_DATA / "cfo_forecasts_monthly_nok.csv"
+        shutil.copyfile(cfo_raw_path, cfo_out_path)
+        print(f"Copied CFO forecasts to {cfo_out_path}")
+    else:
+        print(f"SKIP CFO forecasts: {cfo_raw_path} not found")
+
+    # 7. Combine audit outputs.
     audit_combined = pd.concat(
         [audit_prices, audit_mktcap, audit_divs],
         ignore_index=True,
