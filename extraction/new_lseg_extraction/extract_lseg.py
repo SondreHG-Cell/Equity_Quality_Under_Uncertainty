@@ -52,7 +52,7 @@ BASE = Path(__file__).resolve().parents[2]
 FOLDER = BASE / "data" / "prof_components_extracted"
 OUTPUT = BASE / "data" / "raw_data_lseg"
 
-START = "2004-01-01"
+START = "2005-01-03"
 END = "2026-03-31"
 
 # Fallback only - we prefer LSEG's currency metadata when available.
@@ -566,41 +566,6 @@ def get_historical_market_cap_local(tickers: list[str], start: str, end: str) ->
 
 
 # =============================================================================
-# Shares outstanding (currency-independent)
-# =============================================================================
-
-def get_shares_outstanding(tickers: list[str], start: str, end: str) -> pd.DataFrame:
-    all_shares = {}
-    missing = []
-
-    for i, ticker in enumerate(tickers):
-        print(f"  [{i+1}/{len(tickers)}] {ticker}")
-        try:
-            df = lseg.get_history(
-                universe=[ticker],
-                fields=["TR.SharesOutstanding"],
-                interval="monthly",
-                start=start,
-                end=end,
-            )
-            if df is not None and not df.empty:
-                col = df.columns[0]
-                series = pd.to_numeric(df[col], errors="coerce")
-                if series.notna().any():
-                    all_shares[ticker] = series
-                    continue
-        except Exception:
-            pass
-        missing.append(ticker)
-        time.sleep(0.1)
-
-    print(f"\nShares outstanding retrieved for {len(all_shares)}/{len(tickers)} tickers.")
-    if missing:
-        pd.Series(missing, name="Ticker").to_csv(OUTPUT / "missing_shares.csv", index=False)
-    return pd.DataFrame(all_shares)
-
-
-# =============================================================================
 # CFO forecasts (analyst consensus)
 # =============================================================================
 
@@ -682,12 +647,6 @@ def main():
     try:
         tickers = get_tickers_from_folder(FOLDER)
 
-        # ── TEMPORARY test universe ────────────────────────────────────
-        # Uncomment to test the pipeline on a small set of named stocks
-        # before running the full universe.
-        # tickers = ["EQNR.OL", "AFAGR.HE", "NOVO-B.CO", "ABB.ST"]
-        # ───────────────────────────────────────────────────────────────
-
         # ---------------------------------------------------------------
         # 1. Currency metadata (FIRST - everything else depends on it)
         # ---------------------------------------------------------------
@@ -721,13 +680,6 @@ def main():
         print(f"\n--- Fetching monthly LOCAL market cap ({START} → {END}) ---")
         mktcap_local = get_historical_market_cap_local(tickers, START, END)
         save_transposed_monthly(mktcap_local, OUTPUT / "historical_market_cap_local.csv", "local market cap")
-
-        # ---------------------------------------------------------------
-        # 5. Shares outstanding (currency-independent)
-        # ---------------------------------------------------------------
-        print(f"\n--- Fetching shares outstanding ({START} → {END}) ---")
-        shares = get_shares_outstanding(tickers, START, END)
-        save_transposed_monthly(shares, OUTPUT / "shares_outstanding.csv", "shares outstanding")
 
         # ---------------------------------------------------------------
         # 6. Dividend events in their native cash currency
@@ -764,13 +716,13 @@ def main():
         divs_local.to_csv(OUTPUT / "dividends_raw_long_local.csv", index=False)
         print(f"Saved long dividends to {OUTPUT / 'dividends_raw_long_local.csv'}")
 
-        # ---------------------------------------------------------------
-        # 7. CFO forecasts (NOK natively from LSEG via Curn=NOK)
-        # ---------------------------------------------------------------
-        print(f"\n--- Fetching analyst CFO forecasts ---")
-        ocf_forecasts = get_monthly_cfo_forecasts(tickers, start="2010-01-01", end="2025-12-31")
-        if not ocf_forecasts.empty:
-            ocf_forecasts.to_csv(OUTPUT / "cfo_forecasts_monthly_raw.csv", index=False)
+        # # ---------------------------------------------------------------
+        # # 7. CFO forecasts (NOK natively from LSEG via Curn=NOK)
+        # # ---------------------------------------------------------------
+        # print(f"\n--- Fetching analyst CFO forecasts ---")
+        # ocf_forecasts = get_monthly_cfo_forecasts(tickers, start="2010-01-01", end="2025-12-31")
+        # if not ocf_forecasts.empty:
+        #     ocf_forecasts.to_csv(OUTPUT / "cfo_forecasts_monthly_raw.csv", index=False)
 
         print("\nDone with extraction.")
         print("\nNext step: run the FX conversion script (fx_convert_to_nok.py).")

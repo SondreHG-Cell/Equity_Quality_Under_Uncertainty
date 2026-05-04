@@ -55,6 +55,10 @@ FX_FILES = {
     "SEK": FX_DATA / "NOK_SEK.xlsx",
     "DKK": FX_DATA / "NOK_DKK.xlsx",
     "ISK": FX_DATA / "NOK_ISK.xlsx",
+    "GBP": FX_DATA / "NOK_GBP.xlsx",
+    "PLN": FX_DATA / "NOK_PLN.xlsx",
+    "CAD": FX_DATA / "NOK_CAD.xlsx",
+    "CHF": FX_DATA / "NOK_CHF.xlsx",
 }
 
 
