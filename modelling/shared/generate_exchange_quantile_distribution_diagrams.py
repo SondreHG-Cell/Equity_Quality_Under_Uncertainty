@@ -355,29 +355,76 @@ def save_total_distribution_plot(
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=(14, 5.6))
+    plot_exchanges = [
+        exchange
+        for exchange in ["Stockholm", "Oslo", "Helsinki", "Copenhagen", "Iceland"]
+        if exchange in exchanges
+    ]
+    plot_exchanges.extend(exchange for exchange in exchanges if exchange not in plot_exchanges)
+    plot_colors = {
+        "Stockholm": "#4E79A7",
+        "Oslo": "#F28E2B",
+        "Helsinki": "#59A14F",
+        "Copenhagen": "#E15759",
+        "Iceland": "#B07AA1",
+    }
+
+    fig, ax = plt.subplots(figsize=(10.8, 4.4), facecolor="white")
+    ax.set_facecolor("#f3f5f8")
     stacked_bar(
         ax=ax,
         data=year_distribution,
         x_col="FormationYear",
         stack_col="Exchange",
         value_col="share_of_year",
-        stack_order=exchanges,
-        colors=EXCHANGE_COLORS,
+        stack_order=plot_exchanges,
+        colors=plot_colors,
     )
-    ax.set_title("Total Firm-Year Exchange Distribution")
-    ax.set_xlabel("Formation year")
+    fig.suptitle(
+        "Yearly Distribution of Nordic Exchanges",
+        y=0.985,
+        fontsize=11,
+        fontweight="bold",
+        color="#1f2933",
+    )
+    ax.set_xlabel("Formation year", fontsize=9, fontweight="bold", color="#1f2933", labelpad=8)
     ax.set_ylabel("Share of firms")
     ax.set_ylim(0, 1)
+    years = sorted(year_distribution["FormationYear"].dropna().unique())
+    if years:
+        ax.set_xticks(years)
+        ax.set_xlim(min(years) - 0.5, max(years) + 0.5)
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-    ax.grid(axis="y", linestyle="--", alpha=0.3)
+    ax.grid(axis="y", linestyle="--", linewidth=0.7, alpha=0.9, color="#d8e0ea")
+    ax.grid(axis="x", linestyle=":", linewidth=0.45, alpha=0.45, color="#d8e0ea")
+    ax.set_axisbelow(True)
+    ax.tick_params(axis="both", labelsize=8, colors="#1f2933")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=len(exchanges), frameon=False)
-    fig.tight_layout()
+    ax.spines["left"].set_color("#b8c2cc")
+    ax.spines["bottom"].set_color("#b8c2cc")
+    ax.spines["left"].set_linewidth(0.8)
+    ax.spines["bottom"].set_linewidth(0.8)
+
+    handles, labels = ax.get_legend_handles_labels()
+    if ax.legend_ is not None:
+        ax.legend_.remove()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.925),
+        ncol=len(exchanges),
+        frameon=False,
+        fontsize=8,
+        handlelength=1.7,
+        columnspacing=1.45,
+    )
+    fig.subplots_adjust(top=0.80, bottom=0.16, left=0.065, right=0.995)
 
     path = plot_dir / "exchange_total_distribution_by_year.png"
-    fig.savefig(path, dpi=200, bbox_inches="tight")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor=fig.get_facecolor())
+    fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     return path
 
