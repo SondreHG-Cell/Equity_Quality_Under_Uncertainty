@@ -41,7 +41,7 @@ DEFAULT_FORMATION_YEAR_MAX = 2025
 DEFAULT_UNCERTAINTY_METHOD = "auto"   # "auto", "OLS", "HB"
 DEFAULT_SIGMA_COL = None
 
-DEFAULT_NOISE_SHARE_OF_PROF_VAR = 0.12
+DEFAULT_NOISE_SHARE_OF_PROF_VAR = 0.06
 
 # Conservative Quality penalty size: theta_adj = theta_obs - gamma * (1 - lambda_i).
 # Sensitivity analysis is recommended around this value.

@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 
 from uncertainty_model import run_uncertainty_model
 from latent_prof_model import DEFAULT_GAMMA as DEFAULT_LATENT_GAMMA
+from latent_prof_model import DEFAULT_NOISE_SHARE_OF_PROF_VAR as DEFAULT_LATENT_NOISE_SHARE
 from latent_prof_model import run_latent_prof_model
 from portfolio_formation import run_portfolio_formation
 from portfolio_evaluation import run_portfolio_evaluation
@@ -51,6 +52,7 @@ class RunConfig:
 
     # Step 3 latent PROF settings
     latent_gamma: float = DEFAULT_LATENT_GAMMA
+    latent_noise_share_of_prof_var: float = DEFAULT_LATENT_NOISE_SHARE
     latent_use_full_propagation: bool = False # Set True for HB run
     latent_n_sigma_draws: Optional[int] = None
     latent_checkpoint_every_draws: int = 50
@@ -275,6 +277,7 @@ def run_pipeline(config: RunConfig) -> Path:
             output_dir=step_dirs["latent_prof_model"],
             uncertainty_method=config.uncertainty_method,
             gamma=config.latent_gamma,
+            noise_share_of_prof_var=config.latent_noise_share_of_prof_var,
             use_full_propagation=config.latent_use_full_propagation,
             hb_full_posterior_parquet=hb_full_posterior_parquet,
             n_sigma_draws=config.latent_n_sigma_draws,
@@ -520,6 +523,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--latent_noise_share_of_prof_var",
+        type=float,
+        default=RunConfig.latent_noise_share_of_prof_var,
+        help=(
+            "Kappa parameter for Latent Quality. Sets the share of annual "
+            "profitability variance attributed to observation noise."
+        ),
+    )
+    parser.add_argument(
         "--latent_use_full_propagation",
         action="store_true",
         default=RunConfig.latent_use_full_propagation,
@@ -565,6 +577,7 @@ def main() -> None:
         ols_min_periods_start=args.ols_min_periods_start,
         ols_sigma_history_start_year=args.ols_sigma_history_start_year,
         latent_gamma=args.latent_gamma,
+        latent_noise_share_of_prof_var=args.latent_noise_share_of_prof_var,
         latent_use_full_propagation=args.latent_use_full_propagation,
         latent_n_sigma_draws=args.latent_n_sigma_draws,
         latent_checkpoint_every_draws=args.latent_checkpoint_every_draws,

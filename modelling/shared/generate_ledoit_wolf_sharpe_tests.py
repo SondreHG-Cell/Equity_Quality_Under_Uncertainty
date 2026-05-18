@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gammas",
         nargs="+",
-        default=["0.10", "0.15", "0.20", "0.30"],
+        default=["0.15", "0.20", "0.30", "0.40", "0.50"],
         help="Gamma values to include for Conservative Quality robustness.",
     )
     parser.add_argument(
@@ -95,8 +95,8 @@ def gamma_label_for_dir(gamma: str) -> str:
 def gamma_table_dirs(portfolio_evaluation_dir: Path, main_table_dir: Path, gammas: list[str]) -> dict[str, Path]:
     dirs = {}
     for gamma in gammas:
-        if f"{float(gamma):.2f}" == "0.10":
-            dirs["0.10"] = main_table_dir
+        if f"{float(gamma):.2f}" == "0.20":
+            dirs["0.20"] = main_table_dir
         else:
             label = gamma_label_for_dir(gamma)
             dirs[f"{float(gamma):.2f}"] = (
@@ -503,11 +503,22 @@ def main() -> None:
         output_dir / "conservative_gamma_sharpe_difference_tests_ledoit_wolf.csv",
         index=False,
     )
+    gamma_results.to_csv(
+        output_dir / "conservative_gamma_sharpe_difference_tests.csv",
+        index=False,
+    )
     write_latex_table(
         output_dir / "conservative_gamma_sharpe_difference_tests_ledoit_wolf.tex",
         gamma_results,
         "Ledoit--Wolf Sharpe ratio difference tests: Conservative Quality gamma robustness",
         "tab:conservative_gamma_sharpe_difference_tests_ledoit_wolf",
+        "Comparison",
+    )
+    write_latex_table(
+        output_dir / "conservative_gamma_sharpe_difference_tests.tex",
+        gamma_results,
+        "Ledoit--Wolf Sharpe ratio difference tests: Conservative Quality gamma robustness",
+        "tab:conservative_gamma_sharpe_difference_tests",
         "Comparison",
     )
 
@@ -517,6 +528,8 @@ def main() -> None:
         "main_methods_sharpe_difference_tests_ledoit_wolf.tex",
         "conservative_gamma_sharpe_difference_tests_ledoit_wolf.csv",
         "conservative_gamma_sharpe_difference_tests_ledoit_wolf.tex",
+        "conservative_gamma_sharpe_difference_tests.csv",
+        "conservative_gamma_sharpe_difference_tests.tex",
     ]:
         print(output_dir / file_name)
 

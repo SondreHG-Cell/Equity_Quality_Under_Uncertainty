@@ -20,7 +20,7 @@ for path in [SCRIPT_DIR, PROJECT_ROOT]:
         sys.path.insert(0, str(path))
 
 from helper_functions import find_project_root, load_factor_data, resolve_path
-from latent_prof_model import DEFAULT_GAMMA, run_latent_prof_model
+from latent_prof_model import DEFAULT_GAMMA, DEFAULT_NOISE_SHARE_OF_PROF_VAR, run_latent_prof_model
 from portfolio_evaluation import run_portfolio_evaluation
 from portfolio_formation import ALL_METHODS, run_portfolio_formation
 
@@ -62,6 +62,7 @@ def parse_args() -> argparse.Namespace:
         help="Number of HB sigma draws for latent full propagation. Default: all available.",
     )
     parser.add_argument("--gamma", type=float, default=DEFAULT_GAMMA)
+    parser.add_argument("--kappa", type=float, default=DEFAULT_NOISE_SHARE_OF_PROF_VAR)
     parser.add_argument("--nw-lags", type=int, default=12)
     parser.add_argument("--force", action="store_true", help="Regenerate existing downstream files.")
     return parser.parse_args()
@@ -186,6 +187,7 @@ def run_downstream_branch(
     factors_csv: Path,
     force: bool,
     gamma: float,
+    kappa: float,
     nw_lags: int,
 ) -> Path:
     branch_dir = run_dir / "portfolio_return_comparison" / spec_key
@@ -210,6 +212,7 @@ def run_downstream_branch(
             output_dir=latent_dir,
             uncertainty_method="HB",
             gamma=gamma,
+            noise_share_of_prof_var=kappa,
             use_full_propagation=False,
             hb_full_posterior_parquet=None,
             n_sigma_draws=None,
@@ -541,6 +544,7 @@ def main() -> None:
             factors_csv=factors_csv,
             force=args.force,
             gamma=args.gamma,
+            kappa=args.kappa,
             nw_lags=args.nw_lags,
         )
     for path in required_table_files(analyst_table_dir):
@@ -554,6 +558,7 @@ def main() -> None:
         factors_csv=factors_csv,
         force=args.force,
         gamma=args.gamma,
+        kappa=args.kappa,
         nw_lags=args.nw_lags,
     )
 
