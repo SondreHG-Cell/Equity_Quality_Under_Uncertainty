@@ -30,7 +30,7 @@ BLUE_PALETTE = {
     "Method1_ObservedQuality": "#173a5e",
     "Method2_LatentQuality": "#2c73ad",
     "Method3_ConservativeQuality": "#58a7df",
-    "Method4_ProbabilisticQuality": "#a7cfea",
+    "Method4_ProbabilisticQuality": "#8ec5e8",
 }
 
 STRATEGY_ORDER = ["LongShort", "Q5", "Q4"]
@@ -123,7 +123,7 @@ def clean_suffix(value: str) -> str:
 
 
 def apply_axis_style(ax: plt.Axes) -> None:
-    ax.set_facecolor("#edf4fa")
+    ax.set_facecolor("#f6f9fc")
     ax.axhline(0.0, color="#3f79b7", linewidth=1.0, linestyle="--", alpha=0.9)
     ax.grid(axis="y", color="#9ebfda", linewidth=0.6, linestyle="--", alpha=0.65)
     ax.grid(axis="x", color="#c8d9e8", linewidth=0.45, linestyle=":", alpha=0.45)
