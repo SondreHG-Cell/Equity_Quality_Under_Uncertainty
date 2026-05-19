@@ -750,7 +750,7 @@ def main() -> None:
     write_sensitivity_outputs(
         portfolio_eval_dir=portfolio_eval_dir,
         kind="kappa",
-        values=["0.08", "0.06", "0.04"],
+        values=["0.12", "0.08", "0.06", "0.04"],
         method="Method2_LatentQuality",
         main_value="0.06",
     )
