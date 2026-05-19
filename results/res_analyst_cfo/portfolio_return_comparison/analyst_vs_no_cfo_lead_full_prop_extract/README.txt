@@ -6,7 +6,7 @@ This folder compares two full sigma-propagation portfolio pipelines on the match
    Source tables: /Users/simenoiseth/Desktop/Equity_Quality_Under_Uncertainty/results/res_analyst_cfo/portfolio_evaluation/thesis_risk_adjusted_tables_ucits_5_10_40
    Formation-year CFO_t+1 input uses analyst CFO forecasts; historical training observations can use realized CFO_t+1 once observable.
 
-2. No CFO lead matched baseline, full sigma propagation
+2. Baseline no-lead matched sample, full sigma propagation
    Source tables: /Users/simenoiseth/Desktop/Equity_Quality_Under_Uncertainty/results/res_analyst_cfo/portfolio_return_comparison/no_cfo_lead_matched_full_prop/portfolio_evaluation/thesis_risk_adjusted_tables_ucits_5_10_40
    Baseline HB omits CFO_t+1 and is restricted to the same analyst-forecast matched firm-year window.
 
@@ -19,4 +19,5 @@ Main files:
 - alpha_differences_all_models_both_specs.csv: all alpha-difference tests.
 - risk_adjusted_preview_all_models_both_specs.csv: wide preview from each generator.
 - monthly_portfolio_returns_used_both_specs.csv: monthly Q5 and long-short returns used.
+- portfolio_assignment_changes.csv: firm-year assignment changes by method.
 - hb_model_comparison_by_year.csv and hb_model_comparison_overall.csv: upstream HB expected-accrual comparison diagnostics.

@@ -724,7 +724,7 @@ def main() -> None:
         kind="gamma",
         values=["0.15", "0.20", "0.30", "0.40", "0.50"],
         method="Method3_ConservativeQuality",
-        main_value="0.20",
+        main_value="0.40",
     )
     print("Reassignment and sensitivity outputs regenerated.")
 

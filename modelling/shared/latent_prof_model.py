@@ -45,7 +45,7 @@ DEFAULT_NOISE_SHARE_OF_PROF_VAR = 0.06
 
 # Conservative Quality penalty size: theta_adj = theta_obs - gamma * (1 - lambda_i).
 # Sensitivity analysis is recommended around this value.
-DEFAULT_GAMMA = 0.2
+DEFAULT_GAMMA = 0.4
 
 DEFAULT_WINSORIZE_PROF = False
 DEFAULT_WINSORIZE_SIGMA = False
