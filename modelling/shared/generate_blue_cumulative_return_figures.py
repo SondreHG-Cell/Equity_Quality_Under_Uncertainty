@@ -36,7 +36,7 @@ BLUE_PALETTE = {
 STRATEGY_ORDER = ["LongShort", "Q5", "Q4"]
 STRATEGY_PANEL_LABELS = {
     "LongShort": "Long-short strategy",
-    "Q5": "Long strategy",
+    "Q5": "Long-only strategy",
     "Q4": "Q4 strategy",
 }
 
@@ -175,10 +175,10 @@ def plot_combined(cumulative: pd.DataFrame, output_path: Path, title_suffix: str
             padding = max((ymax - ymin) * 0.08, 0.03)
             ax.set_ylim(ymin - padding, ymax + padding)
 
-        ax.set_xlabel(STRATEGY_PANEL_LABELS.get(strategy, strategy), color="#173a5e", fontsize=12, fontweight="bold")
+        ax.set_xlabel(STRATEGY_PANEL_LABELS.get(strategy, strategy), color="black", fontsize=12, fontweight="bold")
 
     title = "Cumulative returns" if not title_suffix else f"Cumulative returns: {title_suffix}"
-    fig.suptitle(title, fontsize=13, fontweight="bold", color="#173a5e", y=0.985)
+    fig.suptitle(title, fontsize=13, fontweight="bold", color="black", y=0.985)
     fig.legend(handles, labels, loc="upper center", ncol=min(4, len(labels)), frameon=False, bbox_to_anchor=(0.5, 0.925))
     fig.subplots_adjust(left=0.075, right=0.985, bottom=0.12, top=0.78, wspace=0.35)
 

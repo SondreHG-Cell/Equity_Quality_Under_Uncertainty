@@ -223,12 +223,16 @@ def save_outputs(
     ls_diffs: pd.DataFrame,
     q4_levels: pd.DataFrame,
     q4_diffs: pd.DataFrame,
+    raw_performance: pd.DataFrame,
     monthly_used: pd.DataFrame,
     preview: pd.DataFrame,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     outputs = {
+        "table_raw_performance": output_dir / "table_raw_performance.csv",
+        "table_ls_raw_performance": output_dir / "table_ls_raw_performance.csv",
+        "table_q4_raw_performance": output_dir / "table_q4_raw_performance.csv",
         "table_ls_alpha_levels": output_dir / "table_ls_alpha_levels.csv",
         "table_ls_alpha_differences": output_dir / "table_ls_alpha_differences.csv",
         "table_q4_alpha_levels": output_dir / "table_q4_alpha_levels.csv",
@@ -237,6 +241,13 @@ def save_outputs(
         "risk_adjusted_table_preview": output_dir / "risk_adjusted_table_preview.csv",
     }
 
+    raw_performance.to_csv(outputs["table_raw_performance"], index=False)
+    raw_performance.loc[raw_performance["PortfolioStrategy"] == "LongShort"].to_csv(
+        outputs["table_ls_raw_performance"], index=False
+    )
+    raw_performance.loc[raw_performance["PortfolioStrategy"] == LONG_PORTFOLIO].to_csv(
+        outputs["table_q4_raw_performance"], index=False
+    )
     ls_levels.to_csv(outputs["table_ls_alpha_levels"], index=False)
     ls_diffs.to_csv(outputs["table_ls_alpha_differences"], index=False)
     q4_levels.to_csv(outputs["table_q4_alpha_levels"], index=False)
@@ -245,6 +256,65 @@ def save_outputs(
     preview.to_csv(outputs["risk_adjusted_table_preview"], index=False)
 
     return outputs
+
+
+def compute_raw_performance_table(monthly_used: pd.DataFrame, rf: pd.Series) -> pd.DataFrame:
+    data = monthly_used.copy()
+    data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+    data["Return"] = pd.to_numeric(data["Return"], errors="coerce")
+    data = data.dropna(subset=["Date", "Method", "PortfolioStrategy", "Return"])
+
+    rf_aligned = rf.copy()
+    rf_aligned.index = pd.to_datetime(rf_aligned.index)
+
+    rows = []
+    for (strategy, method), sub in data.groupby(["PortfolioStrategy", "Method"], sort=True):
+        sub = sub.sort_values("Date")
+        returns = sub.set_index("Date")["Return"].astype(float).dropna()
+        if returns.empty:
+            continue
+
+        if strategy == "LongShort":
+            excess = returns.copy()
+        else:
+            excess = returns.subtract(rf_aligned.reindex(returns.index), fill_value=float("nan")).dropna()
+
+        annualized_return = float(returns.mean() * 12.0)
+        annualized_excess_return = float(excess.mean() * 12.0) if not excess.empty else float("nan")
+        volatility_ann = float(returns.std(ddof=1) * (12.0 ** 0.5)) if len(returns) > 1 else float("nan")
+        excess_volatility_ann = (
+            float(excess.std(ddof=1) * (12.0 ** 0.5)) if len(excess) > 1 else float("nan")
+        )
+        sharpe_ratio = (
+            annualized_excess_return / excess_volatility_ann
+            if pd.notna(excess_volatility_ann) and excess_volatility_ann > 0
+            else float("nan")
+        )
+
+        rows.append(
+            {
+                "PortfolioStrategy": strategy,
+                "Method": method,
+                "MethodLabel": vw.METHOD_DISPLAY_LABELS.get(method, method),
+                "annualized_return": annualized_return,
+                "annualized_excess_return": annualized_excess_return,
+                "volatility_ann": volatility_ann,
+                "excess_volatility_ann": excess_volatility_ann,
+                "sharpe_ratio": sharpe_ratio,
+                "max_drawdown": vw.max_drawdown(returns),
+                "n_obs": int(len(returns)),
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+
+    strategy_order = pd.CategoricalDtype([LONG_PORTFOLIO, "LongShort"], ordered=True)
+    method_order = pd.CategoricalDtype(METHODS, ordered=True)
+    out["PortfolioStrategy"] = out["PortfolioStrategy"].astype(strategy_order)
+    out["Method"] = out["Method"].astype(method_order)
+    return out.sort_values(["PortfolioStrategy", "Method"]).reset_index(drop=True)
 
 
 def print_identification(
@@ -312,6 +382,7 @@ def main() -> None:
     zero_rf = pd.Series(0.0, index=rf.index, name="RF")
 
     q4_returns, ls_returns, monthly_used = build_strategy_returns(monthly_returns, factors)
+    raw_perf = compute_raw_performance_table(monthly_used=monthly_used, rf=rf)
 
     ls_levels = vw.run_level_regressions(
         strategy_returns=ls_returns,
@@ -357,6 +428,7 @@ def main() -> None:
         ls_diffs=ls_diffs,
         q4_levels=q4_levels,
         q4_diffs=q4_diffs,
+        raw_performance=raw_perf,
         monthly_used=monthly_used,
         preview=preview,
     )
@@ -376,6 +448,9 @@ def main() -> None:
 
     print("\nCreated CSV files")
     row_counts = {
+        "table_raw_performance": len(raw_perf),
+        "table_ls_raw_performance": int((raw_perf["PortfolioStrategy"] == "LongShort").sum()),
+        "table_q4_raw_performance": int((raw_perf["PortfolioStrategy"] == LONG_PORTFOLIO).sum()),
         "table_ls_alpha_levels": len(ls_levels),
         "table_ls_alpha_differences": len(ls_diffs),
         "table_q4_alpha_levels": len(q4_levels),
