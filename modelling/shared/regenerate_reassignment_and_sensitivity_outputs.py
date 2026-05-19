@@ -315,6 +315,28 @@ def variant_dir(portfolio_eval_dir: Path, kind: str, value: str) -> Path:
         return portfolio_eval_dir / f"thesis_risk_adjusted_tables_latent_kappa_{label}_ucits_5_10_40"
     if kind == "gamma":
         return portfolio_eval_dir / f"thesis_risk_adjusted_tables_conservative_gamma_{label}_ucits_5_10_40"
+    if kind == "prob_kappa":
+        return portfolio_eval_dir / f"thesis_risk_adjusted_tables_probabilistic_kappa_{label}_ucits_5_10_40"
+    raise ValueError(kind)
+
+
+def param_col_for_kind(kind: str) -> str:
+    if kind == "kappa":
+        return "Kappa"
+    if kind == "gamma":
+        return "Gamma"
+    if kind == "prob_kappa":
+        return "KappaP"
+    raise ValueError(kind)
+
+
+def param_macro_for_kind(kind: str) -> str:
+    if kind == "kappa":
+        return "\\kappa"
+    if kind == "gamma":
+        return "\\gamma"
+    if kind == "prob_kappa":
+        return "\\kappa_P"
     raise ValueError(kind)
 
 
@@ -324,7 +346,7 @@ def collect_variant_outputs(
     values: list[str],
     method: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    param_col = "Kappa" if kind == "kappa" else "Gamma"
+    param_col = param_col_for_kind(kind)
     raw_rows = []
     alpha_rows = []
     diff_rows = []
@@ -486,7 +508,13 @@ def alpha_table_tex(
 
 
 def param_macro_name(param_macro: str) -> str:
-    return "Kappa" if param_macro == "\\kappa" else "Gamma"
+    if param_macro == "\\kappa":
+        return "Kappa"
+    if param_macro == "\\gamma":
+        return "Gamma"
+    if param_macro == "\\kappa_P":
+        return "KappaP"
+    raise ValueError(param_macro)
 
 
 def raw_performance_tex(
@@ -630,15 +658,23 @@ def write_sensitivity_outputs(
     method: str,
     main_value: str,
 ) -> None:
-    param_col = "Kappa" if kind == "kappa" else "Gamma"
-    param_macro = "\\kappa" if kind == "kappa" else "\\gamma"
+    param_col = param_col_for_kind(kind)
+    param_macro = param_macro_for_kind(kind)
     method_name = METHOD_LABELS[method]
-    prefix = "latent_kappa" if kind == "kappa" else "conservative_gamma"
-    out_dir = (
-        portfolio_eval_dir / "thesis_risk_adjusted_tables_latent_kappa_robustness_ucits_5_10_40"
-        if kind == "kappa"
-        else portfolio_eval_dir / "thesis_risk_adjusted_tables_conservative_gamma_robustness_ucits_5_10_40"
-    )
+    if kind == "kappa":
+        prefix = "latent_kappa"
+        out_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_latent_kappa_robustness_ucits_5_10_40"
+        readable = "Latent Quality kappa robustness"
+    elif kind == "gamma":
+        prefix = "conservative_gamma"
+        out_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_conservative_gamma_robustness_ucits_5_10_40"
+        readable = "Conservative Quality gamma robustness"
+    elif kind == "prob_kappa":
+        prefix = "probabilistic_kappa"
+        out_dir = portfolio_eval_dir / "thesis_risk_adjusted_tables_probabilistic_kappa_robustness_ucits_5_10_40"
+        readable = "Probabilistic Quality $\\kappa_P$ robustness"
+    else:
+        raise ValueError(kind)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     raw, alpha, diffs, reassignment, transition, all_reassignment = collect_variant_outputs(
@@ -654,7 +690,6 @@ def write_sensitivity_outputs(
     transition.to_csv(out_dir / f"{prefix}_q1_q5_transition_matrix_vs_observed.csv", index=False)
     all_reassignment.to_csv(out_dir / f"{prefix}_all_portfolio_reassignment_summary_vs_observed.csv", index=False)
 
-    readable = "Latent Quality kappa robustness" if kind == "kappa" else "Conservative Quality gamma robustness"
     (out_dir / f"{prefix}_raw_performance.tex").write_text(
         raw_performance_tex(
             raw=raw,
@@ -725,6 +760,13 @@ def main() -> None:
         values=["0.15", "0.20", "0.30", "0.40", "0.50"],
         method="Method3_ConservativeQuality",
         main_value="0.40",
+    )
+    write_sensitivity_outputs(
+        portfolio_eval_dir=portfolio_eval_dir,
+        kind="prob_kappa",
+        values=["0.04", "0.06", "0.08", "0.10", "0.12"],
+        method="Method4_ProbabilisticQuality",
+        main_value="0.06",
     )
     print("Reassignment and sensitivity outputs regenerated.")
 

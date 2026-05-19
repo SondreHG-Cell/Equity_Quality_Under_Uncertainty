@@ -359,12 +359,16 @@ def save_outputs(
     ls_diffs: pd.DataFrame,
     q5_levels: pd.DataFrame,
     q5_diffs: pd.DataFrame,
+    raw_performance: pd.DataFrame,
     monthly_used: pd.DataFrame,
     preview: pd.DataFrame,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     outputs = {
+        "table_raw_performance_by_size": output_dir / "table_raw_performance_by_size.csv",
+        "table_ls_raw_performance_by_size": output_dir / "table_ls_raw_performance_by_size.csv",
+        "table_q5_raw_performance_by_size": output_dir / "table_q5_raw_performance_by_size.csv",
         "table_ls_alpha_levels_by_size": output_dir / "table_ls_alpha_levels_by_size.csv",
         "table_ls_alpha_differences_by_size": output_dir / "table_ls_alpha_differences_by_size.csv",
         "table_q5_alpha_levels_by_size": output_dir / "table_q5_alpha_levels_by_size.csv",
@@ -373,6 +377,13 @@ def save_outputs(
         "risk_adjusted_table_preview_by_size": output_dir / "risk_adjusted_table_preview_by_size.csv",
     }
 
+    raw_performance.to_csv(outputs["table_raw_performance_by_size"], index=False)
+    raw_performance.loc[raw_performance["PortfolioStrategy"] == "LongShort"].to_csv(
+        outputs["table_ls_raw_performance_by_size"], index=False
+    )
+    raw_performance.loc[raw_performance["PortfolioStrategy"] == "Q5"].to_csv(
+        outputs["table_q5_raw_performance_by_size"], index=False
+    )
     ls_levels.to_csv(outputs["table_ls_alpha_levels_by_size"], index=False)
     ls_diffs.to_csv(outputs["table_ls_alpha_differences_by_size"], index=False)
     q5_levels.to_csv(outputs["table_q5_alpha_levels_by_size"], index=False)
@@ -381,6 +392,70 @@ def save_outputs(
     preview.to_csv(outputs["risk_adjusted_table_preview_by_size"], index=False)
 
     return outputs
+
+
+def compute_raw_performance_by_size(monthly_used: pd.DataFrame, rf: pd.Series) -> pd.DataFrame:
+    data = monthly_used.copy()
+    data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+    data["Return"] = pd.to_numeric(data["Return"], errors="coerce")
+    data = data.dropna(subset=["SizeGroup", "Date", "Method", "PortfolioStrategy", "Return"])
+
+    rf_aligned = rf.copy()
+    rf_aligned.index = pd.to_datetime(rf_aligned.index)
+
+    rows = []
+    for (size_group, strategy, method), sub in data.groupby(
+        ["SizeGroup", "PortfolioStrategy", "Method"], sort=True
+    ):
+        sub = sub.sort_values("Date")
+        returns = sub.set_index("Date")["Return"].astype(float).dropna()
+        if returns.empty:
+            continue
+
+        if strategy == "LongShort":
+            excess = returns.copy()
+        else:
+            excess = returns.subtract(rf_aligned.reindex(returns.index), fill_value=float("nan")).dropna()
+
+        annualized_return = float(returns.mean() * 12.0)
+        annualized_excess_return = float(excess.mean() * 12.0) if not excess.empty else float("nan")
+        volatility_ann = float(returns.std(ddof=1) * np.sqrt(12.0)) if len(returns) > 1 else float("nan")
+        excess_volatility_ann = (
+            float(excess.std(ddof=1) * np.sqrt(12.0)) if len(excess) > 1 else float("nan")
+        )
+        sharpe_ratio = (
+            annualized_excess_return / excess_volatility_ann
+            if pd.notna(excess_volatility_ann) and excess_volatility_ann > 0
+            else float("nan")
+        )
+
+        rows.append(
+            {
+                "SizeGroup": size_group,
+                "PortfolioStrategy": strategy,
+                "Method": method,
+                "MethodLabel": vw.METHOD_DISPLAY_LABELS.get(method, method),
+                "annualized_return": annualized_return,
+                "annualized_excess_return": annualized_excess_return,
+                "volatility_ann": volatility_ann,
+                "excess_volatility_ann": excess_volatility_ann,
+                "sharpe_ratio": sharpe_ratio,
+                "max_drawdown": vw.max_drawdown(returns),
+                "n_obs": int(len(returns)),
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+
+    size_order = pd.CategoricalDtype(SIZE_GROUPS, ordered=True)
+    strategy_order = pd.CategoricalDtype(["Q5", "LongShort"], ordered=True)
+    method_order = pd.CategoricalDtype(vw.METHODS, ordered=True)
+    out["SizeGroup"] = out["SizeGroup"].astype(size_order)
+    out["PortfolioStrategy"] = out["PortfolioStrategy"].astype(strategy_order)
+    out["Method"] = out["Method"].astype(method_order)
+    return out.sort_values(["SizeGroup", "PortfolioStrategy", "Method"]).reset_index(drop=True)
 
 
 def save_ucits_audit_outputs(
@@ -524,6 +599,7 @@ def main() -> None:
         zero_rf=zero_rf,
         nw_lags=args.nw_lags,
     )
+    raw_perf = compute_raw_performance_by_size(monthly_used=monthly_used, rf=rf)
 
     assert_size_split_shapes(ls_levels, ls_diffs, q5_levels, q5_diffs)
     preview = build_size_split_preview(
@@ -537,6 +613,7 @@ def main() -> None:
         ls_diffs=ls_diffs,
         q5_levels=q5_levels,
         q5_diffs=q5_diffs,
+        raw_performance=raw_perf,
         monthly_used=monthly_used,
         preview=preview,
     )
@@ -557,6 +634,9 @@ def main() -> None:
 
     print("\nCreated CSV files")
     row_counts = {
+        "table_raw_performance_by_size": len(raw_perf),
+        "table_ls_raw_performance_by_size": int((raw_perf["PortfolioStrategy"] == "LongShort").sum()),
+        "table_q5_raw_performance_by_size": int((raw_perf["PortfolioStrategy"] == "Q5").sum()),
         "table_ls_alpha_levels_by_size": len(ls_levels),
         "table_ls_alpha_differences_by_size": len(ls_diffs),
         "table_q5_alpha_levels_by_size": len(q5_levels),
