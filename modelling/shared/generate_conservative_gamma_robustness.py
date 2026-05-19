@@ -20,7 +20,7 @@ from portfolio_evaluation import run_portfolio_evaluation
 from portfolio_formation import run_portfolio_formation
 
 
-DEFAULT_GAMMAS = [0.40, 0.50]
+DEFAULT_GAMMAS = [0.15, 0.20, 0.30, 0.40, 0.50]
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         type=float,
         default=DEFAULT_GAMMAS,
-        help="Gamma values to generate. Default: 0.40 0.50.",
+        help="Gamma values to generate. Default: 0.15 0.20 0.30 0.40 0.50.",
     )
     parser.add_argument(
         "--n-portfolios",
@@ -137,7 +137,7 @@ def generate_gamma_run(source_run_dir: Path, gamma: float, n_portfolios: int, nw
     )
     inputs_dir = output_dir / "inputs"
     formation_dir = inputs_dir / "portfolio_formation"
-    evaluation_dir = inputs_dir / "portfolio_evaluation"
+    evaluation_dir = inputs_dir
     latent_path = inputs_dir / f"latent_prof_firm_year_conservative_gamma_{gamma_label(gamma)}.csv"
 
     write_gamma_latent_file(source_run_dir=source_run_dir, gamma=gamma, output_path=latent_path)

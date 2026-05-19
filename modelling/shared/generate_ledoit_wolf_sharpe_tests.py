@@ -95,8 +95,8 @@ def gamma_label_for_dir(gamma: str) -> str:
 def gamma_table_dirs(portfolio_evaluation_dir: Path, main_table_dir: Path, gammas: list[str]) -> dict[str, Path]:
     dirs = {}
     for gamma in gammas:
-        if f"{float(gamma):.2f}" == "0.20":
-            dirs["0.20"] = main_table_dir
+        if f"{float(gamma):.2f}" == "0.40":
+            dirs["0.40"] = main_table_dir
         else:
             label = gamma_label_for_dir(gamma)
             dirs[f"{float(gamma):.2f}"] = (
