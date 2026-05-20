@@ -21,7 +21,7 @@ from portfolio_evaluation import run_portfolio_evaluation
 from portfolio_formation import run_portfolio_formation
 
 
-DEFAULT_KAPPAS = [0.08, 0.06, 0.04]
+DEFAULT_KAPPAS = [0.12, 0.08, 0.06, 0.04]
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         type=float,
         default=DEFAULT_KAPPAS,
-        help="Kappa values to generate. Default: 0.08 0.06 0.04.",
+        help="Kappa values to generate. Default: 0.12 0.08 0.06 0.04.",
     )
     parser.add_argument(
         "--gamma",
