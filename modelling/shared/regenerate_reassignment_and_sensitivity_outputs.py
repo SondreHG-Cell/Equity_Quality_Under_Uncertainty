@@ -207,22 +207,17 @@ def plot_main_reassignment(summary: pd.DataFrame, transition: pd.DataFrame, outp
     output_dir.mkdir(parents=True, exist_ok=True)
     methods = COMPARISON_METHODS
     method_labels = [METHOD_LABELS[m].replace(" Quality", "") for m in methods]
-    colors = {
-        "Latent": "#2c73ad",
-        "Conservative": "#58a7df",
-        "Probabilistic": "#8ec5e8",
-    }
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.8))
+    fig, ax = plt.subplots(figsize=(7.2, 4.6))
     fig.patch.set_facecolor("white")
-    for ax in axes:
-        ax.set_facecolor("#f6f9fc")
-        ax.grid(axis="y", color="#9ebfda", linewidth=0.6, linestyle="--", alpha=0.65)
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_color("#a7bfd5")
-        ax.spines["bottom"].set_color("#a7bfd5")
-        ax.tick_params(colors="#20384f")
+    ax.set_facecolor("#f6f9fc")
+    ax.set_axisbelow(True)
+    ax.grid(axis="y", color="#9ebfda", linewidth=0.6, linestyle="--", alpha=0.65, zorder=0)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#a7bfd5")
+    ax.spines["bottom"].set_color("#a7bfd5")
+    ax.tick_params(colors="#20384f")
 
     x = np.arange(len(methods))
     width = 0.34
@@ -233,53 +228,118 @@ def plot_main_reassignment(summary: pd.DataFrame, transition: pd.DataFrame, outp
                 summary["ComparisonMethod"].eq(method) & summary["ObservedPortfolio"].eq(portfolio)
             ].iloc[0]
             vals.append(100.0 * float(row["ShareObservedTailLeft"]))
-        bars = axes[0].bar(x + offset, vals, width=width, label=portfolio, color="#2c73ad" if portfolio == "Q1" else "#8ec5e8")
-        axes[0].bar_label(bars, labels=[f"{v:.1f}%" for v in vals], fontsize=8, padding=2, color="#173a5e")
+        bars = ax.bar(
+            x + offset,
+            vals,
+            width=width,
+            label=portfolio,
+            color="#2c73ad" if portfolio == "Q1" else "#8ec5e8",
+            zorder=3,
+        )
+        ax.bar_label(bars, labels=[f"{v:.1f}%" for v in vals], fontsize=8, padding=2, color="#173a5e")
 
-    axes[0].set_xticks(x)
-    axes[0].set_xticklabels(method_labels)
-    axes[0].set_ylabel("Share reassigned (%)", color="#173a5e")
-    axes[0].set_title("Panel A: Tail reassignment rates", color="#173a5e", fontweight="bold", fontsize=10)
-    axes[0].legend(frameon=False)
+    ax.set_xticks(x)
+    ax.set_xticklabels(method_labels)
+    ax.set_ylabel("Share reassigned (%)", color="#173a5e")
+    ax.set_title(
+        "Q1 and Q5 reassignment relative to Observed Quality",
+        color="black",
+        fontweight="bold",
+        fontsize=12,
+        pad=34,
+    )
+    ax.legend(
+        frameon=False,
+        ncol=2,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.01),
+        labelcolor="#173a5e",
+    )
 
-    labels = []
-    bases = np.zeros(len(methods) * 2)
-    positions = np.arange(len(methods) * 2)
-    for method in methods:
-        labels.extend([f"{METHOD_LABELS[method].replace(' Quality', '')}\nQ1", f"{METHOD_LABELS[method].replace(' Quality', '')}\nQ5"])
-
-    destination_colors = {
-        "Q1": "#173a5e",
-        "Q2": "#2c73ad",
-        "Q3": "#58a7df",
-        "Q4": "#8ec5e8",
-        "Q5": "#c3ddf0",
-    }
-    for dest in PORTFOLIOS:
-        vals = []
-        for method in methods:
-            for observed_tail in ["Q1", "Q5"]:
-                if dest == observed_tail:
-                    vals.append(0.0)
-                    continue
-                row = transition.loc[
-                    transition["ComparisonMethod"].eq(method)
-                    & transition["ObservedPortfolio"].eq(observed_tail)
-                    & transition["ComparisonPortfolio"].eq(dest)
-                ].iloc[0]
-                vals.append(100.0 * float(row["ShareObservedTail"]))
-        axes[1].bar(positions, vals, bottom=bases, color=destination_colors[dest], label=dest)
-        bases += np.array(vals)
-    axes[1].set_xticks(positions)
-    axes[1].set_xticklabels(labels, fontsize=8)
-    axes[1].set_ylabel("Share of observed tail (%)", color="#173a5e")
-    axes[1].set_title("Panel B: Destination portfolios", color="#173a5e", fontweight="bold", fontsize=10)
-    axes[1].legend(frameon=False, ncol=5, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.18))
-
-    fig.suptitle("Q1 and Q5 reassignment relative to Observed Quality", color="#173a5e", fontweight="bold", fontsize=12)
-    fig.tight_layout(rect=[0.0, 0.04, 1.0, 0.94])
+    fig.tight_layout()
 
     for name in ["q1_q5_reassignment_vs_observed_compact", "q1_q5_reassignment_vs_observed_figure"]:
+        fig.savefig(output_dir / f"{name}.png", dpi=240, bbox_inches="tight", facecolor=fig.get_facecolor())
+        fig.savefig(output_dir / f"{name}.pdf", bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def plot_reassignment_movement_grid(assignments: pd.DataFrame, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    methods = COMPARISON_METHODS
+    destinations = PORTFOLIOS + ["Outside tail"]
+    observed_col = portfolio_col(OBSERVED_METHOD)
+
+    values: list[list[float]] = []
+    annotations: list[list[str]] = []
+    row_labels: list[str] = []
+    for method in methods:
+        comp_col = portfolio_col(method)
+        comp_portfolios = assignments[comp_col].fillna("Outside tail")
+        method_label = METHOD_LABELS[method].replace(" Quality", "")
+        for observed_tail in ["Q1", "Q5"]:
+            observed_mask = assignments[observed_col].eq(observed_tail)
+            observed_n = int(observed_mask.sum())
+            row_labels.append(f"{method_label} from {observed_tail}")
+            row_values: list[float] = []
+            row_annotations: list[str] = []
+            for destination in destinations:
+                if destination == observed_tail:
+                    row_values.append(np.nan)
+                    row_annotations.append("")
+                    continue
+                count = int((observed_mask & comp_portfolios.eq(destination)).sum())
+                share = 100.0 * count / observed_n if observed_n else np.nan
+                row_values.append(share)
+                row_annotations.append(f"{count}\n({share:.1f}%)" if count else "")
+            values.append(row_values)
+            annotations.append(row_annotations)
+
+    data = np.array(values, dtype=float)
+    cmap = plt.colormaps["Blues"].copy()
+    cmap.set_bad("#edf2f7")
+
+    fig, ax = plt.subplots(figsize=(8.2, 5.0))
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("#f6f9fc")
+    im = ax.imshow(data, cmap=cmap, vmin=0.0, vmax=np.nanmax(data), aspect="auto")
+
+    ax.set_xticks(np.arange(len(destinations)))
+    ax.set_xticklabels(destinations)
+    ax.set_yticks(np.arange(len(row_labels)))
+    ax.set_yticklabels(row_labels)
+    ax.tick_params(colors="#20384f")
+    ax.set_xlabel("Adjusted destination portfolio", color="#173a5e")
+    ax.set_ylabel("Observed tail portfolio", color="#173a5e")
+    ax.set_title(
+        "Destination of reassigned Q1 and Q5 firm-years",
+        color="#173a5e",
+        fontweight="bold",
+        fontsize=12,
+    )
+
+    ax.set_xticks(np.arange(-0.5, len(destinations), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, len(row_labels), 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=1.2)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            label = annotations[i][j]
+            if not label:
+                continue
+            text_color = "white" if data[i, j] >= 0.55 * np.nanmax(data) else "#173a5e"
+            ax.text(j, i, label, ha="center", va="center", color=text_color, fontsize=8)
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.025)
+    cbar.set_label("Share of observed tail moved (%)", color="#173a5e")
+    cbar.ax.tick_params(colors="#20384f")
+    cbar.outline.set_visible(False)
+
+    fig.tight_layout()
+    for name in ["q1_q5_reassignment_movement_grid"]:
         fig.savefig(output_dir / f"{name}.png", dpi=240, bbox_inches="tight", facecolor=fig.get_facecolor())
         fig.savefig(output_dir / f"{name}.pdf", bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
@@ -299,12 +359,15 @@ def write_main_reassignment(run_dir: Path, manual_figure_dir: Path) -> None:
     all_summary.to_csv(output_dir / "all_portfolio_reassignment_summary_vs_observed.csv", index=False)
 
     plot_main_reassignment(summary, transition, output_dir)
+    plot_reassignment_movement_grid(assignments, output_dir)
     manual_figure_dir.mkdir(parents=True, exist_ok=True)
     for name in [
         "q1_q5_reassignment_vs_observed_compact.png",
         "q1_q5_reassignment_vs_observed_compact.pdf",
         "q1_q5_reassignment_vs_observed_figure.png",
         "q1_q5_reassignment_vs_observed_figure.pdf",
+        "q1_q5_reassignment_movement_grid.png",
+        "q1_q5_reassignment_movement_grid.pdf",
     ]:
         shutil.copy2(output_dir / name, manual_figure_dir / name)
 

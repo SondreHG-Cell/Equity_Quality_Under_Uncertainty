@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.ticker import PercentFormatter
+from matplotlib.ticker import MaxNLocator, PercentFormatter
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -94,6 +94,7 @@ def ensure_dirs(output_dir: Path) -> tuple[Path, Path]:
 
 def apply_axis_style(ax: plt.Axes) -> None:
     ax.set_facecolor(PANEL_BG)
+    ax.set_axisbelow(True)
     ax.grid(axis="y", color=GRID, linewidth=0.6, linestyle="--", alpha=0.65)
     ax.grid(axis="x", color="#c8d9e8", linewidth=0.45, linestyle=":", alpha=0.35)
     ax.spines["top"].set_visible(False)
@@ -101,6 +102,24 @@ def apply_axis_style(ax: plt.Axes) -> None:
     ax.spines["left"].set_color("#a7bfd5")
     ax.spines["bottom"].set_color("#a7bfd5")
     ax.tick_params(colors="#20384f", labelsize=9)
+
+
+def add_top_legend(
+    fig: plt.Figure,
+    handles,
+    labels,
+    ncol: int,
+    y: float = 0.925,
+) -> None:
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=ncol,
+        frameon=False,
+        bbox_to_anchor=(0.5, y),
+        labelcolor=TEXT,
+    )
 
 
 def save_fig(fig: plt.Figure, fig_dir: Path, name: str, dpi: int) -> list[Path]:
@@ -189,11 +208,91 @@ def plot_quality_levels(summary: pd.DataFrame, fig_dir: Path, dpi: int) -> list[
         ax.set_title(title, color=TEXT, fontweight="bold", fontsize=10)
         ax.set_xlabel("Formation year", color=TEXT)
         ax.set_ylabel("Quality signal", color=TEXT)
-    fig.suptitle("Quality before and after uncertainty adjustment", color=TEXT, fontweight="bold", fontsize=13)
+    fig.suptitle("Quality before and after uncertainty adjustment", color="black", fontweight="bold", fontsize=13)
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.93))
+    add_top_legend(fig, handles, labels, ncol=3)
     fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "quality_levels_mean_median", dpi)
+
+
+def plot_observed_quality_levels(summary: pd.DataFrame, fig_dir: Path, dpi: int) -> list[Path]:
+    obs = (
+        summary.loc[summary["Method"].eq("Observed Quality")]
+        .sort_values("FormationYear")
+        .copy()
+    )
+    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+    fig.patch.set_facecolor("white")
+    apply_axis_style(ax)
+
+    mean_line, = ax.plot(
+        obs["FormationYear"],
+        obs["mean_quality"],
+        color=METHOD_COLORS["Observed Quality"],
+        linewidth=2.25,
+        label="Mean Observed Quality",
+    )
+    median_line, = ax.plot(
+        obs["FormationYear"],
+        obs["median_quality"],
+        color=METHOD_COLORS["Conservative Quality"],
+        linewidth=2.25,
+        label="Median Observed Quality",
+    )
+    ax.axhline(0, color="#6c879f", linewidth=0.9, linestyle="--", alpha=0.75)
+    ax.set_xlabel("Formation year", color=TEXT)
+    ax.set_ylabel("Observed Quality", color=TEXT)
+    ax.set_xlim(obs["FormationYear"].min(), obs["FormationYear"].max())
+    fig.suptitle("Observed Quality over time", color="black", fontweight="bold", fontsize=13)
+    add_top_legend(fig, [mean_line, median_line], ["Mean Observed Quality", "Median Observed Quality"], ncol=2)
+    fig.subplots_adjust(top=0.76, left=0.10, right=0.98, bottom=0.17)
+    return save_fig(fig, fig_dir, "observed_quality_mean_median", dpi)
+
+
+def plot_observed_quality_levels_column(summary: pd.DataFrame, fig_dir: Path, dpi: int) -> list[Path]:
+    obs = (
+        summary.loc[summary["Method"].eq("Observed Quality")]
+        .sort_values("FormationYear")
+        .copy()
+    )
+    fig, ax = plt.subplots(figsize=(3.45, 2.65))
+    fig.patch.set_facecolor("white")
+    apply_axis_style(ax)
+
+    mean_line, = ax.plot(
+        obs["FormationYear"],
+        obs["mean_quality"],
+        color=METHOD_COLORS["Observed Quality"],
+        linewidth=1.85,
+        label="Mean",
+    )
+    median_line, = ax.plot(
+        obs["FormationYear"],
+        obs["median_quality"],
+        color=METHOD_COLORS["Conservative Quality"],
+        linewidth=1.85,
+        label="Median",
+    )
+    ax.axhline(0, color="#6c879f", linewidth=0.75, linestyle="--", alpha=0.75)
+    ax.set_xlabel("Formation year", color=TEXT, fontsize=8)
+    ax.set_ylabel("Observed Quality", color=TEXT, fontsize=8)
+    ax.set_xlim(obs["FormationYear"].min(), obs["FormationYear"].max())
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=4, integer=True))
+    ax.tick_params(labelsize=7)
+    ax.set_title("Observed Quality over time", color="black", fontweight="bold", fontsize=9, pad=22)
+    ax.legend(
+        handles=[mean_line, median_line],
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.13),
+        ncol=2,
+        frameon=False,
+        fontsize=7,
+        labelcolor=TEXT,
+        handlelength=2.0,
+        columnspacing=1.2,
+    )
+    fig.subplots_adjust(top=0.80, left=0.17, right=0.98, bottom=0.18)
+    return save_fig(fig, fig_dir, "observed_quality_mean_median_column", dpi)
 
 
 def plot_quality_spread(summary: pd.DataFrame, fig_dir: Path, dpi: int) -> list[Path]:
@@ -211,9 +310,9 @@ def plot_quality_spread(summary: pd.DataFrame, fig_dir: Path, dpi: int) -> list[
         ax.set_title(title, color=TEXT, fontweight="bold", fontsize=10)
         ax.set_xlabel("Formation year", color=TEXT)
         ax.set_ylabel("Quality spread", color=TEXT)
-    fig.suptitle("Quality spread before and after adjustment", color=TEXT, fontweight="bold", fontsize=13)
+    fig.suptitle("Quality spread before and after adjustment", color="black", fontweight="bold", fontsize=13)
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.93))
+    add_top_legend(fig, handles, labels, ncol=3)
     fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "quality_spread_before_after", dpi)
 
@@ -244,7 +343,6 @@ def plot_adjustment_distribution(df: pd.DataFrame, fig_dir: Path, dpi: int) -> l
     axes[0].set_title("Panel A: Signed adjustment", color=TEXT, fontweight="bold", fontsize=10)
     axes[0].set_xlabel("Change in quality signal", color=TEXT)
     axes[0].set_ylabel("Firm-years", color=TEXT)
-    axes[0].legend(frameon=False)
 
     abs_low, abs_high = df[["abs_latent_adjustment", "abs_conservative_adjustment"]].stack().quantile([0.0, 0.99])
     bins = np.linspace(abs_low, abs_high, 70)
@@ -265,10 +363,11 @@ def plot_adjustment_distribution(df: pd.DataFrame, fig_dir: Path, dpi: int) -> l
     axes[1].set_title("Panel B: Absolute adjustment", color=TEXT, fontweight="bold", fontsize=10)
     axes[1].set_xlabel("Absolute change in quality signal", color=TEXT)
     axes[1].set_ylabel("Firm-years", color=TEXT)
-    axes[1].legend(frameon=False)
 
-    fig.suptitle("Distribution of firm-year quality adjustments", color=TEXT, fontweight="bold", fontsize=13)
-    fig.subplots_adjust(top=0.82, wspace=0.25)
+    fig.suptitle("Distribution of firm-year quality adjustments", color="black", fontweight="bold", fontsize=13)
+    handles, labels = axes[0].get_legend_handles_labels()
+    add_top_legend(fig, handles, ["Latent", "Conservative"], ncol=2)
+    fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "quality_adjustment_distribution", dpi)
 
 
@@ -302,7 +401,7 @@ def plot_observed_vs_adjusted(df: pd.DataFrame, fig_dir: Path, dpi: int) -> list
         ax.set_title(title, color=TEXT, fontweight="bold", fontsize=10)
         ax.set_xlabel("Observed Quality", color=TEXT)
     axes[0].set_ylabel("Adjusted quality", color=TEXT)
-    fig.suptitle("Observed quality versus uncertainty-adjusted quality", color=TEXT, fontweight="bold", fontsize=13)
+    fig.suptitle("Observed quality versus uncertainty-adjusted quality", color="black", fontweight="bold", fontsize=13)
     fig.subplots_adjust(top=0.84, wspace=0.12)
     return save_fig(fig, fig_dir, "observed_vs_adjusted_quality", dpi)
 
@@ -354,7 +453,6 @@ def plot_group_impact(summary: pd.DataFrame, group_col: str, fig_dir: Path, dpi:
     axes[0].set_yticklabels(plot_df[group_col])
     axes[0].set_title("Panel A: Mean absolute quality adjustment", color=TEXT, fontweight="bold", fontsize=10)
     axes[0].set_xlabel("Absolute adjustment", color=TEXT)
-    axes[0].legend(frameon=False)
 
     axes[1].barh(y, plot_df["mean_sigma"], color=ACCENT)
     axes[1].set_yticks(y)
@@ -362,8 +460,10 @@ def plot_group_impact(summary: pd.DataFrame, group_col: str, fig_dir: Path, dpi:
     axes[1].set_title("Panel B: Mean accounting uncertainty", color=TEXT, fontweight="bold", fontsize=10)
     axes[1].set_xlabel("Mean $\\sigma_i$", color=TEXT)
 
-    fig.suptitle(f"Impact of accounting uncertainty by {group_col.lower()}", color=TEXT, fontweight="bold", fontsize=13)
-    fig.subplots_adjust(top=0.84, wspace=0.18)
+    fig.suptitle(f"Impact of accounting uncertainty by {group_col.lower()}", color="black", fontweight="bold", fontsize=13)
+    handles, labels = axes[0].get_legend_handles_labels()
+    add_top_legend(fig, handles, labels, ncol=2)
+    fig.subplots_adjust(top=0.78, wspace=0.18)
     return save_fig(fig, fig_dir, f"quality_uncertainty_impact_by_{group_col.lower()}", dpi)
 
 
@@ -392,11 +492,12 @@ def plot_sigma_evolution(summary: pd.DataFrame, fig_dir: Path, dpi: int) -> list
     ax.fill_between(x, summary["p05_sigma"].to_numpy(), summary["p95_sigma"].to_numpy(), color=ACCENT, alpha=0.35, label="5th-95th percentile")
     ax.plot(x, summary["mean_sigma"], color=METHOD_COLORS["Observed Quality"], linewidth=2.25, label="Mean $\\sigma_i$")
     ax.plot(x, summary["median_sigma"], color=METHOD_COLORS["Latent Quality"], linewidth=2.25, label="Median $\\sigma_i$")
-    ax.set_title("Evolution of accounting uncertainty", color=TEXT, fontweight="bold", fontsize=13)
+    fig.suptitle("Evolution of accounting uncertainty", color="black", fontweight="bold", fontsize=13)
     ax.set_xlabel("Formation year", color=TEXT)
     ax.set_ylabel("$\\sigma_i$", color=TEXT)
-    ax.legend(frameon=False, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.14))
-    fig.subplots_adjust(bottom=0.22)
+    handles, labels = ax.get_legend_handles_labels()
+    add_top_legend(fig, handles, labels, ncol=3, y=0.92)
+    fig.subplots_adjust(top=0.76)
     return save_fig(fig, fig_dir, "sigma_evolution", dpi)
 
 
@@ -412,7 +513,6 @@ def plot_sigma_distribution(df: pd.DataFrame, fig_dir: Path, dpi: int) -> list[P
     axes[0].set_title("Panel A: Pooled firm-year distribution", color=TEXT, fontweight="bold", fontsize=10)
     axes[0].set_xlabel("$\\sigma_i$ (99th percentile clipped)", color=TEXT)
     axes[0].set_ylabel("Firm-years", color=TEXT)
-    axes[0].legend(frameon=False)
 
     years = sorted(df["FormationYear"].unique())
     data = [df.loc[df["FormationYear"].eq(year), "sigma_acc"].clip(upper=q99).dropna() for year in years]
@@ -430,8 +530,10 @@ def plot_sigma_distribution(df: pd.DataFrame, fig_dir: Path, dpi: int) -> list[P
     axes[1].set_title("Panel B: Distribution by formation year", color=TEXT, fontweight="bold", fontsize=10)
     axes[1].set_xlabel("Formation year", color=TEXT)
     axes[1].set_ylabel("$\\sigma_i$", color=TEXT)
-    fig.suptitle("Distribution of accounting uncertainty", color=TEXT, fontweight="bold", fontsize=13)
-    fig.subplots_adjust(top=0.82, wspace=0.25)
+    fig.suptitle("Distribution of accounting uncertainty", color="black", fontweight="bold", fontsize=13)
+    handles, labels = axes[0].get_legend_handles_labels()
+    add_top_legend(fig, handles, labels, ncol=2)
+    fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "sigma_distribution", dpi)
 
 
@@ -472,7 +574,6 @@ def plot_adjustment_by_sigma_decile(summary: pd.DataFrame, fig_dir: Path, dpi: i
     axes[0].set_title("Panel A: Mean absolute adjustment", color=TEXT, fontweight="bold", fontsize=10)
     axes[0].set_xlabel("$\\sigma_i$ decile", color=TEXT)
     axes[0].set_ylabel("Absolute quality adjustment", color=TEXT)
-    axes[0].legend(frameon=False)
 
     axes[1].plot(x, summary["mean_lambda"], marker="o", linewidth=2.2, color=METHOD_COLORS["Observed Quality"], label="$\\lambda_i$")
     axes[1].plot(x, summary["mean_uncertainty_weight"], marker="o", linewidth=2.2, color=ACCENT, label="$1-\\lambda_i$")
@@ -480,9 +581,11 @@ def plot_adjustment_by_sigma_decile(summary: pd.DataFrame, fig_dir: Path, dpi: i
     axes[1].set_xlabel("$\\sigma_i$ decile", color=TEXT)
     axes[1].set_ylabel("Mean weight", color=TEXT)
     axes[1].yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
-    axes[1].legend(frameon=False)
-    fig.suptitle("How adjustment strength varies with accounting uncertainty", color=TEXT, fontweight="bold", fontsize=13)
-    fig.subplots_adjust(top=0.82, wspace=0.25)
+    handles0, labels0 = axes[0].get_legend_handles_labels()
+    handles1, labels1 = axes[1].get_legend_handles_labels()
+    fig.suptitle("How adjustment strength varies with accounting uncertainty", color="black", fontweight="bold", fontsize=13)
+    add_top_legend(fig, handles0 + handles1, labels0 + labels1, ncol=4)
+    fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "adjustment_by_sigma_decile", dpi)
 
 
@@ -529,9 +632,10 @@ def plot_sigma_persistence(lag1_pairs: pd.DataFrame, persistence: pd.DataFrame, 
     axes[1].set_title("Panel B: Persistence by lag", color=TEXT, fontweight="bold", fontsize=10)
     axes[1].set_xlabel("Lag in years", color=TEXT)
     axes[1].set_ylabel("Correlation", color=TEXT)
-    axes[1].legend(frameon=False)
-    fig.suptitle("Persistence in accounting uncertainty", color=TEXT, fontweight="bold", fontsize=13)
-    fig.subplots_adjust(top=0.82, wspace=0.25)
+    handles, labels = axes[1].get_legend_handles_labels()
+    fig.suptitle("Persistence in accounting uncertainty", color="black", fontweight="bold", fontsize=13)
+    add_top_legend(fig, handles, labels, ncol=2)
+    fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "sigma_persistence", dpi)
 
 
@@ -552,11 +656,12 @@ def plot_latent_interval_width(df: pd.DataFrame, fig_dir: Path, dpi: int) -> lis
     ax.fill_between(x, summary["p25_width"].to_numpy(), summary["p75_width"].to_numpy(), color=ACCENT, alpha=0.35, label="Interquartile range")
     ax.plot(x, summary["mean_width"], color=METHOD_COLORS["Observed Quality"], linewidth=2.25, label="Mean interval width")
     ax.plot(x, summary["median_width"], color=METHOD_COLORS["Latent Quality"], linewidth=2.25, label="Median interval width")
-    ax.set_title("Approximate 95\\% interval width around Latent Quality", color=TEXT, fontweight="bold", fontsize=13)
+    fig.suptitle("Approximate 95\\% interval width around Latent Quality", color="black", fontweight="bold", fontsize=13)
     ax.set_xlabel("Formation year", color=TEXT)
     ax.set_ylabel("Width of $\\theta_{i,t}^{latent} \\pm 1.96\\,sd$", color=TEXT)
-    ax.legend(frameon=False, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.14))
-    fig.subplots_adjust(bottom=0.22)
+    handles, labels = ax.get_legend_handles_labels()
+    add_top_legend(fig, handles, labels, ncol=3, y=0.92)
+    fig.subplots_adjust(top=0.76)
     return save_fig(fig, fig_dir, "latent_quality_interval_width", dpi)
 
 
@@ -610,7 +715,7 @@ def plot_transition_heatmaps(transitions: pd.DataFrame, fig_dir: Path, dpi: int)
                 value = matrix.values[i, j]
                 label_color = "white" if value > 0.55 else TEXT
                 ax.text(j, i, f"{100 * value:.0f}%", ha="center", va="center", color=label_color, fontsize=8)
-    fig.suptitle("Portfolio transitions after uncertainty adjustment", color=TEXT, fontweight="bold", fontsize=13)
+    fig.suptitle("Portfolio transitions after uncertainty adjustment", color="black", fontweight="bold", fontsize=13)
     fig.subplots_adjust(top=0.80, wspace=0.30, right=0.86)
     cbar_ax = fig.add_axes([0.90, 0.25, 0.015, 0.45])
     cbar = fig.colorbar(image, cax=cbar_ax)
@@ -630,7 +735,6 @@ def plot_probabilistic_tail_probabilities(df: pd.DataFrame, fig_dir: Path, dpi: 
     axes[0].set_title("Panel A: Tail-probability distribution", color=TEXT, fontweight="bold", fontsize=10)
     axes[0].set_xlabel("Probability", color=TEXT)
     axes[0].set_ylabel("Firm-years", color=TEXT)
-    axes[0].legend(frameon=False)
 
     sample = df.sample(n=min(5000, len(df)), random_state=20260518)
     q_low, q_high = sample["theta_obs"].quantile([0.01, 0.99])
@@ -639,14 +743,19 @@ def plot_probabilistic_tail_probabilities(df: pd.DataFrame, fig_dir: Path, dpi: 
     axes[1].set_title("Panel B: Tail probability by observed quality", color=TEXT, fontweight="bold", fontsize=10)
     axes[1].set_xlabel("Observed Quality", color=TEXT)
     axes[1].set_ylabel("Probability", color=TEXT)
-    axes[1].legend(frameon=False)
-    fig.suptitle("Probabilistic Quality tail probabilities", color=TEXT, fontweight="bold", fontsize=13)
-    fig.subplots_adjust(top=0.82, wspace=0.25)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.suptitle("Probabilistic Quality tail probabilities", color="black", fontweight="bold", fontsize=13)
+    add_top_legend(fig, handles, labels, ncol=2)
+    fig.subplots_adjust(top=0.78, wspace=0.25)
     return save_fig(fig, fig_dir, "probabilistic_tail_probabilities", dpi)
 
 
 def write_latex_snippet(figures: list[Path], output_dir: Path) -> None:
     captions = {
+        "observed_quality_mean_median": (
+            "Observed Quality over time",
+            "The figure reports the annual mean and median of the Observed Quality signal.",
+        ),
         "quality_levels_mean_median": (
             "Quality before and after accounting-uncertainty adjustment",
             "The figure compares the annual mean and median of Observed Quality, Latent Quality, and Conservative Quality.",
@@ -760,7 +869,10 @@ def main() -> None:
     persistence.to_csv(table_dir / "sigma_persistence_correlations.csv", index=False)
 
     figures: list[Path] = []
+    extra_figures: list[Path] = []
     figures += plot_quality_levels(quality_summary, fig_dir, args.dpi)
+    figures += plot_observed_quality_levels(quality_summary, fig_dir, args.dpi)
+    extra_figures += plot_observed_quality_levels_column(quality_summary, fig_dir, args.dpi)
     figures += plot_quality_spread(quality_summary, fig_dir, args.dpi)
     figures += plot_adjustment_distribution(df, fig_dir, args.dpi)
     figures += plot_observed_vs_adjusted(df, fig_dir, args.dpi)
@@ -776,9 +888,10 @@ def main() -> None:
 
     write_latex_snippet(figures, output_dir)
     if args.copy_to_manual:
-        copy_figures(figures, resolve(args.manual_figure_dir))
+        copy_figures(figures + extra_figures, resolve(args.manual_figure_dir))
 
     print(f"Created {len([p for p in figures if p.suffix == '.png'])} appendix figures.")
+    print(f"Created {len([p for p in extra_figures if p.suffix == '.png'])} column figure variants.")
     print(f"Figure directory: {fig_dir}")
     print(f"Table directory:  {table_dir}")
     print(f"LaTeX snippet:    {output_dir / 'appendix_quality_uncertainty_figures.tex'}")
