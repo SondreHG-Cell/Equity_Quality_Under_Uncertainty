@@ -32,7 +32,7 @@ class RunConfig:
     factors_csv: str = "results/extraction_static/factor_data.csv"
     results_root: str = "results"
     run_name: Optional[str] = None
-    uncertainty_method: str = "OLS" # "HB" or "OLS"
+    uncertainty_method: str = "HB" # "HB" or "OLS"
     n_portfolios: int = 5
     nw_lags: int = 12
     save_intermediate: bool = True
@@ -53,7 +53,7 @@ class RunConfig:
     # Step 3 latent PROF settings
     latent_gamma: float = DEFAULT_LATENT_GAMMA
     latent_noise_share_of_prof_var: float = DEFAULT_LATENT_NOISE_SHARE
-    latent_use_full_propagation: bool = False # Set True for HB run
+    latent_use_full_propagation: bool = True # Set True for HB run
     latent_n_sigma_draws: Optional[int] = None
     latent_checkpoint_every_draws: int = 50
 
