@@ -674,7 +674,7 @@ def build_factor_csv(
     stock_prices_csv: str | Path = "data/processed_data_lseg/all_stock_prices_nok.csv",
     dividends_csv: str | Path = "data/processed_data_lseg/dividends_monthly_nok.csv",
     market_cap_monthly_csv: str | Path = "data/processed_data_lseg/historical_market_cap_nok.csv",
-    nibor_csv: str | Path = "data/nibor_monthly.csv",
+    nibor_csv: str | Path = "data/price_calculations/nibor_monthly.csv",
     output_dir: str | Path = "results/extraction_static",
     rf_method: str = "simple",
 ) -> dict:
@@ -810,7 +810,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--nibor_csv",
         type=str,
-        default="data/nibor_monthly.csv",
+        default="data/price_calculations/nibor_monthly.csv",
         help="Path to monthly NIBOR CSV",
     )
     parser.add_argument(

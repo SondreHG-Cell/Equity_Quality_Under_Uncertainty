@@ -10,6 +10,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[1]
+GENERATOR_DIR = SCRIPT_DIR / "generators"
 
 
 @dataclass(frozen=True)
@@ -176,7 +177,7 @@ def build_tasks(profile: str, only: set[str], skip: set[str]) -> list[GenerateTa
 
 
 def command_for_task(task: GenerateTask, args: argparse.Namespace) -> list[str]:
-    script_path = SCRIPT_DIR / task.script
+    script_path = GENERATOR_DIR / task.script
     if not script_path.exists():
         raise FileNotFoundError(f"Generator script does not exist: {script_path}")
 

@@ -1,8 +1,8 @@
 import pandas as pd
 from pathlib import Path
 
-INPUT = Path(__file__).parent.parent / "data/Nibor-Summary-Statistics-March-2026.xlsx"
-OUTPUT = Path(__file__).parent.parent / "data/nibor_monthly.csv"
+INPUT = Path(__file__).parent.parent / "data/price_calculations/Nibor-Summary-Statistics-March-2026.xlsx"
+OUTPUT = Path(__file__).parent.parent / "data/price_calculations/nibor_monthly.csv"
 
 # Les rådata uten header
 df = pd.read_excel(INPUT, sheet_name="Summary statistics", header=None)
